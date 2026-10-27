@@ -1,0 +1,155 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.config/opencode/opencode.json ===
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "yitoken/real-one(one)",
+  "provider": {
+    "yitoken": {
+      "models": {
+        "real-one(one)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-one(one)",
+          "options": {
+            "forceReasoning": true,
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "high",
+              "reasoningSummary": "auto"
+            },
+            "low": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto"
+            },
+            "medium": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "medium",
+              "reasoningSummary": "auto"
+            }
+          }
+        },
+        "real-two(two)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-two(two)",
+          "options": {
+            "forceReasoning": true,
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "high",
+              "reasoningSummary": "auto"
+            },
+            "low": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto"
+            },
+            "medium": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "medium",
+              "reasoningSummary": "auto"
+            }
+          }
+        },
+        "yi-token": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "yi-token",
+          "options": {
+            "forceReasoning": true,
+            "reasoningEffort": "medium"
+          },
+          "variants": {
+            "high": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "high",
+              "reasoningSummary": "auto"
+            },
+            "low": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto"
+            },
+            "medium": {
+              "forceReasoning": true,
+              "include": [
+                "reasoning.encrypted_content"
+              ],
+              "reasoningEffort": "medium",
+              "reasoningSummary": "auto"
+            }
+          }
+        }
+      },
+      "name": "yi-token",
+      "npm": "@ai-sdk/openai",
+      "options": {
+        "apiKey": "yi-token",
+        "baseURL": "http://127.0.0.1:11435/clients/opencode/v1"
+      }
+    }
+  }
+}

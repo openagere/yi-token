@@ -1,0 +1,64 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.codex/config.toml ===
+model = "yi-token"
+model_provider = "yitoken"
+model_catalog_json = '[HOME]\.codex\yi-token-models.json'
+model_reasoning_effort = "medium"
+
+[model_providers]
+
+[model_providers.yitoken]
+name = "yi-token"
+base_url = "http://127.0.0.1:11435/clients/codex/v1"
+wire_api = "responses"
+requires_openai_auth = false
+
+=== [HOME]/.codex/yi-token-models.json ===
+{
+  "models": [
+    {
+      "apply_patch_tool_type": null,
+      "availability_nux": null,
+      "base_instructions": "You are a coding assistant. Work with the user in the shared workspace, use the available tools to inspect and edit files, and verify your changes.",
+      "default_reasoning_level": "medium",
+      "default_verbosity": null,
+      "description": "yi-token",
+      "display_name": "yi-token",
+      "experimental_supported_tools": [],
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "priority": 0,
+      "shell_type": "default",
+      "slug": "yi-token",
+      "support_verbosity": false,
+      "supported_in_api": true,
+      "supported_reasoning_levels": [
+        {
+          "description": "low effort",
+          "effort": "low"
+        },
+        {
+          "description": "medium effort",
+          "effort": "medium"
+        },
+        {
+          "description": "high effort",
+          "effort": "high"
+        }
+      ],
+      "supports_parallel_tool_calls": false,
+      "supports_reasoning_summaries": false,
+      "truncation_policy": {
+        "limit": 10000,
+        "mode": "bytes"
+      },
+      "upgrade": null,
+      "visibility": "list"
+    }
+  ]
+}

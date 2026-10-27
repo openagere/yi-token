@@ -1,0 +1,61 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.pi/agent/models.json ===
+{
+  "providers": {
+    "yitoken_direct_p1": {
+      "api": "openai-completions",
+      "apiKey": "p1-secret",
+      "baseUrl": "https://upstream.example/v1",
+      "models": [
+        {
+          "contextWindow": 200000,
+          "id": "up-1",
+          "input": [
+            "text",
+            "image"
+          ],
+          "maxTokens": 8192,
+          "name": "up-1",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        },
+        {
+          "contextWindow": 200000,
+          "id": "up-2",
+          "input": [
+            "text",
+            "image"
+          ],
+          "maxTokens": 8192,
+          "name": "up-2",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        }
+      ],
+      "name": "yi-token direct:p1"
+    }
+  }
+}
+
+=== [HOME]/.pi/agent/settings.json ===
+{
+  "defaultModel": "up-1",
+  "defaultProvider": "yitoken_direct_p1"
+}

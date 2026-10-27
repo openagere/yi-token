@@ -1,0 +1,66 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.codex/config.toml ===
+model_provider = "yitoken_direct_p2"
+model = "resp-model"
+model_catalog_json = '[HOME]\.codex\yi-token-models.json'
+
+[model_providers]
+
+[model_providers.yitoken_direct_p2]
+name = "yi-token direct:p2:Responses"
+base_url = "https://upstream.example/v1"
+wire_api = "responses"
+requires_openai_auth = false
+experimental_bearer_token = "p2-secret"
+
+=== [HOME]/.codex/yi-token-models.json ===
+{
+  "models": [
+    {
+      "apply_patch_tool_type": null,
+      "availability_nux": null,
+      "base_instructions": "You are a coding assistant. Work with the user in the shared workspace, use the available tools to inspect and edit files, and verify your changes.",
+      "context_window": 200000,
+      "default_reasoning_level": "high",
+      "default_verbosity": null,
+      "description": "Responses · resp-model",
+      "display_name": "resp-model",
+      "experimental_supported_tools": [],
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "max_context_window": 200000,
+      "priority": 0,
+      "shell_type": "default",
+      "slug": "resp-model",
+      "support_verbosity": false,
+      "supported_in_api": true,
+      "supported_reasoning_levels": [
+        {
+          "description": "low effort",
+          "effort": "low"
+        },
+        {
+          "description": "medium effort",
+          "effort": "medium"
+        },
+        {
+          "description": "high effort",
+          "effort": "high"
+        }
+      ],
+      "supports_parallel_tool_calls": false,
+      "supports_reasoning_summaries": false,
+      "truncation_policy": {
+        "limit": 10000,
+        "mode": "bytes"
+      },
+      "upgrade": null,
+      "visibility": "list"
+    }
+  ]
+}

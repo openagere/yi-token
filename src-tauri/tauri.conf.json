@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "YiToken",
+  "mainBinaryName": "YiToken",
+  "version": "0.1.0",
+  "identifier": "com.yi-token.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "工作区",
+        "width": 1120,
+        "height": 760,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false,
+        "resizable": true,
+        "shadow": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "本地多协议 LLM 网关与终端管理",
+    "longDescription": "YiToken 是本地多协议 LLM 网关与终端管理桌面应用，支持 Anthropic Messages、OpenAI Chat 与 OpenAI Responses 协议互转、Auto 路由和加密备份。",
+    "copyright": "Copyright © 2026 peng.yi",
+    "publisher": "peng.yi",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

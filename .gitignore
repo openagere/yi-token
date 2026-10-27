@@ -1,0 +1,11 @@
+.superpowers/
+.claude/worktrees/
+target/
+node_modules/
+dist/
+*.bak-*
+src-tauri/gen/
+test-results/
+playwright-report/
+.vite-test.pid
+.vite-visual*.log

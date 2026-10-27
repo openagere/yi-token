@@ -1,0 +1,23 @@
+---
+description: 提交身份与禁用 Co-authored-by
+alwaysApply: true
+---
+
+# Git 提交
+
+- 提交说明只写变更本身，禁止添加 `Co-authored-by`，包括 Cursor、工具或助手署名。
+- 作者和提交者邮箱都使用 `yipen9@gmail.com`。姓名沿用仓库里的 `peng.yi`。
+- 不要修改 git config。需要指定身份时，只在这一次提交的环境变量里设置 `GIT_AUTHOR_NAME`、`GIT_AUTHOR_EMAIL`、`GIT_COMMITTER_NAME`、`GIT_COMMITTER_EMAIL`。
+- 如果提交命令自动追加了 `Co-authored-by`，在推送前去掉该行，保留其余说明。
+
+```text
+初始化 YiToken。
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+```
+
+上面这种说明不允许保留。应只保留：
+
+```text
+初始化 YiToken。
+```

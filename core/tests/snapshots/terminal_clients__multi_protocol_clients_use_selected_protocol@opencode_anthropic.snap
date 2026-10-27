@@ -1,0 +1,107 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.config/opencode/opencode.json ===
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "yitoken/real-one(one)",
+  "provider": {
+    "yitoken": {
+      "models": {
+        "real-one(one)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-one(one)",
+          "options": {
+            "effort": "high"
+          },
+          "variants": {
+            "high": {
+              "effort": "high"
+            },
+            "low": {
+              "effort": "low"
+            },
+            "medium": {
+              "effort": "medium"
+            }
+          }
+        },
+        "real-two(two)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-two(two)",
+          "options": {
+            "effort": "high"
+          },
+          "variants": {
+            "high": {
+              "effort": "high"
+            },
+            "low": {
+              "effort": "low"
+            },
+            "medium": {
+              "effort": "medium"
+            }
+          }
+        },
+        "yi-token": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "yi-token",
+          "options": {
+            "effort": "medium"
+          },
+          "variants": {
+            "high": {
+              "effort": "high"
+            },
+            "low": {
+              "effort": "low"
+            },
+            "medium": {
+              "effort": "medium"
+            }
+          }
+        }
+      },
+      "name": "yi-token",
+      "npm": "@ai-sdk/anthropic",
+      "options": {
+        "apiKey": "yi-token",
+        "baseURL": "http://127.0.0.1:11435/clients/opencode/v1"
+      }
+    }
+  }
+}

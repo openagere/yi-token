@@ -1,0 +1,81 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.config/opencode/opencode.json ===
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "yitoken_direct_p1/up-1",
+  "provider": {
+    "yitoken_direct_p1": {
+      "models": {
+        "up-1": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "up-1",
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            }
+          }
+        },
+        "up-2": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "up-2",
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            }
+          }
+        }
+      },
+      "name": "yi-token direct:p1",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "p1-secret",
+        "baseURL": "https://upstream.example/v1"
+      }
+    }
+  }
+}

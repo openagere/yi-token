@@ -1,0 +1,31 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.dsh/.credentials.yaml ===
+refs:
+  YI_TOKEN_PROXY: yi-token
+version: 1
+
+=== [HOME]/.dsh/profiles/desktop/cordis.patch.yml ===
+- config:
+    providers:
+      yitoken:
+        api: openai-completions
+        apiKeyEnv: YI_TOKEN_PROXY
+        baseURL: http://127.0.0.1:11435/clients/deepseek-harness/v1
+        models:
+        - contextWindow: 200000
+          id: yi-token
+          input:
+          - text
+          - image
+          maxTokens: 8192
+          name: yi-token
+          reasoningEfforts:
+            high: high
+            low: low
+            medium: medium
+            off: null
+        name: yi-token
+  id: llm-pi-ai

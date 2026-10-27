@@ -1,0 +1,43 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.dsh/.credentials.yaml ===
+refs:
+  YI_TOKEN_DIRECT_P1: p1-secret
+version: 1
+
+=== [HOME]/.dsh/profiles/desktop/cordis.patch.yml ===
+- config:
+    providers:
+      yitoken_direct_p1:
+        api: openai-completions
+        apiKeyEnv: YI_TOKEN_DIRECT_P1
+        baseURL: https://upstream.example/v1
+        models:
+        - contextWindow: 200000
+          id: up-1
+          input:
+          - text
+          - image
+          maxTokens: 8192
+          name: up-1
+          reasoningEfforts:
+            high: high
+            low: low
+            medium: medium
+            off: null
+        - contextWindow: 200000
+          id: up-2
+          input:
+          - text
+          - image
+          maxTokens: 8192
+          name: up-2
+          reasoningEfforts:
+            high: high
+            low: low
+            medium: medium
+            off: null
+        name: yi-token direct:p1
+  id: llm-pi-ai

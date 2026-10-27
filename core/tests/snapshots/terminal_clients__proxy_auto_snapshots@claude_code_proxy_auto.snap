@@ -1,0 +1,23 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.claude/settings.json ===
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "yi-token",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:11435/clients/claude-code",
+    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "200000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192"
+  },
+  "model": "yi-token",
+  "modelPicker": {
+    "options": [
+      {
+        "label": "yi-token",
+        "model": "yi-token"
+      }
+    ],
+    "replaceBuiltInOptions": true
+  }
+}

@@ -1,0 +1,42 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.pi/agent/models.json ===
+{
+  "providers": {
+    "yitoken": {
+      "api": "openai-completions",
+      "apiKey": "yi-token",
+      "baseUrl": "http://127.0.0.1:11435/clients/pi/v1",
+      "models": [
+        {
+          "contextWindow": 200000,
+          "id": "yi-token",
+          "input": [
+            "text",
+            "image"
+          ],
+          "maxTokens": 8192,
+          "name": "yi-token",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        }
+      ],
+      "name": "yi-token"
+    }
+  }
+}
+
+=== [HOME]/.pi/agent/settings.json ===
+{
+  "defaultModel": "yi-token",
+  "defaultProvider": "yitoken"
+}

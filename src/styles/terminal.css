@@ -1,0 +1,285 @@
+/* Access modes are a compact control, not a second page header. */
+.terminal-mode-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.terminal-mode-label { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.terminal-mode-switch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-subtle); }
+.terminal-mode-switch > button { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 112px; min-height: 31px; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-secondary); transition: background .15s, border-color .15s; }
+.terminal-mode-switch > button:hover:not(:disabled) { color: var(--text-primary); }
+.terminal-mode-switch > button[aria-selected="true"] { border-color: var(--border-strong); background: var(--surface); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.terminal-mode-switch > button strong { font-size: 12px; font-weight: 570; white-space: nowrap; }
+.terminal-mode-state.pending { display: block; flex: none; width: 6px; height: 6px; padding: 0; overflow: hidden; border-radius: 50%; background: var(--warning); color: transparent; font-size: 0; }
+
+.terminal-client-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; padding: 15px 0 13px; border-bottom: 1px solid var(--border); }
+.terminal-client-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.terminal-client-mark { display: grid; flex: none; width: 42px; height: 42px; place-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-subtle); }
+.terminal-client-heading { min-width: 0; }
+.terminal-client-eyebrow { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: 11px; }
+.terminal-client-heading h1 { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 620; line-height: 1.25; }
+/* Protocol chips live under the terminal name in every access mode: mini radio buttons for
+   clients that speak several protocols, a single static chip for the others. */
+.terminal-protocol-switch { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 5px; padding: 2px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-subtle); }
+.terminal-protocol-switch > button,
+.terminal-protocol-switch > .terminal-protocol-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 20px; padding: 0 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 570; white-space: nowrap; }
+.terminal-protocol-switch > button { cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.terminal-protocol-switch > button:hover:not(:disabled) { color: var(--text-primary); }
+.terminal-protocol-switch > button[aria-checked="true"],
+.terminal-protocol-switch > .terminal-protocol-chip { border-color: var(--border-strong); background: var(--surface); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.terminal-protocol-switch > button:disabled { cursor: default; }
+.terminal-protocol-switch .provider-brand-icon { flex: none; }
+.terminal-header-status { display: flex; align-items: center; gap: 8px; grid-column: 2; grid-row: 1; justify-self: end; color: var(--text-secondary); font-size: 11px; white-space: nowrap; }
+.terminal-header-status strong { max-width: 280px; overflow: hidden; font-size: 12px; font-weight: 590; text-overflow: ellipsis; }
+.terminal-header-status > span:last-child:not(.terminal-header-status-dot) { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--border-strong); color: var(--text-muted); }
+.terminal-header-status-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
+.terminal-header-status.connected .terminal-header-status-dot { background: var(--success); }
+.terminal-link-actions { display: inline-flex; flex: none; align-items: center; gap: 2px; margin-left: 2px; }
+.terminal-link-actions .icon-button { width: 28px; height: 28px; min-height: 28px; }
+.terminal-link-actions .icon-button[aria-pressed="true"] { color: var(--success); background: var(--success-soft); opacity: 1; }
+.terminal-link-actions .icon-button[aria-pressed="true"]:disabled { opacity: 1; cursor: default; }
+.terminal-header-path { display: flex; align-items: center; gap: 9px; grid-column: 1; grid-row: 2; min-width: 0; padding-left: 54px; color: var(--text-muted); font-size: 11px; }
+.terminal-header-path code { min-width: 0; overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.terminal-load-error { display: flex; align-items: center; gap: 10px; margin-top: 15px; padding: 10px 12px; border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); background: var(--danger-soft); font-size: 12px; }
+.terminal-load-error span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.terminal-page .terminal-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .86fr); column-gap: 31px; align-items: start; padding-top: 22px; }
+/* The mode panel fills the page so every footer (pager, apply bar) rests on the bottom edge. */
+.terminal-page #terminal-mode-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.terminal-proxy-layout { display: flex; flex: 1; flex-direction: column; padding-top: 18px; }
+.terminal-direct-layout { padding-bottom: 18px; }
+/* Same footer as the editor pages: status on the left, actions on the right, resting on the bottom edge. */
+.terminal-page .terminal-page-footer { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 46px; margin-top: auto; padding: 16px 0; border-top: 1px solid var(--border); background: var(--surface); }
+.terminal-page-footer .draft-state { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.terminal-page-footer .draft-state > svg { flex: none; }
+.terminal-page-footer .draft-state.error { color: var(--danger); }
+.terminal-page-footer .draft-state.saved { color: var(--success); }
+.terminal-page-footer .draft-state.saved > span { background: var(--success); }
+.terminal-footer-state { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.terminal-footer-state > svg { flex: none; }
+.terminal-footer-state.success { color: var(--success); }
+.terminal-footer-state.error { color: var(--danger); }
+.terminal-footer-state.pending { color: var(--text-secondary); }
+.terminal-footer-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
+.terminal-footer-state.pending .terminal-footer-dot { background: var(--warning); }
+.terminal-direct-apply { flex: none; min-width: 112px; }
+/* Proxy access: every saved model as a paged two-column card grid; hovering a card unfolds its details in place. */
+.terminal-proxy { display: flex; flex: 1; flex-direction: column; gap: 14px; }
+.terminal-proxy-feedback .terminal-message { margin-top: 0; }
+.terminal-proxy-feedback .terminal-backups { margin-top: 6px; }
+.terminal-proxy-toolbar { display: grid; grid-template-columns: minmax(220px, 320px) minmax(180px, 300px); align-items: end; justify-content: space-between; gap: 12px 16px; }
+.terminal-proxy-provider-field { min-width: 0; }
+.terminal-proxy-toolbar .terminal-model-search { height: 38px; }
+.terminal-provider-all-icon { display: grid; width: 19px; height: 19px; place-items: center; border-radius: 5px; color: var(--text-secondary); background: var(--surface-subtle); }
+.terminal-proxy .terminal-model-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: min-content; gap: 10px 12px; min-height: 0; max-height: none; margin: 0; padding: 0; overflow: visible; border: 0; border-radius: 0; }
+.terminal-proxy .terminal-model-empty { grid-column: 1 / -1; border: 1px dashed var(--border-strong); border-radius: 10px; }
+.terminal-engine-card { position: relative; min-width: 0; }
+/* The open detail has to sit above later cards and the sticky pager. */
+.terminal-proxy .terminal-model-list:has(.terminal-engine-card:hover),
+.terminal-proxy .terminal-model-list:has(.terminal-engine-card:focus-within) { position: relative; z-index: 6; }
+.terminal-engine-card:hover, .terminal-engine-card:focus-within { z-index: 6; }
+.terminal-proxy .terminal-engine-option { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 66px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); text-align: left; transition: border-color .15s, background .15s, box-shadow .15s; }
+.terminal-proxy .terminal-engine-option:last-child { border-bottom: 1px solid var(--border); }
+.terminal-proxy .terminal-engine-option:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface); box-shadow: var(--shadow-sm); }
+.terminal-proxy .terminal-engine-option[aria-pressed="true"],
+.terminal-proxy .terminal-engine-option[aria-pressed="true"]:hover:not(:disabled) { border-color: var(--success-border); background: var(--success-soft); box-shadow: none; }
+.terminal-proxy .terminal-engine-option:disabled { cursor: default; }
+.terminal-engine-radio { display: grid; flex: none; width: 17px; height: 17px; place-items: center; border: 1.5px solid var(--border-strong); border-radius: 50%; background: var(--surface); color: var(--surface); }
+.terminal-engine-option:not(:disabled) .terminal-engine-radio:hover { border-color: var(--text-secondary); }
+.terminal-engine-option[aria-pressed="true"] .terminal-engine-radio { border-color: var(--success); background: var(--success); }
+.terminal-engine-icon { display: grid; flex: none; width: 36px; height: 36px; place-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.terminal-engine-copy { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.terminal-proxy .terminal-engine-copy strong { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.terminal-proxy .terminal-engine-copy small { display: flex; gap: 7px; min-width: 0; overflow: hidden; color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.terminal-engine-copy small code { min-width: 0; overflow: hidden; color: var(--text-subtle); font-family: var(--font-mono); font-size: 11px; text-overflow: ellipsis; }
+.terminal-proxy .terminal-engine-option em,
+.terminal-engine-detail-head em { flex: none; margin-left: 0; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 570; white-space: nowrap; }
+.terminal-proxy em.terminal-engine-current { border: 1px solid var(--success-border); background: var(--surface); color: var(--success); }
+.terminal-proxy em.terminal-engine-context { border: 1px solid var(--border); background: var(--surface-subtle); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.terminal-proxy em.terminal-engine-switch { border: 1px solid var(--border-strong); color: var(--text-primary); }
+
+/* Detail layer: same header as the card, so it reads as the card unfolding. Opens after a short hover delay. */
+.terminal-engine-detail { position: absolute; top: 0; right: 0; left: 0; visibility: hidden; opacity: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); box-shadow: var(--shadow-popover); cursor: pointer; transform: translateY(2px); transition: opacity .12s, transform .12s, visibility 0s linear .12s; }
+.terminal-engine-detail.upward { top: auto; bottom: 0; transform: translateY(-2px); }
+/* The detail layer covers the card while hovered, so it repeats the selected look of the current model. */
+.terminal-engine-card.current .terminal-engine-detail { border-color: var(--success-border); background: var(--success-soft); }
+.terminal-engine-card.current .terminal-engine-detail .terminal-engine-radio { border-color: var(--success); background: var(--success); }
+.terminal-engine-card.current .terminal-engine-detail-body { background: var(--surface); }
+/* The radio is a direct pick target, so pointing at it never unfolds the detail. */
+.terminal-engine-card:hover:not(:has(.terminal-engine-radio:hover)) .terminal-engine-detail,
+.terminal-engine-card:has(.terminal-engine-option:focus-visible) .terminal-engine-detail { visibility: visible; opacity: 1; transform: none; transition: opacity .15s .28s, transform .15s .28s, visibility 0s linear .28s; }
+.terminal-engine-detail-head { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 14px; }
+.terminal-engine-detail-head strong { flex: 1; min-width: 0; color: var(--text-primary); font-size: 14px; font-weight: 620; overflow-wrap: anywhere; }
+.terminal-engine-detail-body { display: grid; gap: 10px; margin: 0 10px 10px; padding: 12px 14px; border-radius: 8px; background: var(--surface-subtle); }
+.terminal-engine-detail-body dl { display: grid; margin: 0; }
+.terminal-engine-detail-body dl > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px dashed var(--border-strong); }
+.terminal-engine-detail-body dl > div:first-child { padding-top: 0; border-top: 0; }
+.terminal-engine-detail-body dt { flex: none; color: var(--text-muted); font-size: 12px; }
+.terminal-engine-detail-body dd { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; margin: 0; color: var(--text-primary); font-size: 12px; text-align: right; overflow-wrap: anywhere; }
+.terminal-engine-detail-body dd code { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.terminal-engine-detail-body dd.terminal-engine-detail-stack { flex-direction: column; align-items: flex-end; gap: 4px; }
+.terminal-engine-copy-button { display: grid; flex: none; width: 24px; height: 24px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.terminal-engine-copy-button:hover { border-color: var(--border-strong); background: var(--surface); color: var(--text-primary); }
+
+.terminal-proxy-hint { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.terminal-proxy-pager { display: flex; flex: none; align-items: center; gap: 12px; color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.terminal-page .terminal-config-section { grid-column: 1; grid-row: 1; min-width: 0; padding: 0; border: 0; background: transparent; }
+.terminal-page .terminal-preview-section { grid-column: 2; grid-row: 1; align-self: start; min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+.terminal-pane-heading { margin-bottom: 20px; }
+.terminal-pane-heading h2 { margin: 0 0 5px; color: var(--text-primary); font-size: 16px; font-weight: 620; }
+.terminal-pane-heading p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.terminal-step { display: block; min-width: 0; }
+.terminal-step + .terminal-step { margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--border); }
+.terminal-step-content { min-width: 0; }
+.terminal-model-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.terminal-model-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px 12px; margin-bottom: 11px; }
+.terminal-model-heading h3 { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--text-primary); font-size: 12px; font-weight: 600; }
+.terminal-model-heading h3 span { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 5px; border-radius: 5px; color: var(--text-secondary); background: var(--surface-subtle); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.terminal-model-heading > div { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.terminal-model-heading .icon-button { width: 26px; height: 26px; min-height: 26px; border-color: transparent; }
+.terminal-model-heading .text-button { min-height: 26px; padding: 0 4px; font-size: 11px; }
+.terminal-model-search { display: flex; gap: 8px; align-items: center; min-height: 36px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 7px; color: var(--text-muted); }
+.terminal-model-search:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 2px var(--focus-ring-soft); }
+.terminal-model-search input { width: 100%; min-width: 0; height: 34px; padding: 0; border: 0; outline: 0; background: transparent; font-size: 12px; }
+.terminal-model-search input:focus-visible { outline: 0; }
+.terminal-model-search > button { display: grid; flex: none; place-items: center; width: 23px; height: 25px; padding: 0; border: 0; color: var(--text-muted); background: transparent; }
+.terminal-model-search > button:hover { color: var(--text-primary); }
+.terminal-model-list { min-height: 145px; max-height: clamp(160px, calc(var(--workspace-height) - 420px), 360px); margin-top: 11px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; scrollbar-gutter: stable; }
+.terminal-engine-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--border-subtle); background: transparent; text-align: left; cursor: pointer; }
+.terminal-engine-option:last-child { border-bottom: 0; }
+.terminal-engine-option:hover:not(:disabled), .terminal-engine-option[aria-pressed="true"] { background: var(--surface-subtle); }
+.terminal-engine-option strong { display: block; color: var(--text-primary); font-size: 12px; font-weight: 570; overflow-wrap: anywhere; }
+.terminal-engine-option small { color: var(--text-muted); font-size: 11px; }
+.terminal-engine-option em { margin-left: auto; color: var(--text-muted); font-size: 11px; font-style: normal; white-space: nowrap; }
+.terminal-provider-heading { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--surface-subtle); }
+.terminal-provider-heading > strong { flex: 1; min-width: 0; font-size: 12px; font-weight: 590; }
+.terminal-provider-heading > span { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.terminal-provider-group:last-child .terminal-provider-heading { border-bottom: 0; }
+.terminal-provider-group:has(> div:not([hidden]) .terminal-model-option) .terminal-provider-heading { border-bottom: 1px solid var(--border); }
+.terminal-provider-disclosure { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; min-height: 37px; padding: 5px 0; border: 0; background: transparent; text-align: left; }
+.terminal-provider-disclosure:disabled { opacity: 1; }
+.terminal-provider-disclosure strong { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12px; font-weight: 590; }
+.terminal-provider-disclosure > span:not(.provider-brand-icon) { flex: none; color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.terminal-provider-disclosure > svg { flex: none; color: var(--text-muted); }
+.terminal-provider-disclosure:hover:not(:disabled) strong { color: var(--accent); }
+.terminal-provider-group + .terminal-provider-group { border-top: 1px solid var(--border); }
+.terminal-model-fields input[type="checkbox"] { flex: none; width: 13px; height: 13px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.terminal-model-option { display: flex; align-items: center; gap: 10px; min-height: 45px; padding: 8px 10px 8px 32px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
+.terminal-model-option:last-child { border-bottom: 0; }
+.terminal-model-option:hover, .terminal-model-option:has(input:checked) { background: var(--surface-subtle); }
+.terminal-model-option > span { display: grid; flex: 1; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.terminal-model-option strong { color: var(--text-primary); font-size: 12px; font-weight: 570; }
+.terminal-model-option small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.terminal-model-option em { flex: none; color: var(--text-muted); font-size: 11px; font-style: normal; }
+.terminal-model-empty { display: grid; min-height: 145px; place-items: center; padding: 18px; color: var(--text-muted); font-size: 12px; text-align: center; }
+.terminal-page .terminal-default-model { display: grid; gap: 8px; margin: 0; }
+.terminal-stale-models { margin-top: 12px; padding: 10px 11px; border: 1px solid var(--warning-border); border-radius: 7px; background: var(--warning-soft); color: var(--warning); font-size: 12px; }
+.terminal-stale-models > strong { display: flex; gap: 6px; align-items: center; font-weight: 500; }
+.terminal-stale-models > div { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px; }
+.terminal-stale-models > div > span { min-width: 0; overflow-wrap: anywhere; }
+.terminal-stale-models .icon-button { width: 27px; height: 27px; flex: none; }
+
+.terminal-message { gap: 8px; margin: 14px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+.terminal-message svg { flex: none; }
+.terminal-backups { margin: 12px 0 0; color: var(--text-secondary); font-size: 11px; }
+.terminal-backups summary { cursor: pointer; }
+.terminal-backups code { display: block; padding-top: 6px; overflow-wrap: anywhere; }
+
+.terminal-page .terminal-preview-heading { gap: 12px; margin-bottom: 14px; }
+.terminal-page .terminal-preview-heading h2 { margin: 0 0 4px; font-size: 16px; font-weight: 620; }
+.terminal-page .terminal-preview-heading p { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.terminal-page .terminal-preview { height: clamp(260px, calc(var(--workspace-height) - 380px), 500px); min-height: 0; max-height: none; overflow: auto; margin: 0; padding: 15px 17px; border: 1px solid var(--code-border); border-radius: 8px; background: var(--code-bg); color: var(--code-text); font-size: 11px; line-height: 1.7; scrollbar-gutter: stable; }
+.terminal-direct-layout .terminal-preview-section { grid-row: 1; }
+.terminal-file-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 11px; }
+.terminal-file-tabs button { min-width: 0; max-width: 100%; min-height: 28px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-muted); font-size: 11px; overflow-wrap: anywhere; }
+.terminal-file-tabs button[aria-pressed="true"] { border-color: var(--border-strong); background: var(--surface-subtle); color: var(--text-primary); }
+
+.terminal-direct-field { display: grid; gap: 7px; min-width: 0; }
+.terminal-direct-label { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 590; }
+.terminal-step-index { display: inline-grid; flex: none; width: 18px; height: 18px; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text-secondary); background: var(--surface); font-size: 10px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.terminal-direct-config .terminal-step { padding: 14px 16px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+.terminal-direct-config .terminal-step + .terminal-step { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+.terminal-direct-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; }
+.terminal-direct-option { display: flex; align-items: flex-start; gap: 9px; min-width: 0; min-height: 64px; padding: 10px; border: 0; background: transparent; cursor: pointer; }
+.terminal-direct-option + .terminal-direct-option { border-left: 1px solid var(--border); }
+.terminal-direct-option:hover { background: var(--surface-subtle); }
+.terminal-direct-option.selected { background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--accent-border); }
+.terminal-direct-option input { flex: none; margin: 2px 0 0; accent-color: var(--accent); }
+.terminal-direct-option-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.terminal-direct-option-copy strong { color: var(--text-primary); font-size: 12px; font-weight: 590; }
+.terminal-direct-option-copy small { color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+.terminal-direct-models-panel { display: grid; gap: 5px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border-strong); }
+.terminal-direct-models-head { display: flex; align-items: center; gap: 8px; }
+.terminal-direct-models-head strong { color: var(--text-primary); font-size: 11px; font-weight: 590; }
+.terminal-direct-models-head span { margin-left: auto; color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.terminal-direct-model-chips { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; max-height: 112px; overflow: auto; }
+.terminal-direct-model-chip { display: inline-flex; align-items: center; max-width: 100%; padding: 2px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-subtle); color: var(--code-text); font-size: 11px; overflow-wrap: anywhere; cursor: pointer; }
+.terminal-direct-model-chip:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
+.terminal-direct-model-chip.selected { border-color: var(--accent-border); background: var(--surface); color: var(--text-primary); }
+.terminal-direct-model-chip code { font-family: var(--font-mono); font-size: 11px; }
+.terminal-direct-models-head small { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+
+@media (max-width: 1000px) {
+  .terminal-page .terminal-layout { column-gap: 18px; }
+  .terminal-page .terminal-preview-section { padding: 14px; }
+}
+@media (max-width: 780px) {
+  .terminal-page .terminal-layout { grid-template-columns: minmax(0, 1fr); padding-top: 18px; }
+  .terminal-page .terminal-config-section { grid-column: 1; grid-row: 1; }
+  .terminal-page .terminal-preview-section { grid-column: 1; grid-row: 2; margin-top: 23px; padding: 15px; }
+  .terminal-page .terminal-preview { height: 340px; }
+  .terminal-direct-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .terminal-direct-option + .terminal-direct-option { border-top: 0; border-left: 1px solid var(--border); }
+  .terminal-proxy .terminal-model-list { grid-template-columns: minmax(0, 1fr); }
+
+}
+@media (max-width: 520px) {
+  .terminal-mode-label { display: none; }
+  .terminal-mode-switch { width: 100%; }
+  .terminal-mode-switch > button { flex: 1; min-width: 0; }
+  .terminal-client-header { grid-template-columns: 1fr; gap: 13px; padding-top: 18px; }
+  .terminal-header-status { grid-column: 1; grid-row: auto; justify-self: start; margin-left: 54px; }
+  .terminal-header-path { grid-column: 1; grid-row: auto; }
+  .terminal-header-path { align-items: flex-start; flex-direction: column; gap: 3px; padding-left: 0; }
+  .terminal-header-path > span { white-space: nowrap; }
+  .terminal-header-path code { width: 100%; overflow-wrap: anywhere; white-space: normal; }
+  .terminal-direct-options { grid-template-columns: 1fr; }
+  .terminal-direct-option + .terminal-direct-option { border-left: 0; border-top: 1px solid var(--border); }
+  .terminal-proxy-toolbar { grid-template-columns: 1fr; }
+  .terminal-page-footer { flex-wrap: wrap; }
+}
+@media (min-width: 781px) and (max-height: 800px) {
+  .terminal-mode-switch > button { min-height: 30px; }
+  .terminal-client-header { padding-top: 12px; padding-bottom: 11px; }
+  .terminal-page .terminal-layout, .terminal-proxy-layout { padding-top: 15px; }
+  .terminal-pane-heading { margin-bottom: 14px; }
+  .terminal-model-list { min-height: 130px; max-height: 142px; }
+  .terminal-proxy .terminal-engine-option { min-height: 58px; }
+  .terminal-page .terminal-preview { height: 240px; }
+}
+
+@media (min-width: 781px) and (max-height: 700px) {
+  .terminal-mode-toolbar { min-height: 36px; padding-bottom: 6px; }
+  .terminal-client-header { gap: 5px 20px; padding-top: 8px; padding-bottom: 7px; }
+  .terminal-page .terminal-layout, .terminal-proxy-layout { padding-top: 10px; }
+  .terminal-pane-heading { margin-bottom: 10px; }
+  .terminal-step + .terminal-step { margin-top: 12px; padding-top: 12px; }
+  .terminal-page .terminal-preview { height: 185px; }
+}
+.terminal-engine-provider { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.terminal-engine-detail-body dd .route-name { font-size: 12px; font-weight: 600; }
+.terminal-header-status strong .route-name { font-size: 12px; }
+
+/* Direct access: both columns share one row. The preview scrolls inside that height. */
+.terminal-page .terminal-direct-layout { align-items: stretch; grid-template-rows: clamp(340px, calc(var(--workspace-height) - 320px), 460px); }
+.terminal-page .terminal-direct-layout > section { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.terminal-page .terminal-direct-layout > .terminal-config-section { overflow: auto; }
+.terminal-page .terminal-direct-layout .terminal-pane-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 46px; margin: 0 0 14px; }
+.terminal-page .terminal-direct-layout .terminal-pane-heading h2 { margin: 0 0 5px; font-size: 15px; font-weight: 620; line-height: 1.3; }
+.terminal-page .terminal-direct-layout .terminal-pane-heading p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.terminal-page .terminal-direct-layout .terminal-preview-section { grid-column: 2; grid-row: 1; align-self: stretch; min-height: 0; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+.terminal-preview-card { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; padding: 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+.terminal-page .terminal-direct-layout .terminal-preview { flex: 1 1 auto; height: auto; min-height: 0; max-height: none; overflow: auto; }
+@media (max-width: 780px) {
+  .terminal-page .terminal-direct-layout { grid-template-rows: auto minmax(180px, 320px); }
+  .terminal-page .terminal-direct-layout > .terminal-config-section { height: auto; overflow: visible; }
+  .terminal-page .terminal-direct-layout .terminal-preview-section { grid-column: 1; grid-row: 2; height: 100%; min-height: 180px; margin-top: 22px; overflow: hidden; }
+  .terminal-page .terminal-direct-layout .terminal-preview { min-height: 0; max-height: 320px; }
+}

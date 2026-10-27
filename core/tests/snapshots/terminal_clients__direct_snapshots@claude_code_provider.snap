@@ -1,0 +1,21 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.claude/settings.json ===
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "p3-secret",
+    "ANTHROPIC_BASE_URL": "https://upstream.example/v1"
+  },
+  "model": "claude-model",
+  "modelPicker": {
+    "options": [
+      {
+        "label": "claude-model",
+        "model": "claude-model"
+      }
+    ],
+    "replaceBuiltInOptions": true
+  }
+}

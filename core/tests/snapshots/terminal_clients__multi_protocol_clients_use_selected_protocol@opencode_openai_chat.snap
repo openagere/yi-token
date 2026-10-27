@@ -1,0 +1,107 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.config/opencode/opencode.json ===
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "yitoken/real-one(one)",
+  "provider": {
+    "yitoken": {
+      "models": {
+        "real-one(one)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-one(one)",
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            }
+          }
+        },
+        "real-two(two)": {
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "real-two(two)",
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            }
+          }
+        },
+        "yi-token": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "yi-token",
+          "options": {
+            "reasoningEffort": "medium"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            }
+          }
+        }
+      },
+      "name": "yi-token",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "yi-token",
+        "baseURL": "http://127.0.0.1:11435/clients/opencode/v1"
+      }
+    }
+  }
+}

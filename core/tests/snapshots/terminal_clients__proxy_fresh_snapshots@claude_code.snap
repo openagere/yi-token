@@ -1,0 +1,29 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.claude/settings.json ===
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "yi-token",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:11435/clients/claude-code"
+  },
+  "model": "real-one(one)",
+  "modelPicker": {
+    "options": [
+      {
+        "label": "yi-token",
+        "model": "yi-token"
+      },
+      {
+        "label": "real-one(one)",
+        "model": "real-one(one)"
+      },
+      {
+        "label": "real-two(two)",
+        "model": "real-two(two)"
+      }
+    ],
+    "replaceBuiltInOptions": true
+  }
+}

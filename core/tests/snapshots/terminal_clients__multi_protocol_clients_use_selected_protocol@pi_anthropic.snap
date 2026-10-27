@@ -1,0 +1,78 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.pi/agent/models.json ===
+{
+  "providers": {
+    "yitoken": {
+      "api": "anthropic-messages",
+      "apiKey": "yi-token",
+      "baseUrl": "http://127.0.0.1:11435/clients/pi",
+      "models": [
+        {
+          "id": "yi-token",
+          "input": [
+            "text",
+            "image"
+          ],
+          "name": "yi-token",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        },
+        {
+          "contextWindow": 200000,
+          "id": "real-one(one)",
+          "input": [
+            "text",
+            "image"
+          ],
+          "maxTokens": 8192,
+          "name": "real-one(one)",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        },
+        {
+          "contextWindow": 200000,
+          "id": "real-two(two)",
+          "input": [
+            "text",
+            "image"
+          ],
+          "maxTokens": 8192,
+          "name": "real-two(two)",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "xhigh": null
+          }
+        }
+      ],
+      "name": "yi-token"
+    }
+  }
+}
+
+=== [HOME]/.pi/agent/settings.json ===
+{
+  "defaultModel": "real-one(one)",
+  "defaultProvider": "yitoken"
+}

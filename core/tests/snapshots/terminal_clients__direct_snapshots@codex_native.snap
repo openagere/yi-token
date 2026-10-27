@@ -1,0 +1,15 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.codex/config.toml ===
+model_provider = "yitoken_direct_p2"
+
+[model_providers]
+
+[model_providers.yitoken_direct_p2]
+name = "yi-token direct:p2:Responses"
+base_url = "https://upstream.example/v1"
+wire_api = "responses"
+requires_openai_auth = false
+experimental_bearer_token = "p2-secret"

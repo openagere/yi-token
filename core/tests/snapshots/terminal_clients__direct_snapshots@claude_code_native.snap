@@ -1,0 +1,11 @@
+---
+source: core/tests/terminal_clients.rs
+expression: rendered
+---
+=== [HOME]/.claude/settings.json ===
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "p3-secret",
+    "ANTHROPIC_BASE_URL": "https://upstream.example/v1"
+  }
+}
