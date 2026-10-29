@@ -5823,7 +5823,7 @@ dependencies = [
 
 [[package]]
 name = "yi-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes-gcm",
  "arc-swap",
@@ -5863,7 +5863,7 @@ dependencies = [
 
 [[package]]
 name = "yi-token"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rfd",
  "serde",
