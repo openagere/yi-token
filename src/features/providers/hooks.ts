@@ -10,7 +10,7 @@ export const providerKeys = {
 };
 
 function toProviderInput(view: ProviderView): Provider {
-  const { models: _models, terminal_config_warnings: _warnings, ...provider } = view;
+  const { models: _models, ...provider } = view;
   return provider;
 }
 

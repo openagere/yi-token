@@ -92,9 +92,9 @@ fn upsert_providers(tx: &Transaction, entries: &[ProviderBackup]) -> CoreResult<
         check_name(tx, provider)?;
         let thinking = provider.thinking.as_ref().map(enum_str).transpose()?;
         tx.execute(
-            "INSERT INTO providers (id, type, name, short_code, base_url, api_key, enabled, \
+            "INSERT INTO providers (id, type, name, base_url, api_key, enabled, \
                thinking, is_default, sort_order, extra) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) \
              ON CONFLICT(id) DO UPDATE SET type = excluded.type, name = excluded.name, \
                base_url = excluded.base_url, \
                api_key = excluded.api_key, enabled = excluded.enabled, \
@@ -104,8 +104,6 @@ fn upsert_providers(tx: &Transaction, entries: &[ProviderBackup]) -> CoreResult<
                 provider.id,
                 enum_str(&provider.provider_type)?,
                 provider.name.trim(),
-                // Legacy unique column, see storage::providers::upsert.
-                provider.id,
                 provider.base_url.trim(),
                 provider.api_key,
                 provider.enabled,
@@ -116,17 +114,6 @@ fn upsert_providers(tx: &Transaction, entries: &[ProviderBackup]) -> CoreResult<
             ],
         )
         .map_err(map_sqlite)?;
-        tx.execute(
-            "DELETE FROM provider_protocols WHERE provider_id = ?1",
-            [&provider.id],
-        )?;
-        for protocol in &provider.protocols {
-            tx.execute(
-                "INSERT OR IGNORE INTO provider_protocols (provider_id, protocol) \
-                 VALUES (?1, ?2)",
-                params![provider.id, enum_str(protocol)?],
-            )?;
-        }
         if provider.is_default {
             default_id = Some(provider.id.as_str());
         }

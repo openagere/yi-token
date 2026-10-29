@@ -102,7 +102,6 @@ export async function installBackend(
             thinking: "medium",
             extra: {},
             is_default: index === 0,
-            protocol_support: { responses: index !== 1, openai_chat: true, anthropic: index === 1 },
             models: [
               {
                 id: String(index + 1),
@@ -633,7 +632,7 @@ export async function installBackend(
                 const next = { ...provider, models: args.models as (typeof providers)[number]["models"] };
                 if (existing >= 0) providers[existing] = next;
                 else providers.push(next);
-                return { ...next, terminal_config_warnings: [] };
+                return next;
               }
               case "delete_provider":
                 providers = providers.filter((p) => p.id !== args.id);

@@ -913,7 +913,7 @@ async fn session_changes_survives_deleting_newest_session() {
 #[tokio::test]
 async fn unavailable_trajectory_returns_conflict_until_rebuilt() {
     let dir = tempfile::tempdir().unwrap();
-    std::fs::write(dir.path().join("trajectory.db"), b"not a database").unwrap();
+    std::fs::write(dir.path().join(yi_core::paths::TRAJECTORY_DB_FILE), b"not a database").unwrap();
     let services = Services::for_test(dir.path());
 
     let status = services.trajectory_status().await.unwrap();
@@ -943,7 +943,7 @@ async fn unavailable_trajectory_returns_conflict_until_rebuilt() {
         .any(|e| {
             e.file_name()
                 .to_string_lossy()
-                .starts_with("trajectory.db.broken-")
+                .starts_with(&format!("{}.broken-", yi_core::paths::TRAJECTORY_DB_FILE))
         });
     assert!(kept, "the unreadable file is renamed, not deleted");
     assert!(

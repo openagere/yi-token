@@ -20,8 +20,6 @@ pub struct Provider {
     pub sort_order: i64,
     #[ts(type = "Record<string, unknown>")]
     pub extra: serde_json::Value,
-    /// Protocols the provider serves; always includes `provider_type`.
-    pub protocols: Vec<Protocol>,
 }
 
 impl Provider {
@@ -32,11 +30,6 @@ impl Provider {
         if !(self.base_url.starts_with("http://") || self.base_url.starts_with("https://")) {
             return Err(CoreError::Validation(
                 "Base URL 必须以 http:// 或 https:// 开头".into(),
-            ));
-        }
-        if !self.protocols.contains(&self.provider_type) {
-            return Err(CoreError::Validation(
-                "支持的协议必须包含服务商的原生协议".into(),
             ));
         }
         Ok(())

@@ -20,10 +20,10 @@ pub use crate::proxy::monitor::MonitorView;
 pub use crate::terminal::TerminalPreview;
 pub use backup::BackupExport;
 pub use dto::{
-    ActiveEngineView, CatalogInfo, LogsView, ModelInput, ModelMapping, ProtocolSupport,
-    ProviderInput, ProviderView, ProxyRuntimeView, SettingsView, StandardModelView,
-    TerminalAccessMode, TerminalApplyResult, TerminalProfileView, TerminalProfilesView,
-    TerminalStatusView, TestResult, UsageQueryInput, UsageReportView,
+    ActiveEngineView, CatalogInfo, LogsView, ModelInput, ModelMapping, ProviderInput, ProviderView,
+    ProxyRuntimeView, SettingsView, StandardModelView, TerminalAccessMode, TerminalApplyResult,
+    TerminalProfileView, TerminalProfilesView, TerminalStatusView, TestResult, UsageQueryInput,
+    UsageReportView,
 };
 
 use self::sessions::{TrajectoryState, open_trajectory};

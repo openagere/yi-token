@@ -6,7 +6,7 @@
   "required": ["version", "models"],
   "properties": {
     "$schema": { "type": "string" },
-    "version": { "const": 2 },
+    "version": { "const": 1 },
     "models": {
       "type": "array",
       "items": {

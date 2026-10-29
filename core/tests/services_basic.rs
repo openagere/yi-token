@@ -16,9 +16,7 @@ use yi_core::domain::{
 };
 use yi_core::error::ErrorCode;
 use yi_core::logging;
-use yi_core::services::{
-    ModelInput, ProtocolSupport, ProviderInput, Services, UsageQueryInput, dto::CatalogInfo,
-};
+use yi_core::services::{ModelInput, ProviderInput, Services, UsageQueryInput, dto::CatalogInfo};
 use yi_core::storage::{providers, usage};
 
 fn provider(short_code: &str) -> ProviderInput {
@@ -32,7 +30,6 @@ fn provider(short_code: &str) -> ProviderInput {
         thinking: Thinking::Medium,
         extra: serde_json::json!({}),
         is_default: false,
-        protocol_support: ProtocolSupport::default(),
     }
 }
 
@@ -62,7 +59,6 @@ async fn save_provider_generates_uuid_and_lists() {
     // A non-empty id that does not exist yet is ignored.
     assert_ne!(saved.provider.id, "client-made");
     assert!(uuid::Uuid::parse_str(&saved.provider.id).is_ok());
-    assert!(saved.provider.protocol_support.openai_chat);
     assert_eq!(saved.models.len(), 1);
     assert_eq!(saved.models[0].route_id, "Provider-oa/gpt-5");
     assert_eq!(saved.models[0].name, "gpt-5");
@@ -166,7 +162,6 @@ async fn null_thinking_is_viewed_as_medium() {
         is_default: false,
         sort_order: 0,
         extra: serde_json::json!({}),
-        protocols: vec![Protocol::OpenaiChat],
     };
     svc.db()
         .with_tx(|tx| providers::upsert(tx, &stored, &[]))
@@ -354,17 +349,10 @@ async fn dto_field_names_match_frontend() {
             "thinking",
             "extra",
             "is_default",
-            "protocol_support",
             "models",
-            "terminal_config_warnings",
         ])
     );
     assert_eq!(v["thinking"], "high");
-    assert_eq!(v["terminal_config_warnings"], serde_json::json!([]));
-    assert_eq!(
-        keys(&v["protocol_support"]),
-        set(&["anthropic", "openai_chat", "responses"])
-    );
     let m = &v["models"][0];
     assert_eq!(
         keys(m),
@@ -411,6 +399,7 @@ async fn dto_field_names_match_frontend() {
             "groups",
         ])
     );
+
     let rec = &u["recent"][0];
     assert_eq!(
         keys(rec),
@@ -445,7 +434,7 @@ async fn catalog_edit_refreshes_route_capabilities() {
     let catalog = home.path().join("catalog.json");
     let catalog_with = |window: u32| {
         format!(
-            r#"{{"version":2,"models":[{{"name":"alpha","company":"openai","capabilities":{{"context_window":{window}}}}}]}}"#
+            r#"{{"version":1,"models":[{{"name":"alpha","company":"openai","capabilities":{{"context_window":{window}}}}}]}}"#
         )
     };
     std::fs::write(&catalog, catalog_with(1000)).unwrap();
@@ -570,7 +559,11 @@ async fn wait_for_steps(env: &TestEnv, min: u32) {
 #[tokio::test]
 async fn corrupt_trajectory_db_does_not_block_startup() {
     let dir = tempfile::tempdir().unwrap();
-    std::fs::write(dir.path().join("trajectory.db"), b"not a database").unwrap();
+    std::fs::write(
+        dir.path().join(yi_core::paths::TRAJECTORY_DB_FILE),
+        b"not a database",
+    )
+    .unwrap();
     let env = TestEnv::start_capturing_in(dir).await;
     mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
 
@@ -593,7 +586,7 @@ async fn corrupt_trajectory_db_does_not_block_startup() {
         .filter(|e| {
             e.file_name()
                 .to_string_lossy()
-                .starts_with("trajectory.db.broken-")
+                .starts_with(&format!("{}.broken-", yi_core::paths::TRAJECTORY_DB_FILE))
         })
         .map(|e| e.path())
         .collect();

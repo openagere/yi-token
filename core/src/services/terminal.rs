@@ -395,11 +395,10 @@ fn validate_proxy(profile: &ProxyProfile, ctx: &ClientCtx) -> CoreResult<()> {
             .ok_or_else(|| {
                 CoreError::NotFound(format!("模型 {} 的 Provider 已删除", selection.model))
             })?;
-        if !provider.enabled || !provider.protocols.contains(&profile.protocol) {
+        if !provider.enabled {
             return Err(CoreError::Validation(format!(
-                "Provider {} 未启用或不支持 {}",
-                provider.name,
-                profile.protocol.as_str()
+                "Provider {} 未启用",
+                provider.name
             )));
         }
         let model = ctx

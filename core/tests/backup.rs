@@ -31,7 +31,6 @@ fn provider(id: &str, _code: &str, native: Protocol) -> Provider {
         is_default: false,
         sort_order: 0,
         extra: serde_json::json!({"source": "backup-test"}),
-        protocols: vec![native],
     }
 }
 
@@ -90,9 +89,8 @@ fn mutate(text: &str, change: impl FnOnce(&mut Value)) -> String {
 }
 
 fn table_snapshot(services: &Services) -> Vec<(&'static str, Vec<Vec<String>>)> {
-    const TABLES: [&str; 7] = [
+    const TABLES: [&str; 6] = [
         "providers",
-        "provider_protocols",
         "standard_models",
         "models",
         "terminal_proxy_profiles",

@@ -7,6 +7,12 @@ use std::path::PathBuf;
 const HOME_VAR: &str = "YI_TOKEN_HOME";
 const CATALOG_VAR: &str = "YI_TOKEN_MODEL_CATALOG";
 
+/// Main database file name. Versioned so that a new release never opens a database written
+/// by an earlier one (v0.2.0 starts a fresh file; earlier files are left in place).
+pub const DB_FILE: &str = "yi-token-v2.db";
+/// Trajectory database file name, versioned for the same reason as [`DB_FILE`].
+pub const TRAJECTORY_DB_FILE: &str = "trajectory-v2.db";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppPaths {
     pub home: PathBuf,
@@ -24,8 +30,8 @@ impl AppPaths {
     /// Layout rooted at `home`, without a catalog override.
     pub fn under(home: PathBuf) -> Self {
         Self {
-            db: home.join("yi-token.db"),
-            trajectory_db: home.join("trajectory.db"),
+            db: home.join(DB_FILE),
+            trajectory_db: home.join(TRAJECTORY_DB_FILE),
             log_dir: home.join("logs"),
             home,
             catalog_override: None,
@@ -69,7 +75,7 @@ mod tests {
         let home = tmp.path().to_str().unwrap();
         let p = AppPaths::from_lookup(lookup(&[(HOME_VAR, home), ("HOME", "/ignored")])).unwrap();
         assert_eq!(p.home, tmp.path());
-        assert_eq!(p.db, tmp.path().join("yi-token.db"));
+        assert_eq!(p.db, tmp.path().join(DB_FILE));
         assert_eq!(p.log_dir, tmp.path().join("logs"));
         assert_eq!(p.catalog_override, None);
     }
@@ -92,7 +98,7 @@ mod tests {
     fn trajectory_db_lives_under_home() {
         assert_eq!(
             AppPaths::under(PathBuf::from("/h")).trajectory_db,
-            PathBuf::from("/h/trajectory.db")
+            PathBuf::from("/h").join(TRAJECTORY_DB_FILE)
         );
     }
 

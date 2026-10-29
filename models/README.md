@@ -8,8 +8,7 @@ levels, unique `(name, company)` pairs, token relationships and Provider
 references.
 
 Entries are keyed by `(name, company)`, where `company` is `openai` (shared by the
-Chat and Responses protocols) or `anthropic`. Version 2 replaces the per-protocol
-`protocol` field of version 1 with `company`. Applying a catalog updates `brand` and
+Chat and Responses protocols) or `anthropic`. Applying a catalog updates `brand` and
 `capabilities` for matching entries while keeping the database id, so Provider
 references stay valid. Standard models created only in Model Management are not
 removed and are not written back to `catalog.json`. File `id` values are

@@ -255,7 +255,7 @@ fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
         .model
         .as_ref()
         .map_or(provider.provider_type, |m| m.upstream_protocol(provider));
-    let (upstream, passthrough) = choose_upstream(inbound, &provider.protocols, native);
+    let (upstream, passthrough) = choose_upstream(inbound, native);
     let capabilities = r
         .model
         .as_ref()

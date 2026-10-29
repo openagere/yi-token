@@ -37,11 +37,6 @@ fn provider(id: &str, name: &str, protocol: Protocol) -> Provider {
         is_default: id == "p1",
         sort_order: 0,
         extra: serde_json::json!({}),
-        protocols: vec![
-            Protocol::OpenaiChat,
-            Protocol::Responses,
-            Protocol::Anthropic,
-        ],
     }
 }
 

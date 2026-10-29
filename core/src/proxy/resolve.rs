@@ -84,15 +84,14 @@ pub fn resolve(
     requested_model: &str,
 ) -> CoreResult<Resolved> {
     match scope {
-        Scope::Global => resolve_global(snap, inbound, requested_model),
+        Scope::Global => resolve_global(snap, requested_model),
         Scope::Client(client) => resolve_client(snap, client, inbound, requested_model),
     }
 }
 
-fn resolve_global(snap: &RouteSnapshot, inbound: Protocol, name: &str) -> CoreResult<Resolved> {
+fn resolve_global(snap: &RouteSnapshot, name: &str) -> CoreResult<Resolved> {
     if let Some((pid, mid)) = snap.by_exposed.get(name)
         && let Some(route) = snap.providers.get(pid)
-        && route.provider.protocols.contains(&inbound)
         && let Some(model) = snap.models.get(mid)
     {
         return Ok(Resolved {

@@ -7,8 +7,7 @@ use yi_core::domain::{
 };
 use yi_core::error::ErrorCode;
 use yi_core::services::{
-    ModelInput, ProtocolSupport, ProviderInput, ProviderView, Services, TerminalAccessMode,
-    TerminalProfileView,
+    ModelInput, ProviderInput, ProviderView, Services, TerminalAccessMode, TerminalProfileView,
 };
 use yi_core::storage::terminal;
 
@@ -25,7 +24,6 @@ async fn fixture(upstreams: &[&str], enabled: bool) -> (TempDir, Arc<Services>, 
         thinking: Thinking::Medium,
         extra: serde_json::json!({}),
         is_default: false,
-        protocol_support: ProtocolSupport::default(),
     };
     let models = upstreams
         .iter()

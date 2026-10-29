@@ -252,7 +252,6 @@ fn direct_plan_uses_provider_endpoint() {
         is_default: false,
         sort_order: 0,
         extra: json!({}),
-        protocols: vec![Protocol::OpenaiChat],
     });
     let direct = DirectProfile {
         client: Client::Codex,

@@ -2,8 +2,4 @@
 import type { Protocol } from "./Protocol";
 import type { Thinking } from "./Thinking";
 
-export type Provider = { id: string, type: Protocol, name: string, base_url: string, api_key: string, enabled: boolean, thinking: Thinking | null, is_default: boolean, sort_order: number, extra: Record<string, unknown>, 
-/**
- * Protocols the provider serves; always includes `provider_type`.
- */
-protocols: Array<Protocol>, };
+export type Provider = { id: string, type: Protocol, name: string, base_url: string, api_key: string, enabled: boolean, thinking: Thinking | null, is_default: boolean, sort_order: number, extra: Record<string, unknown>, };

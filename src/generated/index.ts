@@ -16,7 +16,6 @@ export type { ModelMapping } from "./ModelMapping";
 export type { ModelSource } from "./ModelSource";
 export type { ProfileModel } from "./ProfileModel";
 export type { Protocol } from "./Protocol";
-export type { ProtocolSupport } from "./ProtocolSupport";
 export type { Provider } from "./Provider";
 export type { ProviderInput } from "./ProviderInput";
 export type { ProviderView } from "./ProviderView";

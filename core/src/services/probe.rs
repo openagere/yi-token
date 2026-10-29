@@ -69,7 +69,6 @@ impl Services {
             is_default: input.is_default,
             sort_order: 0,
             extra: input.extra,
-            protocols: input.protocol_support.to_protocols(native),
         };
         let body = Bytes::from(probe_body(native, &model).to_string());
         let started = Instant::now();
@@ -115,7 +114,6 @@ impl Services {
             is_default: false,
             sort_order: 0,
             extra: input.extra,
-            protocols: input.protocol_support.to_protocols(input.provider_type),
         };
         self.http.list_model_entries(&provider).await
     }

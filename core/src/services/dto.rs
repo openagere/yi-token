@@ -1,6 +1,5 @@
-//! Frontend-visible view types. Field names follow the v0.1.8 frontend
-//! (`provider_type`, `protocol_support`, `route_id`/`name`, `provider_count`);
-//! the only intended change is that `ModelMapping.id` and `UsageRecord.id` are strings.
+//! Frontend-visible view types. These are the only wire shapes the frontend reads and writes;
+//! the Rust structs are the source of the generated TypeScript types.
 
 use crate::domain::{
     Capabilities, Client, Company, DirectProfile, LogLevel, ProfileModel, Protocol, RouteMode,
@@ -10,40 +9,6 @@ use crate::proxy::ProxyPhase;
 use serde::{Deserialize, Serialize};
 
 pub use crate::catalog::CatalogInfo;
-
-/// Which wire protocols a provider serves.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/generated/")]
-pub struct ProtocolSupport {
-    pub anthropic: bool,
-    pub openai_chat: bool,
-    pub responses: bool,
-}
-
-impl ProtocolSupport {
-    pub fn from_protocols(protocols: &[Protocol]) -> Self {
-        Self {
-            anthropic: protocols.contains(&Protocol::Anthropic),
-            openai_chat: protocols.contains(&Protocol::OpenaiChat),
-            responses: protocols.contains(&Protocol::Responses),
-        }
-    }
-
-    /// Protocol list that always includes `native`.
-    pub fn to_protocols(self, native: Protocol) -> Vec<Protocol> {
-        Protocol::all()
-            .into_iter()
-            .filter(|p| {
-                *p == native
-                    || match p {
-                        Protocol::Anthropic => self.anthropic,
-                        Protocol::OpenaiChat => self.openai_chat,
-                        Protocol::Responses => self.responses,
-                    }
-            })
-            .collect()
-    }
-}
 
 fn default_thinking() -> Thinking {
     Thinking::Medium
@@ -73,8 +38,6 @@ pub struct ProviderInput {
     pub extra: serde_json::Value,
     #[serde(default)]
     pub is_default: bool,
-    #[serde(default)]
-    pub protocol_support: ProtocolSupport,
 }
 
 /// A provider model as the frontend sees it: `route_id` is the exposed name,
@@ -121,9 +84,6 @@ pub struct ProviderView {
     #[ts(flatten)]
     pub provider: ProviderInput,
     pub models: Vec<ModelMapping>,
-    /// Always present; terminal configs are applied manually, so this is empty.
-    #[serde(default)]
-    pub terminal_config_warnings: Vec<String>,
 }
 
 /// A standard model plus the number of provider models that use it.

@@ -32,7 +32,7 @@ import { providerApi } from "../api";
 import { useProviders, useSaveProvider } from "../hooks";
 import { ProviderModelCatalog, providerModelsUrl, type CatalogPick } from "./ProviderModelCatalog";
 import { useProviderSelection } from "../selection";
-import { ALL_PROTOCOLS, type ModelMapping, type ProviderView } from "../types";
+import type { ModelMapping, ProviderView } from "../types";
 
 /** 模型表每页行数：每行带能力摘要，行数过多会把编辑区撑得很长。 */
 const MODEL_PAGE_SIZE = 5;
@@ -56,7 +56,6 @@ function blankProvider(isDefault: boolean): ProviderView {
     extra: {},
     is_default: isDefault,
     models: [],
-    protocol_support: { ...ALL_PROTOCOLS },
   };
 }
 
@@ -222,7 +221,6 @@ function ProviderEditorForm({
       name: draft.name.trim(),
       base_url: draft.base_url.trim().replace(/\/+$/, ""),
       extra: parsedExtra(),
-      protocol_support: { ...ALL_PROTOCOLS },
       models: cleanModels(),
     };
   }
@@ -232,11 +230,10 @@ function ProviderEditorForm({
     const next = payload();
     const creating = provider === null;
     saveProvider.mutate(next, {
-      onSuccess: (result) => {
-        const warnings = result.terminal_config_warnings.join("; ");
+      onSuccess: () => {
         const message = t(creating ? "provider.editor.added" : "provider.editor.saved", { name: next.name });
         goTo("provider-list");
-        notify(warnings ? `${message}; ${warnings}` : message, warnings ? "warning" : "success");
+        notify(message, "success");
       },
       onError: (error) => notify(t("provider.editor.saveFailed", { reason: describeError(error) }), "error"),
       onSettled: () => setBusy(null),
@@ -254,7 +251,7 @@ function ProviderEditorForm({
     setBusy("test");
     try {
       const next = payload();
-      const { models, terminal_config_warnings: _warnings, ...providerInput } = next;
+      const { models, ...providerInput } = next;
       const response = await providerApi.test(providerInput, models, model);
       notify(t("provider.editor.test.success", { response }));
     } catch (error) {
@@ -266,7 +263,7 @@ function ProviderEditorForm({
   async function discoverModels() {
     if (!validate(false)) return null;
     const next = payload();
-    const { models: _models, terminal_config_warnings: _warnings, ...providerInput } = next;
+    const { models: _models, ...providerInput } = next;
     return providerApi.discoverModels(providerInput);
   }
   function addDiscoveredModels(picks: CatalogPick[]) {

@@ -2,22 +2,16 @@ import type { StandardModel } from "@/features/models";
 import type { ProviderView } from "@/features/providers";
 import { modelBrand, routeName } from "@/shared/ui";
 
-export type UsageModelFormatter = (routeId: string, historicalProvider?: string) => string;
+export type UsageModelFormatter = (routeId: string) => string;
 export type UsageModelBrandResolver = (routeId: string) => string | undefined;
-
-const GENERATED_ROUTE_PREFIX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function createUsageModelFormatter(providers: readonly ProviderView[]): UsageModelFormatter {
   const names = new Map(providers.map((provider) => [provider.id, provider.name]));
   return (routeId) => {
     const separator = routeId.indexOf("/");
     if (separator <= 0 || separator === routeId.length - 1) return routeId;
-    const prefix = routeId.slice(0, separator);
-    const name = names.get(prefix);
-    // 旧记录以 Provider ID 或 UUID 作前缀，换成 Provider 名称展示。
-    if (!name && !GENERATED_ROUTE_PREFIX.test(prefix)) return routeId;
-    const model = routeId.slice(separator + 1);
-    return name ? routeName(name, model) : model;
+    const name = names.get(routeId.slice(0, separator));
+    return name ? routeName(name, routeId.slice(separator + 1)) : routeId;
   };
 }
 

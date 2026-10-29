@@ -1,4 +1,4 @@
-//! Providers, their supported protocols and their model sets.
+//! Providers and their model sets.
 
 use super::{enum_str, map_sqlite, models, parse_enum, parse_json, query_as, standard_models};
 use crate::domain::{Company, Model, Protocol, Provider, exposed_name, provider_slug};
@@ -24,14 +24,8 @@ struct ProviderRow {
     extra: String,
 }
 
-#[derive(Deserialize)]
-struct ProtocolRow {
-    provider_id: String,
-    protocol: String,
-}
-
 impl ProviderRow {
-    fn into_provider(self, protocols: Vec<Protocol>) -> CoreResult<Provider> {
+    fn into_provider(self) -> CoreResult<Provider> {
         Ok(Provider {
             provider_type: parse_enum(&self.r#type)?,
             thinking: self.thinking.as_deref().map(parse_enum).transpose()?,
@@ -43,7 +37,6 @@ impl ProviderRow {
             enabled: self.enabled,
             is_default: self.is_default,
             sort_order: self.sort_order,
-            protocols,
         })
     }
 }
@@ -53,23 +46,9 @@ fn fetch(
     tail: &str,
     params: impl rusqlite::Params,
 ) -> CoreResult<Vec<Provider>> {
-    let rows = query_as::<ProviderRow>(conn, &format!("{SELECT} {tail}"), params)?;
-    let mut protocols: HashMap<String, Vec<Protocol>> = HashMap::new();
-    for row in query_as::<ProtocolRow>(
-        conn,
-        "SELECT provider_id, protocol FROM provider_protocols ORDER BY rowid",
-        [],
-    )? {
-        protocols
-            .entry(row.provider_id)
-            .or_default()
-            .push(parse_enum(&row.protocol)?);
-    }
-    rows.into_iter()
-        .map(|row| {
-            let own = protocols.remove(&row.id).unwrap_or_default();
-            row.into_provider(own)
-        })
+    query_as::<ProviderRow>(conn, &format!("{SELECT} {tail}"), params)?
+        .into_iter()
+        .map(ProviderRow::into_provider)
         .collect()
 }
 
@@ -81,7 +60,7 @@ pub fn get(conn: &Connection, id: &str) -> CoreResult<Option<Provider>> {
     Ok(fetch(conn, "WHERE id = ?1", [id])?.pop())
 }
 
-/// Inserts or updates a provider and rewrites its protocols and model set.
+/// Inserts or updates a provider and rewrites its model set.
 ///
 /// Models are matched to existing ones by `upstream_model`, so their ids (and
 /// everything referencing them, such as engine selections) survive; models
@@ -95,9 +74,9 @@ pub fn upsert(tx: &Transaction, provider: &Provider, models_in: &[Model]) -> Cor
     let protocol = enum_str(&provider.provider_type)?;
     let thinking = provider.thinking.as_ref().map(enum_str).transpose()?;
     tx.execute(
-        "INSERT INTO providers (id, type, name, short_code, base_url, api_key, enabled, \
+        "INSERT INTO providers (id, type, name, base_url, api_key, enabled, \
            thinking, is_default, sort_order, extra) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) \
          ON CONFLICT(id) DO UPDATE SET type = excluded.type, name = excluded.name, \
            base_url = excluded.base_url, \
            api_key = excluded.api_key, enabled = excluded.enabled, thinking = excluded.thinking, \
@@ -107,8 +86,6 @@ pub fn upsert(tx: &Transaction, provider: &Provider, models_in: &[Model]) -> Cor
             provider.id,
             protocol,
             provider.name,
-            // Legacy NOT NULL UNIQUE column; the id keeps it unique and nothing reads it.
-            provider.id,
             provider.base_url,
             provider.api_key,
             provider.enabled,
@@ -123,17 +100,6 @@ pub fn upsert(tx: &Transaction, provider: &Provider, models_in: &[Model]) -> Cor
         tx.execute(
             "UPDATE providers SET is_default = 0 WHERE id != ?1",
             [&provider.id],
-        )?;
-    }
-
-    tx.execute(
-        "DELETE FROM provider_protocols WHERE provider_id = ?1",
-        [&provider.id],
-    )?;
-    for p in &provider.protocols {
-        tx.execute(
-            "INSERT OR IGNORE INTO provider_protocols (provider_id, protocol) VALUES (?1, ?2)",
-            params![provider.id, enum_str(p)?],
         )?;
     }
 
@@ -189,13 +155,6 @@ fn plan_models(tx: &Transaction, provider: &Provider, input: &[Model]) -> CoreRe
         if let Some(name) = other {
             return Err(CoreError::Conflict(format!(
                 "模型名称 {exposed} 已被服务商 {name} 使用"
-            )));
-        }
-        if let Some(protocol) = m.protocol
-            && !provider.protocols.contains(&protocol)
-        {
-            return Err(CoreError::Validation(format!(
-                "模型 {exposed} 的协议不是服务商支持的协议"
             )));
         }
         let upstream_protocol = m.protocol.unwrap_or(provider.provider_type);

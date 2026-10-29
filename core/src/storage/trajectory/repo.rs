@@ -433,7 +433,7 @@ pub struct StepRow<'a> {
 }
 
 pub fn insert_step(conn: &Connection, s: &StepRow) -> CoreResult<()> {
-    // The counter only grows: deleting steps never gives a sequence number back (v2 migration).
+    // The counter only grows: deleting steps never gives a sequence number back.
     conn.execute(
         "UPDATE meta SET value = value + 1 WHERE key = 'last_seq'",
         [],
@@ -1019,7 +1019,7 @@ pub fn changed_sessions(conn: &Connection, since: i64, upto: i64) -> CoreResult<
 }
 
 /// The last sequence number handed out. Monotonic: deletes do not lower it, so a change
-/// cursor taken earlier stays valid (v2 migration).
+/// cursor taken earlier stays valid.
 pub fn last_seq(conn: &Connection) -> CoreResult<i64> {
     Ok(conn.query_row("SELECT value FROM meta WHERE key = 'last_seq'", [], |r| r.get(0))?)
 }

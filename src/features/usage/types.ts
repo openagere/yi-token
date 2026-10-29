@@ -2,7 +2,7 @@ import type { Client, UsageDailyModel, UsageDay, UsageGroupBy, UsageGroupRow, Us
 
 export interface UsageDateRange { startDate: string; endDate: string }
 export type { Client, UsageDailyModel, UsageDay, UsageGroupBy, UsageGroupRow, UsageModel, UsageRecord, UsageTotals };
-/** 后端 `get_usage` 的返回值：`totals` 与 `groups` 为窗口汇总与当前分组的聚合，其余为旧字段。 */
+/** 后端 `get_usage` 的返回值：`totals` 与 `groups` 为窗口汇总与当前分组的聚合，其余为按日与按模型的明细。 */
 export type UsageSnapshot = UsageReportView;
 
 export type TrendMode = "tokens" | "models";

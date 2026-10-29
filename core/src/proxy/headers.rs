@@ -140,7 +140,6 @@ mod tests {
             is_default: false,
             sort_order: 0,
             extra: json!({"x-extra": "1", "not-a-header": 5}),
-            protocols: vec![Protocol::OpenaiChat],
         }
     }
 

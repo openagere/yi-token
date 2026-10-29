@@ -10,7 +10,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 use yi_core::domain::capabilities::{Effort, Support};
 use yi_core::domain::{Capabilities, Client, Protocol, Thinking};
-use yi_core::services::{ProtocolSupport, ProviderInput};
+use yi_core::services::ProviderInput;
 use yi_core::protocol::Usage;
 use yi_core::protocol::ir::{InputItem, Response};
 use yi_core::trajectory::record::{CaptureRecord, CaptureSink, StopReason};
@@ -148,7 +148,6 @@ async fn claude_auto_mode_safeguards_pass_through_an_anthropic_provider() {
         .mount(&env.mock)
         .await;
     let mut upstream = provider("pax", "an", Protocol::Anthropic, &env.mock.uri());
-    upstream.protocols = Protocol::all().to_vec();
     env.install(upstream, model("max", "claude-up"));
     let exposed = yi_core::domain::exposed_name("name-pax", "claude-up");
     let route = env.route(Protocol::Anthropic, "pax", &exposed);
@@ -188,7 +187,6 @@ async fn claude_translates_to_responses_when_the_provider_accepts_every_client_p
         Protocol::Responses,
         &format!("{}/v1", env.mock.uri()),
     );
-    upstream.protocols = Protocol::all().to_vec();
     upstream.api_key = "ark-key".into();
     env.install(upstream, model("mrx", "resp-up"));
     let exposed = yi_core::domain::exposed_name("name-prx", "resp-up");
@@ -674,7 +672,6 @@ fn input_for(base_url: &str, native: Protocol) -> ProviderInput {
         thinking: Thinking::Medium,
         extra: json!({}),
         is_default: false,
-        protocol_support: ProtocolSupport::default(),
     }
 }
 
@@ -1134,7 +1131,6 @@ async fn model_protocol_override_selects_its_upstream_endpoint() {
         .mount(&env.mock)
         .await;
     let mut upstream = provider("mix", "mx", Protocol::Responses, &env.mock.uri());
-    upstream.protocols = Protocol::all().to_vec();
     let mut overridden = model("mm", "claude-up");
     overridden.protocol = Some(Protocol::Anthropic);
     env.install(upstream, overridden);

@@ -6,7 +6,7 @@ use yi_core::domain::{
     TrajectorySettings, UsageEvent,
 };
 use yi_core::storage::usage::UsageQuery;
-use yi_core::storage::{Db, engines, migrations, models, providers, settings, standard_models};
+use yi_core::storage::{Db, engines, models, providers, settings, standard_models};
 use yi_core::storage::{terminal, usage};
 use yi_core::{CoreError, ErrorCode};
 
@@ -22,7 +22,6 @@ fn provider(id: &str, _code: &str) -> Provider {
         is_default: false,
         sort_order: 0,
         extra: serde_json::json!({"k": 1}),
-        protocols: vec![Protocol::OpenaiChat],
     }
 }
 
@@ -63,11 +62,12 @@ fn count(db: &Db, table: &str) -> i64 {
         .unwrap()
 }
 
+/// The baseline schema is applied and the connection settings are in force.
 #[test]
-fn migration_sets_user_version_4() {
+fn baseline_schema_is_applied() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 7);
+        assert_eq!(user_version(c), 1);
         let fk: i64 = c.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
         assert_eq!(fk, 1);
         for index in ["idx_usage_requested_at", "idx_usage_client"] {
@@ -117,16 +117,16 @@ fn file_database_uses_wal_and_foreign_keys() {
     drop(db);
     let db = Db::open(&dir.path().join("nested").join("t.db")).unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 7);
+        assert_eq!(user_version(c), 1);
         Ok(())
     })
     .unwrap();
 }
 
-/// Test-only helper: the real v1 followed by a v2 that creates a table and then fails.
-fn migrations_with_failing_v2() -> Migrations<'static> {
+/// Test-only helper: a first migration that succeeds, then a second that creates a table and fails.
+fn migrations_with_failing_second_step() -> Migrations<'static> {
     Migrations::new(vec![
-        migrations::v1(),
+        M::up("CREATE TABLE first_step (x INTEGER);"),
         M::up("CREATE TABLE half_done (x INTEGER); THIS IS NOT SQL;"),
     ])
 }
@@ -134,11 +134,15 @@ fn migrations_with_failing_v2() -> Migrations<'static> {
 #[test]
 fn migration_is_atomic() {
     let mut conn = Connection::open_in_memory().unwrap();
-    Migrations::new(vec![migrations::v1()])
+    Migrations::new(vec![M::up("CREATE TABLE first_step (x INTEGER);")])
         .to_latest(&mut conn)
         .unwrap();
     assert_eq!(user_version(&conn), 1);
-    assert!(migrations_with_failing_v2().to_latest(&mut conn).is_err());
+    assert!(
+        migrations_with_failing_second_step()
+            .to_latest(&mut conn)
+            .is_err()
+    );
     assert_eq!(user_version(&conn), 1);
     let leaked: i64 = conn
         .query_row(
@@ -151,11 +155,10 @@ fn migration_is_atomic() {
 }
 
 #[test]
-fn provider_roundtrip_with_protocols_and_models() {
+fn provider_roundtrip_with_models() {
     let db = Db::open_in_memory().unwrap();
     let mut p = provider("p1", "oa");
     p.thinking = Some(yi_core::domain::Thinking::High);
-    p.protocols = vec![Protocol::OpenaiChat, Protocol::Anthropic];
     save(&db, &p, &[model("m1", "gpt-5"), model("m2", "gpt-4")]).unwrap();
     db.with_conn(|c| {
         assert_eq!(providers::get(c, "p1")?.unwrap(), p);
@@ -272,8 +275,7 @@ fn upsert_keeps_model_id_for_same_upstream() {
 #[test]
 fn delete_provider_cascades_models_and_direct_profile_and_nulls_engine() {
     let db = Db::open_in_memory().unwrap();
-    let mut p = provider("p1", "oa");
-    p.protocols = vec![Protocol::OpenaiChat, Protocol::Responses];
+    let p = provider("p1", "oa");
     save(&db, &p, &[model("m1", "gpt-5")]).unwrap();
     save(&db, &provider("p2", "keep"), &[model("m9", "x")]).unwrap();
     db.with_conn(|c| {
@@ -291,7 +293,6 @@ fn delete_provider_cascades_models_and_direct_profile_and_nulls_engine() {
         providers::delete(c, "p1")
     })
     .unwrap();
-    assert_eq!(count(&db, "provider_protocols"), 1);
     assert_eq!(count(&db, "models"), 1);
     assert_eq!(count(&db, "terminal_direct_profiles"), 0);
     db.with_conn(|c| {
@@ -592,58 +593,6 @@ fn event(at: i64, client: Option<Client>, model: &str, input: u32, output: u32) 
     }
 }
 
-/// The schema as it stood before v4 (v1–v3 only).
-fn migrations_through_v3() -> Migrations<'static> {
-    Migrations::new(vec![migrations::v1(), migrations::v2(), migrations::v3()])
-}
-
-#[test]
-fn v4_adds_usage_columns_and_keeps_old_rows() {
-    let mut conn = Connection::open_in_memory().unwrap();
-    migrations_through_v3().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 3);
-    conn.execute(
-        "INSERT INTO usage (id, requested_at, client, route_mode, provider_name, protocol, model, \
-           input_tokens, output_tokens, cached_tokens, reasoning_tokens) \
-         VALUES ('old', 1, 'pi', 'fixed', 'p', 'openai_chat', 'm', 1, 2, 3, 4)",
-        [],
-    )
-    .unwrap();
-    migrations::migrations().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 7);
-
-    let r = usage::query(
-        &conn,
-        UsageQuery {
-            start_ms: 0,
-            end_ms: i64::MAX,
-            model: None,
-            client: None,
-        },
-    )
-    .unwrap();
-    assert_eq!(r.recent.len(), 1);
-    let old = &r.recent[0];
-    assert_eq!(old.id, "old");
-    assert_eq!((old.input_tokens, old.output_tokens), (1, 2));
-    assert_eq!(old.step_id, None);
-    assert_eq!(old.session_id, None);
-    assert_eq!(old.ttft_ms, None);
-    assert_eq!(old.duration_ms, None);
-    assert_eq!(old.status, None);
-    assert_eq!(
-        settings::get_trajectory(&conn).unwrap(),
-        TrajectorySettings {
-            enabled: true,
-            disabled_clients: vec![],
-            disabled_global: false,
-            retention_days: 30,
-            max_bytes: 2_147_483_648,
-            notice_seen: false,
-        }
-    );
-}
-
 #[test]
 fn trajectory_settings_round_trip_and_validation() {
     let db = Db::open_in_memory().unwrap();
@@ -827,14 +776,15 @@ fn table_exists(conn: &Connection, name: &str) -> bool {
 #[test]
 fn trajectory_db_creates_schema_with_incremental_vacuum() {
     let tmp = tempfile::tempdir().unwrap();
-    let db = yi_core::storage::trajectory::TrajectoryDb::open(&tmp.path().join("trajectory.db"))
-        .unwrap();
+    let db = yi_core::storage::trajectory::TrajectoryDb::open(
+        &tmp.path().join(yi_core::paths::TRAJECTORY_DB_FILE),
+    )
+    .unwrap();
     db.0.with_conn(|c| {
         for table in ["sessions", "threads", "steps", "step_items", "blobs"] {
             assert!(table_exists(c, table), "missing table {table}");
         }
-        // v2 is the change-cursor meta migration (`meta.last_seq`); v3 clears injected titles.
-        assert_eq!(user_version(c), 3);
+        assert_eq!(user_version(c), 1);
         let auto_vacuum: i64 = c.query_row("PRAGMA auto_vacuum", [], |r| r.get(0))?;
         assert_eq!(auto_vacuum, 2);
         Ok(())
@@ -845,9 +795,11 @@ fn trajectory_db_creates_schema_with_incremental_vacuum() {
 #[test]
 fn main_and_trajectory_migrations_are_independent() {
     let tmp = tempfile::tempdir().unwrap();
-    let main = Db::open(&tmp.path().join("yi-token.db")).unwrap();
-    let traj = yi_core::storage::trajectory::TrajectoryDb::open(&tmp.path().join("trajectory.db"))
-        .unwrap();
+    let main = Db::open(&tmp.path().join(yi_core::paths::DB_FILE)).unwrap();
+    let traj = yi_core::storage::trajectory::TrajectoryDb::open(
+        &tmp.path().join(yi_core::paths::TRAJECTORY_DB_FILE),
+    )
+    .unwrap();
     main.with_conn(|c| {
         assert!(!table_exists(c, "steps"));
         assert!(table_exists(c, "providers"));
@@ -861,77 +813,6 @@ fn main_and_trajectory_migrations_are_independent() {
             Ok(())
         })
         .unwrap();
-}
-
-fn migrations_through_v5() -> Migrations<'static> {
-    Migrations::new(vec![
-        migrations::v1(),
-        migrations::v2(),
-        migrations::v3(),
-        migrations::v4(),
-        migrations::v5(),
-    ])
-}
-
-/// Chat and Responses rows with the same name fold into one OpenAI row (Responses wins),
-/// and models follow their survivor. Anthropic rows keep their own company.
-#[test]
-fn v6_merges_protocol_standards_into_companies() {
-    let mut conn = Connection::open_in_memory().unwrap();
-    migrations_through_v5().to_latest(&mut conn).unwrap();
-    conn.execute_batch(
-        "INSERT INTO standard_models (id, name, protocol, brand, capabilities) VALUES
-           ('gpt-chat', 'gpt-x', 'openai_chat', '', '{}'),
-           ('gpt-resp', 'gpt-x', 'responses', 'openai', '{}'),
-           ('claude', 'claude-y', 'anthropic', '', '{}');
-         INSERT INTO providers (id, type, name, short_code, base_url) VALUES
-           ('p1', 'responses', 'Alpha', 'p1', 'https://a.test');
-         INSERT INTO models (id, provider_id, standard_model_id, upstream_model, exposed_name) VALUES
-           ('m-chat', 'p1', 'gpt-chat', 'gpt-x', 'Alpha/gpt-x'),
-           ('m-resp', 'p1', 'gpt-resp', 'gpt-x-2', 'Alpha/gpt-x-2'),
-           ('m-claude', 'p1', 'claude', 'claude-y', 'Alpha/claude-y');",
-    )
-    .unwrap();
-    migrations::migrations().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 7);
-
-    let rows: Vec<(String, String, String)> = conn
-        .prepare("SELECT id, name, company FROM standard_models ORDER BY id")
-        .unwrap()
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
-    assert_eq!(
-        rows,
-        vec![
-            ("claude".into(), "claude-y".into(), "anthropic".into()),
-            ("gpt-resp".into(), "gpt-x".into(), "openai".into()),
-        ]
-    );
-    let linked: Vec<(String, Option<String>)> = conn
-        .prepare("SELECT id, standard_model_id FROM models ORDER BY id")
-        .unwrap()
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
-    assert_eq!(
-        linked,
-        vec![
-            ("m-chat".into(), Some("gpt-resp".into())),
-            ("m-claude".into(), Some("claude".into())),
-            ("m-resp".into(), Some("gpt-resp".into())),
-        ]
-    );
-    let overrides: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM models WHERE protocol IS NOT NULL",
-            [],
-            |r| r.get(0),
-        )
-        .unwrap();
-    assert_eq!(overrides, 0);
 }
 
 #[test]

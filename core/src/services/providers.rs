@@ -1,5 +1,5 @@
-use super::{ModelInput, ModelMapping, ProtocolSupport, ProviderInput, ProviderView, Services};
-use crate::domain::{Model, Protocol, Provider, Thinking};
+use super::{ModelInput, ModelMapping, ProviderInput, ProviderView, Services};
+use crate::domain::{Model, Provider, Thinking};
 use crate::error::CoreResult;
 use crate::storage::{models, providers};
 use rusqlite::Connection;
@@ -22,7 +22,6 @@ fn mapping(m: Model) -> ModelMapping {
 fn view(p: Provider, models: Vec<Model>) -> ProviderView {
     ProviderView {
         provider: ProviderInput {
-            protocol_support: ProtocolSupport::from_protocols(&p.protocols),
             id: p.id,
             provider_type: p.provider_type,
             name: p.name,
@@ -34,7 +33,6 @@ fn view(p: Provider, models: Vec<Model>) -> ProviderView {
             is_default: p.is_default,
         },
         models: models.into_iter().map(mapping).collect(),
-        terminal_config_warnings: Vec::new(),
     }
 }
 
@@ -91,8 +89,6 @@ impl Services {
                     }
                 };
                 let domain = Provider {
-                    // yi-token translates between protocols, so every provider serves them all.
-                    protocols: Protocol::all().to_vec(),
                     id: id.clone(),
                     provider_type: provider.provider_type,
                     name: provider.name.trim().to_owned(),

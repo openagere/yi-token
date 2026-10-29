@@ -56,7 +56,6 @@ mod tests {
             is_default: false,
             sort_order: 0,
             extra: serde_json::json!({}),
-            protocols: vec![Protocol::OpenaiChat],
         }
     }
 
@@ -108,15 +107,6 @@ mod tests {
         let mut p = provider();
         p.base_url = "ftp://x".into();
         assert!(p.validate().is_err());
-    }
-
-    #[test]
-    fn provider_validate_requires_native_protocol() {
-        let mut p = provider();
-        p.protocols = vec![Protocol::Anthropic];
-        assert!(matches!(p.validate(), Err(CoreError::Validation(_))));
-        p.protocols = vec![Protocol::Anthropic, Protocol::OpenaiChat];
-        assert!(p.validate().is_ok());
     }
 
     #[test]

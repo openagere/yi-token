@@ -1,10 +1,13 @@
-//! Schema migrations for the trajectory database (`PRAGMA user_version`, starting at 1).
+//! Schema of the trajectory database.
+//!
+//! There is a single baseline; v0.2.0 starts a fresh file (see `paths`) and does not upgrade
+//! trajectory databases written by earlier versions.
 
 use crate::error::{CoreError, CoreResult};
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 
-const V1_SQL: &str = "
+const BASELINE_SQL: &str = "
 PRAGMA auto_vacuum = INCREMENTAL;
 CREATE TABLE sessions (
     id               TEXT PRIMARY KEY,
@@ -94,11 +97,6 @@ CREATE TABLE blobs (
     data      BLOB NOT NULL,
     truncated INTEGER NOT NULL DEFAULT 0
 );
-";
-
-/// v2: a monotonic sequence counter, so `steps.seq` never reuses a number after a delete.
-/// Existing databases start from their current maximum.
-const V2_SQL: &str = "
 CREATE TABLE meta (
     key   TEXT PRIMARY KEY,
     value INTEGER NOT NULL
@@ -106,17 +104,8 @@ CREATE TABLE meta (
 INSERT INTO meta (key, value) VALUES ('last_seq', COALESCE((SELECT MAX(seq) FROM steps), 0));
 ";
 
-/// Migrations for the trajectory database, in order.
-/// Titles taken from injected context (for example Codex's `<environment_context>`) are
-/// cleared. The writer fills an empty title again from the next request, which carries the
-/// conversation, so the correct title comes back without rewriting anything else.
-const V3_SQL: &str = "
-UPDATE sessions SET title = ''
-WHERE title LIKE '<%' OR title LIKE '# AGENTS.md%' OR title LIKE '# CLAUDE.md%';
-";
-
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(V1_SQL), M::up(V2_SQL), M::up(V3_SQL)])
+    Migrations::new(vec![M::up(BASELINE_SQL)])
 }
 
 /// Applies every pending trajectory migration. The first statement of v1 sets `auto_vacuum`
@@ -132,35 +121,4 @@ pub fn run(conn: &mut Connection) -> CoreResult<()> {
     migrations()
         .to_latest(conn)
         .map_err(|e| CoreError::Database(format!("轨迹库迁移失败：{e}")))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn v3_clears_titles_taken_from_injected_context() {
-        let mut conn = Connection::open_in_memory().unwrap();
-        Migrations::new(vec![M::up(V1_SQL), M::up(V2_SQL)])
-            .to_latest(&mut conn)
-            .unwrap();
-        conn.execute_batch(
-            "INSERT INTO sessions (id, client, key_source, title, started_at, last_at) VALUES
-               ('bad', 'codex', 'new', '<environment_context>', 1, 1),
-               ('good', 'codex', 'new', '修复登录', 1, 1);",
-        )
-        .unwrap();
-        migrations().to_latest(&mut conn).unwrap();
-        let titles: Vec<(String, String)> = conn
-            .prepare("SELECT id, title FROM sessions ORDER BY id")
-            .unwrap()
-            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        assert_eq!(
-            titles,
-            [("bad".into(), String::new()), ("good".into(), "修复登录".into())]
-        );
-    }
 }

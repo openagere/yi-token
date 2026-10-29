@@ -1,20 +1,9 @@
 import { DEFAULT_SETTINGS } from "./defaults";
 import { FONT_IDS, LANGUAGE_TAGS, THEME_MODES, type AppSettings, type FontId, type LanguageTag, type ThemeMode } from "./types";
 
-/**
- * 设置持久化：localStorage + 版本号。
- * 后续结构变更时递增 SETTINGS_VERSION 并在 MIGRATIONS 中登记迁移函数，
- * 旧数据会自动升级到最新版本，避免破坏用户已有配置。
- */
+/** 设置持久化：localStorage + 版本号。版本不匹配的旧数据不读取，直接使用默认值。 */
 const STORAGE_KEY = "yi-token:settings";
-/** 旧版本使用的存储键，仅在迁移历史设置时读取。 */
-const LEGACY_STORAGE_KEY = "llm-man:settings";
 const SETTINGS_VERSION = 1;
-
-type Migration = (stored: Record<string, unknown>) => Record<string, unknown>;
-const MIGRATIONS: Record<number, Migration> = {
-  // 1: 初始版本，无需迁移。
-};
 
 interface StoredSettings {
   version: number;
@@ -43,21 +32,13 @@ function sanitize(raw: Record<string, unknown>): AppSettings {
 
 export function loadSettings(): AppSettings {
   try {
-    // 项目重命名后把旧键下的设置迁移到新键，避免用户丢失主题/字体/语言。
-    if (!window.localStorage.getItem(STORAGE_KEY)) {
-      const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (legacy) window.localStorage.setItem(STORAGE_KEY, legacy);
-    }
     const text = window.localStorage.getItem(STORAGE_KEY);
     if (!text) return { ...DEFAULT_SETTINGS };
     const stored = JSON.parse(text) as Partial<StoredSettings>;
-    if (typeof stored !== "object" || stored === null || typeof stored.version !== "number") {
+    if (typeof stored !== "object" || stored === null || stored.version !== SETTINGS_VERSION) {
       return { ...DEFAULT_SETTINGS };
     }
-    let data: Record<string, unknown> = typeof stored.settings === "object" && stored.settings !== null ? stored.settings as Record<string, unknown> : {};
-    for (let version = stored.version; version < SETTINGS_VERSION; version += 1) {
-      data = MIGRATIONS[version]?.(data) ?? data;
-    }
+    const data = typeof stored.settings === "object" && stored.settings !== null ? stored.settings as Record<string, unknown> : {};
     return sanitize(data);
   } catch {
     return { ...DEFAULT_SETTINGS };

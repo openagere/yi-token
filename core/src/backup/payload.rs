@@ -185,14 +185,6 @@ impl Payload {
                         provider.name.trim()
                     )));
                 }
-                if let Some(protocol) = model.protocol
-                    && !provider.protocols.contains(&protocol)
-                {
-                    return Err(CoreError::Validation(format!(
-                        "模型「{upstream}」的协议不是 Provider「{}」支持的协议",
-                        provider.name.trim()
-                    )));
-                }
                 let upstream_protocol = model.upstream_protocol(provider);
                 match &model.standard_model_id {
                     Some(id) => {

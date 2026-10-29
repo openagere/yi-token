@@ -1,6 +1,6 @@
 {
   "$schema": "./catalog.schema.json",
-  "version": 2,
+  "version": 1,
   "models": [
     {
       "id": "imported-39",

@@ -48,7 +48,6 @@ pub fn provider(id: &str, _code: &str, native: Protocol, base_url: &str) -> Prov
         is_default: false,
         sort_order: 0,
         extra: json!({}),
-        protocols: vec![native],
     }
 }
 

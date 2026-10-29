@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
 
-const SUPPORTED_VERSION: u32 = 2;
+const SUPPORTED_VERSION: u32 = 1;
 const BUILTIN: &str = include_str!("../../../models/catalog.json");
 
 /// A parsed catalog. Entry ids come from the file and are not authoritative:

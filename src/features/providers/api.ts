@@ -1,19 +1,13 @@
 import type { DiscoveredModel } from "@/generated";
 import { invoke } from "@/shared/api";
-import type {
-  ModelMapping,
-  Provider,
-  ProviderConfigTransferResult,
-  ProviderSaveResult,
-  ProviderView,
-} from "./types";
+import type { ModelMapping, Provider, ProviderConfigTransferResult, ProviderView } from "./types";
 
 declare module "@/shared/api/tauri" {
   interface CommandMap {
     list_providers: { args: void; result: ProviderView[] };
     save_provider: {
       args: { provider: Provider; models: ModelMapping[] };
-      result: ProviderView & ProviderSaveResult;
+      result: ProviderView;
     };
     delete_provider: { args: { id: string }; result: void };
     test_provider: { args: { provider: Provider; models: ModelMapping[]; model: string }; result: string };

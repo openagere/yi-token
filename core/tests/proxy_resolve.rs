@@ -13,10 +13,11 @@ use yi_core::services::Services;
 use yi_core::storage::route_source::DbRouteSource;
 use yi_core::storage::{Db, providers, terminal};
 
-fn provider(id: &str, _code: &str, protocols: &[Protocol]) -> Provider {
+/// A provider whose native protocol is `native`; every provider accepts every client protocol.
+fn provider(id: &str, _code: &str, native: Protocol) -> Provider {
     Provider {
         id: id.into(),
-        provider_type: protocols[0],
+        provider_type: native,
         name: format!("name-{id}"),
         base_url: "http://127.0.0.1:1".into(),
         api_key: "sk".into(),
@@ -25,7 +26,6 @@ fn provider(id: &str, _code: &str, protocols: &[Protocol]) -> Provider {
         is_default: false,
         sort_order: 0,
         extra: serde_json::json!({}),
-        protocols: protocols.to_vec(),
     }
 }
 
@@ -68,7 +68,7 @@ fn global_exact_match() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::OpenaiChat]),
+        &provider("p1", "oa", Protocol::OpenaiChat),
         &[model("m1", "gpt-5")],
     );
     let snap = routes(&db).load();
@@ -80,17 +80,18 @@ fn global_exact_match() {
 }
 
 #[test]
-fn global_requires_protocol_support() {
+fn global_resolves_any_client_protocol() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::OpenaiChat]),
+        &provider("p1", "oa", Protocol::OpenaiChat),
         &[model("m1", "gpt-5")],
     );
     let snap = routes(&db).load();
-    // No default provider, and p1 does not speak Anthropic.
-    let err = resolve(&snap, Scope::Global, Protocol::Anthropic, "name-p1/gpt-5").unwrap_err();
-    assert!(matches!(err, CoreError::NotFound(_)));
+    // Every provider serves every client protocol: the proxy translates.
+    let r = resolve(&snap, Scope::Global, Protocol::Anthropic, "name-p1/gpt-5").unwrap();
+    assert_eq!(r.provider.id, "p1");
+    assert_eq!(r.upstream_model, "gpt-5");
 }
 
 #[test]
@@ -98,10 +99,10 @@ fn global_falls_back_to_default_provider() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::OpenaiChat]),
+        &provider("p1", "oa", Protocol::OpenaiChat),
         &[model("m1", "gpt-5")],
     );
-    let mut d = provider("p2", "dd", &[Protocol::Anthropic]);
+    let mut d = provider("p2", "dd", Protocol::Anthropic);
     d.is_default = true;
     save(&db, &d, &[]);
     let snap = routes(&db).load();
@@ -109,16 +110,16 @@ fn global_falls_back_to_default_provider() {
     assert_eq!(r.provider.id, "p2");
     assert_eq!(r.upstream_model, "whatever");
     assert!(r.model.is_none());
-    // A protocol mismatch on an exposed name also falls back, name unchanged.
+    // An exposed name keeps routing to its own provider, whatever the client protocol.
     let r = resolve(&snap, Scope::Global, Protocol::Anthropic, "name-p1/gpt-5").unwrap();
-    assert_eq!(r.provider.id, "p2");
-    assert_eq!(r.upstream_model, "name-p1/gpt-5");
+    assert_eq!(r.provider.id, "p1");
+    assert_eq!(r.upstream_model, "gpt-5");
 }
 
 #[test]
 fn disabled_provider_excluded() {
     let db = Db::open_in_memory().unwrap();
-    let mut p = provider("p1", "oa", &[Protocol::OpenaiChat]);
+    let mut p = provider("p1", "oa", Protocol::OpenaiChat);
     p.is_default = true;
     p.enabled = false;
     save(&db, &p, &[model("m1", "gpt-5")]);
@@ -134,7 +135,7 @@ fn fixed_profile_resolves_model() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::Responses]),
+        &provider("p1", "oa", Protocol::Responses),
         &[model("m1", "gpt-5"), model("m2", "gpt-6")],
     );
     db.with_conn(|c| {
@@ -162,12 +163,12 @@ fn shared_upstream_name_never_crosses_providers() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("pa", "a", &[Protocol::Responses]),
+        &provider("pa", "a", Protocol::Responses),
         &[model("ma", "x")],
     );
     save(
         &db,
-        &provider("pb", "b", &[Protocol::Responses]),
+        &provider("pb", "b", Protocol::Responses),
         &[model("mb", "x")],
     );
     db.with_conn(|c| {
@@ -214,7 +215,7 @@ fn client_protocol_mismatch_is_validation() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::Responses, Protocol::Anthropic]),
+        &provider("p1", "oa", Protocol::Responses),
         &[model("m1", "gpt-5")],
     );
     db.with_conn(|c| {
@@ -240,7 +241,7 @@ fn client_without_profile_is_not_found() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::Responses]),
+        &provider("p1", "oa", Protocol::Responses),
         &[model("m1", "gpt-5")],
     );
     let snap = routes(&db).load();
@@ -284,7 +285,7 @@ fn auto_without_engine_is_conflict() {
 #[test]
 fn refresh_swaps_snapshot() {
     let db = Db::open_in_memory().unwrap();
-    let p = provider("p1", "oa", &[Protocol::OpenaiChat]);
+    let p = provider("p1", "oa", Protocol::OpenaiChat);
     save(&db, &p, &[model("m1", "gpt-5")]);
     let routes = routes(&db);
     let old = routes.load();
@@ -307,7 +308,7 @@ fn deleting_a_provider_makes_fixed_resolve_not_found() {
     let db = Db::open_in_memory().unwrap();
     save(
         &db,
-        &provider("p1", "oa", &[Protocol::Responses]),
+        &provider("p1", "oa", Protocol::Responses),
         &[model("m1", "gpt-5")],
     );
     db.with_conn(|c| {
@@ -393,7 +394,7 @@ async fn health_and_models_listing() {
         .with_tx(|tx| {
             providers::upsert(
                 tx,
-                &provider("p1", "oa", &[Protocol::Responses]),
+                &provider("p1", "oa", Protocol::Responses),
                 &[model("m1", "gpt-5")],
             )
         })
@@ -424,7 +425,7 @@ async fn client_models_lists_exposed_names() {
         .with_tx(|tx| {
             providers::upsert(
                 tx,
-                &provider("p1", "oa", &[Protocol::Responses]),
+                &provider("p1", "oa", Protocol::Responses),
                 &[model("m1", "gpt-5")],
             )
         })

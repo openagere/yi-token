@@ -3,7 +3,7 @@ use yi_core::catalog::{CatalogInfo, CatalogWatcher, file, sync};
 use yi_core::domain::{Capabilities, Company, StandardModel};
 use yi_core::storage::{Db, standard_models};
 
-const OVERRIDE: &str = r#"{"version":2,"models":[
+const OVERRIDE: &str = r#"{"version":1,"models":[
   {"id":"x1","name":"alpha","company":"openai","capabilities":{"context_window":1000}},
   {"name":"beta","company":"anthropic"}]}"#;
 
@@ -46,7 +46,7 @@ fn malformed_override_is_rejected() {
     std::fs::write(&p, r#"{"version":1,"models":[{"name":"alpha"}]}"#).unwrap();
     let err = file::load(Some(&p)).unwrap_err();
     assert_eq!(err.code(), yi_core::error::ErrorCode::Validation);
-    std::fs::write(&p, r#"{"version":3,"models":[]}"#).unwrap();
+    std::fs::write(&p, r#"{"version":2,"models":[]}"#).unwrap();
     assert!(file::load(Some(&p)).is_err());
 }
 

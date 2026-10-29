@@ -1,6 +1,6 @@
 //! Trajectory database: a separate SQLite file recording proxied sessions.
 //!
-//! It has its own migration numbering, independent of the main database.
+//! It has its own schema, independent of the main database.
 
 pub mod blobs;
 pub mod migrations;

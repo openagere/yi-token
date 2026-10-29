@@ -100,17 +100,11 @@ pub fn build_upstream(
 
 /// Pick the wire protocol sent to the provider.
 ///
-/// `provider.protocols` lists every client protocol yi-token accepts. It is not
-/// the set of wire protocols the upstream speaks: a Responses provider is stored
-/// with Anthropic marked as accepted because the proxy translates. Passthrough
-/// is only safe when the client already speaks the provider's native protocol.
-/// Otherwise Claude would forward an Anthropic body and `x-api-key` to a
-/// Responses endpoint, and the upstream answers 401.
-pub fn choose_upstream(
-    inbound: Protocol,
-    _accepted: &[Protocol],
-    native: Protocol,
-) -> (Protocol, bool) {
+/// Every provider accepts every client protocol (the proxy translates), so only the
+/// upstream's own protocol matters. Passthrough is only safe when the client already speaks
+/// it: otherwise Claude would forward an Anthropic body and `x-api-key` to a Responses
+/// endpoint, and the upstream answers 401.
+pub fn choose_upstream(inbound: Protocol, native: Protocol) -> (Protocol, bool) {
     if inbound == native {
         (native, true)
     } else {
@@ -397,22 +391,13 @@ mod tests {
 
     #[test]
     fn choose_upstream_passthrough_only_matches_the_native_protocol() {
-        let got = choose_upstream(
-            Protocol::Anthropic,
-            &[Protocol::OpenaiChat, Protocol::Anthropic, Protocol::Responses],
-            Protocol::Anthropic,
-        );
+        let got = choose_upstream(Protocol::Anthropic, Protocol::Anthropic);
         assert_eq!(got, (Protocol::Anthropic, true));
     }
 
     #[test]
     fn choose_upstream_translates_when_the_client_protocol_is_not_native() {
-        // Saved providers list every client protocol, including ones they do not speak.
-        let got = choose_upstream(
-            Protocol::Anthropic,
-            &[Protocol::Anthropic, Protocol::OpenaiChat, Protocol::Responses],
-            Protocol::Responses,
-        );
+        let got = choose_upstream(Protocol::Anthropic, Protocol::Responses);
         assert_eq!(got, (Protocol::Responses, false));
     }
 

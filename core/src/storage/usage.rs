@@ -258,7 +258,7 @@ fn hit_rate(cached: u64, input: u64) -> Option<f64> {
 }
 
 /// Totals and timing averages over the same window and filters as [`query`].
-/// Averages skip NULL timings (rows from before the timing migration).
+/// Averages skip NULL timings (requests that never reached a first token or completion).
 pub fn totals(conn: &Connection, q: &UsageQuery) -> CoreResult<UsageTotals> {
     let client = q.client.as_ref().map(enum_str).transpose()?;
     let args = (q.start_ms, q.end_ms, q.model.as_deref(), client.as_deref());
