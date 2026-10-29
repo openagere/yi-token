@@ -248,6 +248,8 @@ export function ProxyTerminalSection({
           const brand = standard?.brand || modelBrand(model.name);
           // Cards in the lower half open their hover detail upwards so it stays inside the board.
           const upward = rows > 1 && Math.floor(index / columns) >= Math.floor(rows / 2);
+          // The detail is wider than a narrow card; in the last column it grows leftwards instead.
+          const end = columns > 1 && index % columns === columns - 1;
           const icon = (
             <span className="terminal-engine-icon">
               {brand ? (
@@ -299,7 +301,7 @@ export function ProxyTerminalSection({
               </button>
 
               <div
-                className={`terminal-engine-detail${upward ? " upward" : ""}`}
+                className={`terminal-engine-detail${upward ? " upward" : ""}${end ? " end" : ""}`}
                 onClick={() => choose(model.id)}
               >
                 <div className="terminal-engine-detail-head">

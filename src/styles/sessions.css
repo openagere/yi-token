@@ -6,11 +6,11 @@
 .sessions-body { display: grid; grid-template-columns: var(--sessions-list-width, 300px) 0 minmax(0, 1fr); flex: 1; min-height: 0; margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .sessions-list-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .session-list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border); }
-.session-terminal-select { flex: none; width: 122px; }
-.session-search { display: flex; flex: 1 1 120px; align-items: center; gap: 6px; min-width: 0; height: var(--control-height, 36px); padding: 0 8px 0 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); background: var(--surface-subtle); }
+.session-terminal-select { flex: 0 1 auto; width: auto; min-width: 104px; max-width: 150px; white-space: nowrap; }
+.session-search { display: flex; flex: 1 1 96px; align-items: center; gap: 6px; min-width: 0; height: var(--control-height, 36px); padding: 0 8px 0 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); background: var(--surface-subtle); }
 .session-search:focus-within { border-color: var(--border-strong); box-shadow: 0 0 0 2px var(--focus-ring-soft); }
 .session-search > svg { flex: none; }
-.session-search input { flex: 1; width: 100%; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; color: var(--text-primary); background: transparent; font: inherit; font-size: 12px; }
+.session-search input, .session-search input:focus-visible { flex: 1; width: 100%; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; color: var(--text-primary); background: transparent; font: inherit; font-size: 12px; }
 .session-search input::-webkit-search-cancel-button { display: none; }
 .session-search input::placeholder { color: var(--text-muted); }
 .session-search > button { display: grid; flex: none; width: 20px; height: 20px; padding: 0; place-items: center; border: 0; border-radius: 4px; color: var(--text-muted); background: transparent; }

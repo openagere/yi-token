@@ -302,3 +302,11 @@
 .terminal-page-proxy .terminal-engine-option { gap: 10px; height: 58px; min-height: 0; padding: 8px 12px; }
 .terminal-page-proxy .terminal-engine-icon { width: 32px; height: 32px; }
 .terminal-page-proxy .terminal-page-footer { position: static; padding: 12px 0 0; }
+
+/* Cards can be narrower than their details, so the hover layer keeps a readable width and
+   values wrap inside it instead of spilling over the neighbouring cards. */
+.terminal-page-proxy .terminal-engine-detail { right: auto; width: max(100%, 340px); max-width: calc(100vw - var(--sidebar-width) - 2 * var(--page-gutter)); }
+.terminal-page-proxy .terminal-engine-detail.end { right: 0; left: auto; }
+.terminal-engine-detail-body dl > div { min-width: 0; }
+.terminal-engine-detail-body dd { flex: 1 1 auto; flex-wrap: wrap; }
+.terminal-engine-detail-body dd code { min-width: 0; overflow-wrap: anywhere; }
