@@ -1,10 +1,13 @@
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
 import { useI18n } from "@/shared/i18n";
+import { MIN_CONTENT_WIDTH } from "@/shared/navigation";
 
 const STORAGE_KEY = "yi-token.sidebar-width";
 const MIN = 168;
 const MAX = 360;
-const clamp = (value: number) => Math.round(Math.min(MAX, Math.max(MIN, value)));
+/** The sidebar never grows past what leaves the page its minimum width. */
+const clamp = (value: number) =>
+  Math.round(Math.min(Math.max(MIN, Math.min(MAX, window.innerWidth - MIN_CONTENT_WIDTH)), Math.max(MIN, value)));
 
 function apply(width: number | null) {
   const root = document.documentElement;

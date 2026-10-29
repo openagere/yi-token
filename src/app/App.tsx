@@ -1,20 +1,21 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "@/shared/i18n";
-import { COMPACT_SIDEBAR_QUERY, useNavigationStore } from "@/shared/navigation";
+import { isCompactWindow, useNavigationStore } from "@/shared/navigation";
 import { ConfirmDialog, Toast } from "@/shared/ui";
 import { Sidebar } from "./layout/Sidebar";
 import { SidebarResizer } from "./layout/SidebarResizer";
 import { WorkspaceToolbar } from "./layout/WorkspaceToolbar";
 import { PageOutlet } from "./routes";
 
+/** Re-evaluates the compact layout when the window resizes (the sidebar width is read at the same time). */
 function useCompactSidebar() {
-  const setSidebarCollapsed = useNavigationStore((state) => state.setSidebarCollapsed);
+  const setCompactLayout = useNavigationStore((state) => state.setCompactLayout);
   useEffect(() => {
-    const compact = window.matchMedia(COMPACT_SIDEBAR_QUERY);
-    const onChange = (event: MediaQueryListEvent) => setSidebarCollapsed(event.matches);
-    compact.addEventListener("change", onChange);
-    return () => compact.removeEventListener("change", onChange);
-  }, [setSidebarCollapsed]);
+    const update = () => setCompactLayout(isCompactWindow());
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [setCompactLayout]);
 }
 
 function DiscardDialog() {
@@ -30,6 +31,7 @@ export default function App() {
   const { language, t } = useI18n();
   const page = useNavigationStore((state) => state.page);
   const collapsed = useNavigationStore((state) => state.sidebarCollapsed);
+  const compact = useNavigationStore((state) => state.compactLayout);
   const setSidebarCollapsed = useNavigationStore((state) => state.setSidebarCollapsed);
   const mainPanel = useRef<HTMLDivElement>(null);
 
@@ -37,12 +39,12 @@ export default function App() {
   useEffect(() => { mainPanel.current?.scrollTo({ top: 0 }); }, [page]);
 
   return (
-    <main className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`} data-language={language}>
+    <main className={`app-shell ${collapsed ? "sidebar-collapsed" : ""} ${compact ? "compact-layout" : ""}`} data-language={language}>
       <WorkspaceToolbar />
       <div className="workspace-body">
-        {!collapsed && <button type="button" className="sidebar-backdrop" aria-label={t("nav.closeSidebar")} onClick={() => setSidebarCollapsed(true)} />}
+        {compact && !collapsed && <button type="button" className="sidebar-backdrop" aria-label={t("nav.closeSidebar")} onClick={() => setSidebarCollapsed(true)} />}
         <Sidebar />
-        {!collapsed && <SidebarResizer />}
+        {!collapsed && !compact && <SidebarResizer />}
         <div className="main-panel" id="workspace-content" ref={mainPanel}>
           <PageOutlet />
         </div>

@@ -844,3 +844,33 @@ for (const mode of ["proxy", "direct"] as const) {
     await expect(page.locator("h1:visible")).toHaveText("设置");
   });
 }
+
+test("sidebar folds to the icon rail when the page beside it would get too narrow", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await installBackend(page, "light");
+  await page.goto("/");
+  const shell = page.locator(".app-shell");
+  await expect(shell).not.toHaveClass(/sidebar-collapsed/);
+  // 900px leaves less than the 760px minimum page width beside the default sidebar.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await expect(shell).toHaveClass(/compact-layout/);
+  await expect(shell).toHaveClass(/sidebar-collapsed/);
+  // Opening the rail lays the sidebar over the page instead of narrowing it.
+  const panelWidth = await page.locator(".main-panel").evaluate((el) => el.clientWidth);
+  await page.getByRole("button", { name: "展开或收起侧栏" }).click();
+  await expect(page.getByRole("searchbox", { name: "搜索页面" })).toBeVisible();
+  expect(await page.locator(".main-panel").evaluate((el) => el.clientWidth)).toBe(panelWidth);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(shell).not.toHaveClass(/compact-layout/);
+  await expect(shell).not.toHaveClass(/sidebar-collapsed/);
+});
+
+test("a dragged-wide sidebar is capped so the page keeps its minimum width", async ({ page }) => {
+  await page.setViewportSize({ width: 947, height: 640 });
+  await page.addInitScript(() => localStorage.setItem("yi-token.sidebar-width", "360"));
+  await installBackend(page, "light");
+  await page.goto("/");
+  await expect(page.locator(".connection-row").first()).toBeVisible();
+  const width = await page.locator(".sidebar").evaluate((el) => el.getBoundingClientRect().width);
+  expect(width).toBeLessThanOrEqual(947 - 760 + 1);
+});

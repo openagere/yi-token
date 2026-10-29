@@ -314,3 +314,19 @@ button.connection-protocol:hover:not(:disabled) { border-color: var(--border-str
 .provider-model-catalog-meta { display: inline-flex; flex: none; align-items: center; gap: 6px; margin-left: auto; color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .provider-model-catalog-row .provider-model-catalog-meta em { margin-left: 0; }
 .provider-model-catalog-row em.retiring { color: var(--warning); background: var(--warning-soft); }
+
+/* Medium widths keep one line per connection: the protocol column shrinks (its label ends in an
+   ellipsis) instead of the row breaking into three stacked lines. Only very narrow lists stack. */
+@container (min-width: 541px) and (max-width: 700px) {
+  .connection-table-heading, .connection-row { grid-template-columns: minmax(0, 1fr) 172px 44px 62px; gap: 0 12px; }
+  .connection-table-heading > span:nth-child(2) { display: block; }
+  .connection-identity, .connection-actions, .connection-enabled, .connection-protocols { grid-column: auto; grid-row: auto; align-self: center; min-height: 0; }
+  .connection-enabled { flex-direction: column; gap: 6px; }
+  .connection-enabled > span:last-child { display: none; }
+  .connection-protocols { grid-column: auto; }
+}
+@container (max-width: 540px) {
+  .connection-row { gap: 6px 12px; }
+  .connection-identity { min-height: 0; }
+  .connection-protocols { grid-row: 2; }
+}

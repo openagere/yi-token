@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Client } from "@/generated";
 import { dismissNotification } from "../notify";
+import { isCompactWindow } from "./compact";
 
 /** 应用页面标识与导航类型定义。 */
 export type Page =
@@ -41,15 +42,14 @@ export interface SessionTarget {
 /** 设置页的分区；从其他页面跳来时可直接打开对应分区。 */
 export type SettingsSection = "general" | "listen" | "trajectory";
 
-/** Below this width the sidebar folds to its icon rail; expanding it opens an overlay (keep in sync with workspace.css). */
-export const COMPACT_SIDEBAR_QUERY = "(max-width: 880px)";
-const COMPACT_QUERY = COMPACT_SIDEBAR_QUERY;
-const isCompact = () => window.matchMedia(COMPACT_QUERY).matches;
+const isCompact = isCompactWindow;
 
 interface NavigationState {
   page: Page;
   history: MainPage[];
   sidebarCollapsed: boolean;
+  /** The window leaves too little room for the expanded sidebar (see compact.ts). */
+  compactLayout: boolean;
   /** 代理页首次访问后保持挂载，以保留其本地状态。 */
   proxyVisited: boolean;
   /** 待会话页消费的跳转目标；无则为 null。 */
@@ -84,6 +84,8 @@ interface NavigationState {
   confirmDiscard: () => void;
   cancelDiscard: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  /** Enters or leaves the compact layout; crossing the threshold folds or unfolds the sidebar. */
+  setCompactLayout: (compact: boolean) => void;
   toggleSidebar: () => void;
 }
 
@@ -91,6 +93,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   page: "provider-list",
   history: [],
   sidebarCollapsed: typeof window !== "undefined" && isCompact(),
+  compactLayout: typeof window !== "undefined" && isCompact(),
   proxyVisited: false,
   sessionTarget: null,
   settingsSection: null,
@@ -197,5 +200,8 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   },
   cancelDiscard: () => set({ pendingDiscard: null }),
   setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+  setCompactLayout: (compactLayout) => {
+    if (compactLayout !== get().compactLayout) set({ compactLayout, sidebarCollapsed: compactLayout });
+  },
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));

@@ -192,13 +192,11 @@ h1 { font-weight: 500; }
   :root { --sidebar-width: 184px; --page-gutter: 22px; }
   .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) { padding-top: 20px; }
 }
-/* Compact windows (COMPACT_SIDEBAR_QUERY): the sidebar is an icon rail, and opening it lays it over the page. */
-@media (max-width: 880px) {
-  .app-shell { --sidebar-width: 66px; }
-  .sidebar-resizer { display: none; }
-  .app-shell:not(.sidebar-collapsed) .sidebar { position: fixed; z-index: 30; top: var(--toolbar-height); bottom: 0; left: 0; width: 244px; height: auto; padding: 14px 12px; border-right: 1px solid var(--border); box-shadow: var(--shadow-popover); }
-  .sidebar-backdrop { position: fixed; z-index: 20; inset: var(--toolbar-height) 0 0; display: block; width: 100%; padding: 0; border: 0; background: var(--backdrop); cursor: default; }
-}
+/* Compact layout (.compact-layout, see navigation/compact.ts): the sidebar is an icon rail, and
+   opening it lays it over the page instead of narrowing it. */
+.app-shell.compact-layout { --sidebar-width: 66px; }
+.app-shell.compact-layout:not(.sidebar-collapsed) .sidebar { position: fixed; z-index: 30; top: var(--toolbar-height); bottom: 0; left: 0; width: 244px; height: auto; padding: 14px 12px; border-right: 1px solid var(--border); box-shadow: var(--shadow-popover); }
+.app-shell.compact-layout .sidebar-backdrop { position: fixed; z-index: 20; inset: var(--toolbar-height) 0 0; display: block; width: 100%; padding: 0; border: 0; background: var(--backdrop); cursor: default; }
 @media (max-width: 520px) {
   .app-shell { --sidebar-width: 54px; --page-gutter: 18px; }
   .sidebar-collapsed .sidebar { padding-right: 6px; padding-left: 6px; }
