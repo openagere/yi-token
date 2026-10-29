@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Activity, Boxes, ChartNoAxesColumnIncreasing, ChevronRight, Search, Settings2, Terminal, Workflow, X } from "lucide-react";
+import { Activity, Boxes, ChartNoAxesColumnIncreasing, ChevronRight, History, Search, Settings2, Terminal, Workflow, X } from "lucide-react";
 import { useStandardModels } from "@/features/models";
 import { useProviders } from "@/features/providers";
-import { useProxyPhase } from "@/features/proxy";
+import { useLiveRequests, useProxyPhase } from "@/features/proxy";
 import { useTerminalProfiles } from "@/features/terminal/hooks";
 import { TERMINALS } from "@/features/terminal/selection";
 import { useTerminalPendingClients } from "@/features/terminal/useTerminalDrafts";
@@ -10,10 +10,11 @@ import { useI18n } from "@/shared/i18n";
 import { TERMINAL_PAGE_CLIENTS, useNavigationStore, type TerminalPageId } from "@/shared/navigation";
 import { AppLogo, ProviderIcon } from "@/shared/ui";
 
-const NAV_GROUPS = [["provider-list", "model-list"], ["proxy", "usage"]] as const;
+/** 第一组为"配置"（末尾附终端折叠组），第二组为"观测"。 */
+const NAV_GROUPS = [["provider-list", "model-list"], ["proxy", "sessions", "usage"]] as const;
 type NavId = (typeof NAV_GROUPS)[number][number];
 const NAV_ICONS: Record<NavId, typeof Workflow> = {
-  "provider-list": Workflow, "model-list": Boxes, proxy: Activity, usage: ChartNoAxesColumnIncreasing,
+  "provider-list": Workflow, "model-list": Boxes, proxy: Activity, sessions: History, usage: ChartNoAxesColumnIncreasing,
 };
 const TERMINAL_PAGES = TERMINALS.map((item) => ({ ...item, page: `terminal-${item.id}` as TerminalPageId }));
 
@@ -24,13 +25,15 @@ export function Sidebar() {
   const providerCount = useProviders().data?.length ?? 0;
   const modelCount = useStandardModels().data?.length ?? 0;
   const proxyPhase = useProxyPhase();
+  // The run page polls the same live query while it is visible; the sidebar polls only when it is not.
+  const inFlight = useLiveRequests(page !== "proxy").data?.inFlight.length ?? 0;
   const terminalProfiles = useTerminalProfiles();
   const pendingClients = useTerminalPendingClients(terminalProfiles.data ?? []);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const navLabels: Record<NavId | "terminal" | "settings", string> = {
     "provider-list": t("nav.providers"), "model-list": t("nav.models"),
-    proxy: t("nav.proxy"), usage: t("nav.usage"), terminal: t("nav.terminal"), settings: t("nav.settings"),
+    proxy: t("nav.run"), sessions: t("nav.sessions"), usage: t("nav.usage"), terminal: t("nav.terminal"), settings: t("nav.settings"),
   };
   const phaseLabel = proxyPhase ? t(`nav.phase.${proxyPhase}`) : t("nav.phase.unknown");
   const query = search.trim().toLocaleLowerCase();
@@ -57,9 +60,10 @@ export function Sidebar() {
     <nav className="primary-nav" aria-label={t("nav.workspace")}>
       {NAV_GROUPS.map((ids, index) => {
         const visible = ids.filter(matches);
-        if (!visible.length) return null;
+        const showTerminal = index === 0 && terminalGroupVisible;
+        if (!visible.length && !showTerminal) return null;
         return <div className="nav-group" key={index}>
-          <div className="side-section-label">{t(index === 0 ? "nav.configuration" : "nav.tools")}</div>
+          <div className="side-section-label">{t(index === 0 ? "nav.configuration" : "nav.observe")}</div>
           {visible.map((id) => {
             const Icon = NAV_ICONS[id];
             const selected = page === id || (id === "provider-list" && page === "provider-editor") || (id === "model-list" && page === "model-editor");
@@ -69,31 +73,32 @@ export function Sidebar() {
               {id === "provider-list" && <span className="nav-count">{providerCount}</span>}
               {id === "model-list" && <span className="nav-count">{modelCount}</span>}
               {id === "proxy" && <span className={`proxy-nav-dot ${proxyPhase ?? "unknown"}`} title={phaseLabel} />}
+              {id === "sessions" && inFlight > 0 && <span className="nav-count">{inFlight}</span>}
             </button>;
           })}
+          {showTerminal && <div className="nav-terminal-group">
+            <button type="button" className={`provider-nav nav-terminal-toggle ${activeTerminal ? "selected" : ""}`} title={navLabels.terminal} aria-label={navLabels.terminal} aria-expanded={terminalOpen} aria-controls="nav-terminal-items" onClick={() => setTerminalOpen((open) => !open)}>
+              {/* Expanded sidebar: the leading chevron turns to show the group state; collapsed: the terminal glyph. */}
+              <ChevronRight className="nav-terminal-chevron" size={18} strokeWidth={1.7} aria-hidden="true" />
+              <Terminal className="nav-terminal-glyph" size={18} strokeWidth={1.7} aria-hidden="true" />
+              <span className="provider-nav-name">{navLabels.terminal}</span>
+              {pendingClients.size > 0 && <span className="nav-terminal-dot pending" aria-hidden="true" />}
+            </button>
+            {terminalOpen && <div className="nav-terminal-items" id="nav-terminal-items">
+              {visibleTerminals.map((item) => {
+                const selected = page === item.page;
+                const itemStatus = terminalProfiles.data?.find((entry) => entry.client === TERMINAL_PAGE_CLIENTS[item.page]);
+                const dotClass = pendingClients.has(TERMINAL_PAGE_CLIENTS[item.page]) ? "pending" : itemStatus?.active ? "connected" : "";
+                return <button key={item.id} type="button" className={`provider-nav nav-terminal-item ${selected ? "selected" : ""}`} title={item.name} aria-label={item.name} aria-current={selected ? "page" : undefined} onClick={() => navigate(item.page)}>
+                  <ProviderIcon brand={item.brand} size={16} />
+                  <span className="provider-nav-name">{item.name}</span>
+                  <span className={`nav-terminal-dot ${dotClass}`} aria-hidden="true" />
+                </button>;
+              })}
+            </div>}
+          </div>}
         </div>;
       })}
-      {terminalGroupVisible && <div className="nav-group nav-terminal-group">
-        <button type="button" className={`provider-nav nav-terminal-toggle ${activeTerminal ? "selected" : ""}`} title={navLabels.terminal} aria-label={navLabels.terminal} aria-expanded={terminalOpen} aria-controls="nav-terminal-items" onClick={() => setTerminalOpen((open) => !open)}>
-          {/* Expanded sidebar: the leading chevron turns to show the group state; collapsed: the terminal glyph. */}
-          <ChevronRight className="nav-terminal-chevron" size={18} strokeWidth={1.7} aria-hidden="true" />
-          <Terminal className="nav-terminal-glyph" size={18} strokeWidth={1.7} aria-hidden="true" />
-          <span className="provider-nav-name">{navLabels.terminal}</span>
-          {pendingClients.size > 0 && <span className="nav-terminal-dot pending" aria-hidden="true" />}
-        </button>
-        {terminalOpen && <div className="nav-terminal-items" id="nav-terminal-items">
-          {visibleTerminals.map((item) => {
-            const selected = page === item.page;
-            const itemStatus = terminalProfiles.data?.find((entry) => entry.client === TERMINAL_PAGE_CLIENTS[item.page]);
-            const dotClass = pendingClients.has(TERMINAL_PAGE_CLIENTS[item.page]) ? "pending" : itemStatus?.active ? "connected" : "";
-            return <button key={item.id} type="button" className={`provider-nav nav-terminal-item ${selected ? "selected" : ""}`} title={item.name} aria-label={item.name} aria-current={selected ? "page" : undefined} onClick={() => navigate(item.page)}>
-              <ProviderIcon brand={item.brand} size={16} />
-              <span className="provider-nav-name">{item.name}</span>
-              <span className={`nav-terminal-dot ${dotClass}`} aria-hidden="true" />
-            </button>;
-          })}
-        </div>}
-      </div>}
       {noResults && <p className="sidebar-no-results" role="status">{t("nav.noResults")}</p>}
     </nav>
     <div className="sidebar-bottom">

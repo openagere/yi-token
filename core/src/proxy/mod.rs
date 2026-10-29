@@ -1,7 +1,9 @@
 //! Local proxy: lifecycle (server), error responses and the request pipeline.
 
+pub mod capture;
 mod errors;
 pub mod headers;
+pub mod live;
 pub mod monitor;
 pub mod pipeline;
 pub mod request_log;

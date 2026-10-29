@@ -40,6 +40,7 @@ rand.workspace = true
 secrecy.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
+zstd.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

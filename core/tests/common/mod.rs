@@ -28,6 +28,8 @@ pub struct TestEnv {
     pub base_url: String,
     pub mock: MockServer,
     pub services: Arc<Services>,
+    /// The services' home directory (holds `trajectory.db`, `yi-token.db`).
+    pub home: std::path::PathBuf,
     pub state: ProxyState,
     pub http: reqwest::Client,
     _proxy: ProxyHandle,
@@ -64,10 +66,32 @@ pub fn model(id: &str, upstream: &str) -> Model {
 
 impl TestEnv {
     pub async fn start() -> TestEnv {
-        let dir = tempfile::tempdir().unwrap();
+        Self::start_with(false).await
+    }
+
+    /// As [`TestEnv::start`], but the proxy records into the services' own trajectory
+    /// writer, so `services` sessions reflect the requests sent through `env.post`.
+    pub async fn start_capturing() -> TestEnv {
+        Self::start_with(true).await
+    }
+
+    /// As [`TestEnv::start_capturing`], on the given directory, so a test can seed files there first.
+    pub async fn start_capturing_in(dir: tempfile::TempDir) -> TestEnv {
+        Self::start_in(dir, true).await
+    }
+
+    async fn start_with(capturing: bool) -> TestEnv {
+        Self::start_in(tempfile::tempdir().unwrap(), capturing).await
+    }
+
+    async fn start_in(dir: tempfile::TempDir, capturing: bool) -> TestEnv {
         let services = Services::for_test(dir.path());
         let mock = MockServer::start().await;
-        let state = ProxyState::new(services.routes(), services.usage_sink());
+        let mut state = ProxyState::new(services.routes(), services.usage_sink());
+        if capturing {
+            state.capture = services.capture_slot();
+            state.live = services.live_registry();
+        }
         let st = state.clone();
         let proxy = ProxyHandle::new(move || build(st.clone()));
         proxy.start("127.0.0.1:0".parse().unwrap()).await.unwrap();
@@ -76,6 +100,7 @@ impl TestEnv {
             base_url: format!("http://{addr}"),
             mock,
             services,
+            home: dir.path().to_path_buf(),
             state,
             http: reqwest::Client::builder().no_proxy().build().unwrap(),
             _proxy: proxy,
@@ -200,6 +225,7 @@ impl TestEnv {
                         start_ms: 0,
                         end_ms: i64::MAX,
                         model: None,
+                        client: None,
                     },
                 )
             })

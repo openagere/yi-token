@@ -11,6 +11,7 @@ const CATALOG_VAR: &str = "YI_TOKEN_MODEL_CATALOG";
 pub struct AppPaths {
     pub home: PathBuf,
     pub db: PathBuf,
+    pub trajectory_db: PathBuf,
     pub log_dir: PathBuf,
     pub catalog_override: Option<PathBuf>,
 }
@@ -24,6 +25,7 @@ impl AppPaths {
     pub fn under(home: PathBuf) -> Self {
         Self {
             db: home.join("yi-token.db"),
+            trajectory_db: home.join("trajectory.db"),
             log_dir: home.join("logs"),
             home,
             catalog_override: None,
@@ -84,6 +86,14 @@ mod tests {
     #[test]
     fn missing_home_is_internal_error() {
         assert!(AppPaths::from_lookup(lookup(&[])).is_err());
+    }
+
+    #[test]
+    fn trajectory_db_lives_under_home() {
+        assert_eq!(
+            AppPaths::under(PathBuf::from("/h")).trajectory_db,
+            PathBuf::from("/h/trajectory.db")
+        );
     }
 
     #[test]

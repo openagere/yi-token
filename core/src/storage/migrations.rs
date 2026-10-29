@@ -181,8 +181,31 @@ fn rename_exposed_models(tx: &Transaction) -> HookResult {
     Ok(())
 }
 
+/// Session trajectory columns: request metrics on `usage` and the recording settings on
+/// `settings`. Every new column is nullable or has a default, so existing rows stay valid.
+pub fn v4() -> M<'static> {
+    M::up(
+        "ALTER TABLE usage ADD COLUMN step_id TEXT;
+         ALTER TABLE usage ADD COLUMN session_id TEXT;
+         ALTER TABLE usage ADD COLUMN ttft_ms INTEGER;
+         ALTER TABLE usage ADD COLUMN duration_ms INTEGER;
+         ALTER TABLE usage ADD COLUMN status INTEGER;
+         CREATE INDEX idx_usage_session ON usage(session_id);
+         ALTER TABLE settings ADD COLUMN trajectory_enabled INTEGER NOT NULL DEFAULT 1;
+         ALTER TABLE settings ADD COLUMN trajectory_disabled_clients TEXT NOT NULL DEFAULT '[]';
+         ALTER TABLE settings ADD COLUMN trajectory_retention_days INTEGER NOT NULL DEFAULT 30;
+         ALTER TABLE settings ADD COLUMN trajectory_max_bytes INTEGER NOT NULL DEFAULT 2147483648;
+         ALTER TABLE settings ADD COLUMN trajectory_notice_seen INTEGER NOT NULL DEFAULT 0;",
+    )
+}
+
+/// The global route (`api`) gets its own recording switch, since `Client` has no such variant.
+pub fn v5() -> M<'static> {
+    M::up("ALTER TABLE settings ADD COLUMN trajectory_disabled_global INTEGER NOT NULL DEFAULT 0;")
+}
+
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![v1(), v2(), v3()])
+    Migrations::new(vec![v1(), v2(), v3(), v4(), v5()])
 }
 
 pub fn run(conn: &mut Connection) -> CoreResult<()> {

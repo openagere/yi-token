@@ -53,15 +53,20 @@ impl Services {
             s.db.with_conn(|c| {
                 let (start_ms, end_ms) = window(c, &input)?;
                 let model = input.model.filter(|m| !m.trim().is_empty());
-                let report = usage::query(
-                    c,
-                    UsageQuery {
-                        start_ms,
-                        end_ms,
-                        model,
-                    },
-                )?;
-                Ok(UsageReportView { report })
+                let query = UsageQuery {
+                    start_ms,
+                    end_ms,
+                    model,
+                    client: input.client,
+                };
+                let report = usage::query(c, query.clone())?;
+                let totals = usage::totals(c, &query)?;
+                let groups = usage::groups(c, &query, input.group_by.unwrap_or_default())?;
+                Ok(UsageReportView {
+                    report,
+                    totals,
+                    groups,
+                })
             })
         })
         .await

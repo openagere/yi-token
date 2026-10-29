@@ -8,8 +8,10 @@ mod models;
 mod probe;
 mod providers;
 mod proxy;
+mod sessions;
 mod settings;
 mod terminal;
+mod trajectory_view;
 mod usage;
 
 pub use crate::backup::import::ImportReport;
@@ -23,11 +25,13 @@ pub use dto::{
     TerminalStatusView, TestResult, UsageQueryInput, UsageReportView,
 };
 
+use self::sessions::{TrajectoryState, open_trajectory};
 use crate::catalog::{self, CatalogWatcher, sync};
 use crate::error::{CoreError, CoreResult};
 use crate::logging::{self, LoggingGuard};
 use crate::paths::AppPaths;
 use crate::proxy::ProxyHandle;
+use crate::proxy::live::LiveRegistry;
 use crate::proxy::monitor::Monitor;
 use crate::proxy::resolve::Routes;
 use crate::proxy::router::{ProxyState, build};
@@ -35,6 +39,7 @@ use crate::proxy::upstream::UpstreamClient;
 use crate::storage::route_source::DbRouteSource;
 use crate::storage::usage_writer::{UsageSink, UsageWriterHandle, spawn_usage_writer};
 use crate::storage::{Db, settings as settings_repo};
+use crate::trajectory::record::CaptureSlot;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -53,6 +58,12 @@ pub struct Services {
     routes: Arc<Routes>,
     pub(crate) http: UpstreamClient,
     writer: Mutex<Option<UsageWriterHandle>>,
+    /// Trajectory database and its writer; `Unavailable` keeps the service running (spec 5.4).
+    trajectory: Mutex<TrajectoryState>,
+    /// Producer slot shared with the proxy state; holds the trajectory sink while capture is on.
+    capture: CaptureSlot,
+    /// Live request registry shared with the proxy state.
+    live: LiveRegistry,
     catalog: Mutex<CatalogState>,
     monitor: Monitor,
     proxy: ProxyHandle,
@@ -124,6 +135,9 @@ impl Services {
         let http = UpstreamClient::new();
         let proxy_state =
             ProxyState::with_http(routes.clone(), sink.clone(), http.clone(), monitor.clone());
+        let capture = proxy_state.capture.clone();
+        let live = proxy_state.live.clone();
+        let trajectory = open_trajectory(&paths.trajectory_db, &db, &live, &capture);
         let proxy = ProxyHandle::with_monitor(move || build(proxy_state.clone()), monitor.clone());
         let proxy_rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(1)
@@ -139,6 +153,9 @@ impl Services {
             routes,
             http,
             writer: Mutex::new(Some(writer)),
+            trajectory: Mutex::new(trajectory),
+            capture,
+            live,
             catalog: Mutex::new(CatalogState {
                 watcher: CatalogWatcher::new(paths.catalog_override.clone()),
                 info,
@@ -176,8 +193,15 @@ impl Services {
         &self.db
     }
 
-    /// Flushes pending usage events and stops the writer thread.
+    /// Flushes pending trajectory records, then pending usage events, and stops both writer threads.
     pub fn shutdown(&self) {
+        let trajectory = std::mem::replace(
+            &mut *lock(&self.trajectory),
+            TrajectoryState::Unavailable {
+                error: "服务已关闭".into(),
+            },
+        );
+        trajectory.shutdown();
         if let Some(writer) = lock(&self.writer).take() {
             writer.shutdown();
         }

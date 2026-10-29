@@ -6,5 +6,3 @@ export const usageTokenMetrics = [
   { key: "cached_tokens", labelKey: "usage.metric.cached", tokensKey: "usage.metricTokens.cached", icon: Database, className: "metric-cache", color: "#66796c" },
   { key: "reasoning_tokens", labelKey: "usage.metric.reasoning", tokensKey: "usage.metricTokens.reasoning", icon: Brain, className: "metric-reasoning", color: "#a07694" },
 ] as const;
-
-export const usageProtocolNames: Record<string, string> = { responses: "Responses", openai_chat: "Chat Completions", anthropic: "Anthropic Messages" };

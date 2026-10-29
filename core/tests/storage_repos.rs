@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 use yi_core::domain::{
     Capabilities, Client, DirectProfile, LogLevel, Model, ModelSource, ProfileModel, Protocol,
-    Provider, ProxyProfile, RouteMode, Settings, StandardModel, UsageEvent,
+    Provider, ProxyProfile, RouteMode, Settings, StandardModel, TrajectorySettings, UsageEvent,
 };
 use yi_core::storage::usage::UsageQuery;
 use yi_core::storage::{Db, engines, migrations, models, providers, settings, standard_models};
@@ -62,10 +62,10 @@ fn count(db: &Db, table: &str) -> i64 {
 }
 
 #[test]
-fn migration_sets_user_version_3() {
+fn migration_sets_user_version_4() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 3);
+        assert_eq!(user_version(c), 5);
         let fk: i64 = c.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
         assert_eq!(fk, 1);
         for index in ["idx_usage_requested_at", "idx_usage_client"] {
@@ -115,7 +115,7 @@ fn file_database_uses_wal_and_foreign_keys() {
     drop(db);
     let db = Db::open(&dir.path().join("nested").join("t.db")).unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 3);
+        assert_eq!(user_version(c), 5);
         Ok(())
     })
     .unwrap();
@@ -552,6 +552,7 @@ fn usage_ids_are_uuid_v4_strings() {
                 start_ms: 0,
                 end_ms: i64::MAX,
                 model: None,
+                client: None,
             },
         )?;
         assert_eq!(r.recent.len(), 2);
@@ -579,7 +580,151 @@ fn event(at: i64, client: Option<Client>, model: &str, input: u32, output: u32) 
         output_tokens: output,
         cached_tokens: 1,
         reasoning_tokens: 2,
+        step_id: None,
+        session_id: None,
+        ttft_ms: None,
+        duration_ms: None,
+        status: None,
     }
+}
+
+/// The schema as it stood before v4 (v1–v3 only).
+fn migrations_through_v3() -> Migrations<'static> {
+    Migrations::new(vec![migrations::v1(), migrations::v2(), migrations::v3()])
+}
+
+#[test]
+fn v4_adds_usage_columns_and_keeps_old_rows() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations_through_v3().to_latest(&mut conn).unwrap();
+    assert_eq!(user_version(&conn), 3);
+    conn.execute(
+        "INSERT INTO usage (id, requested_at, client, route_mode, provider_name, protocol, model, \
+           input_tokens, output_tokens, cached_tokens, reasoning_tokens) \
+         VALUES ('old', 1, 'pi', 'fixed', 'p', 'openai_chat', 'm', 1, 2, 3, 4)",
+        [],
+    )
+    .unwrap();
+    migrations::migrations().to_latest(&mut conn).unwrap();
+    assert_eq!(user_version(&conn), 5);
+
+    let r = usage::query(
+        &conn,
+        UsageQuery {
+            start_ms: 0,
+            end_ms: i64::MAX,
+            model: None,
+            client: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(r.recent.len(), 1);
+    let old = &r.recent[0];
+    assert_eq!(old.id, "old");
+    assert_eq!((old.input_tokens, old.output_tokens), (1, 2));
+    assert_eq!(old.step_id, None);
+    assert_eq!(old.session_id, None);
+    assert_eq!(old.ttft_ms, None);
+    assert_eq!(old.duration_ms, None);
+    assert_eq!(old.status, None);
+    assert_eq!(
+        settings::get_trajectory(&conn).unwrap(),
+        TrajectorySettings {
+            enabled: true,
+            disabled_clients: vec![],
+            disabled_global: false,
+            retention_days: 30,
+            max_bytes: 2_147_483_648,
+            notice_seen: false,
+        }
+    );
+}
+
+#[test]
+fn trajectory_settings_round_trip_and_validation() {
+    let db = Db::open_in_memory().unwrap();
+    db.with_conn(|c| {
+        let defaults = settings::get_trajectory(c)?;
+        assert_eq!(
+            defaults,
+            TrajectorySettings {
+                enabled: true,
+                disabled_clients: vec![],
+                disabled_global: false,
+                retention_days: 30,
+                max_bytes: 2_147_483_648,
+                notice_seen: false,
+            }
+        );
+        let saved = TrajectorySettings {
+            enabled: false,
+            disabled_clients: vec![Client::Pi, Client::Codex],
+            disabled_global: true,
+            retention_days: 3650,
+            max_bytes: 64 * 1024 * 1024,
+            notice_seen: true,
+        };
+        settings::save_trajectory(c, &saved)?;
+        assert_eq!(settings::get_trajectory(c)?, saved);
+
+        let mut bad = saved.clone();
+        bad.retention_days = 0;
+        assert_eq!(
+            settings::save_trajectory(c, &bad).unwrap_err().code(),
+            ErrorCode::Validation
+        );
+        bad.retention_days = 3651;
+        assert_eq!(
+            settings::save_trajectory(c, &bad).unwrap_err().code(),
+            ErrorCode::Validation
+        );
+        bad = saved.clone();
+        bad.max_bytes = 64 * 1024 * 1024 - 1;
+        assert_eq!(
+            settings::save_trajectory(c, &bad).unwrap_err().code(),
+            ErrorCode::Validation
+        );
+        bad.max_bytes = 1024_u64.pow(4) + 1;
+        assert_eq!(
+            settings::save_trajectory(c, &bad).unwrap_err().code(),
+            ErrorCode::Validation
+        );
+        // Rejected saves leave the stored row untouched.
+        assert_eq!(settings::get_trajectory(c)?, saved);
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn usage_insert_persists_new_columns() {
+    let db = Db::open_in_memory().unwrap();
+    let mut e = event(DAY1, Some(Client::Pi), "a", 10, 5);
+    e.step_id = Some("step-1".into());
+    e.session_id = Some("session-1".into());
+    e.ttft_ms = Some(120);
+    e.duration_ms = Some(900);
+    e.status = Some(200);
+    db.with_conn(|c| {
+        usage::insert_batch(c, std::slice::from_ref(&e))?;
+        let r = usage::query(
+            c,
+            UsageQuery {
+                start_ms: 0,
+                end_ms: i64::MAX,
+                model: None,
+                client: None,
+            },
+        )?;
+        let rec = &r.recent[0];
+        assert_eq!(rec.step_id.as_deref(), Some("step-1"));
+        assert_eq!(rec.session_id.as_deref(), Some("session-1"));
+        assert_eq!(rec.ttft_ms, Some(120));
+        assert_eq!(rec.duration_ms, Some(900));
+        assert_eq!(rec.status, Some(200));
+        Ok(())
+    })
+    .unwrap();
 }
 
 #[test]
@@ -601,6 +746,7 @@ fn usage_query_aggregates_by_day_model_and_client() {
             start_ms: DAY1 - 1000,
             end_ms: DAY2 + 86_400_000,
             model: model.map(str::to_owned),
+            client: None,
         };
         let r = usage::query(c, q(None))?;
         assert_eq!(r.total_requests, 4);
@@ -642,6 +788,7 @@ fn usage_query_aggregates_by_day_model_and_client() {
                 start_ms: DAY1,
                 end_ms: DAY1 + 1000,
                 model: None,
+                client: None,
             },
         )?;
         assert_eq!(narrow.total_requests, 1);
@@ -651,6 +798,7 @@ fn usage_query_aggregates_by_day_model_and_client() {
                 start_ms: 0,
                 end_ms: 1,
                 model: None,
+                client: None,
             },
         )?;
         assert_eq!(
@@ -660,4 +808,53 @@ fn usage_query_aggregates_by_day_model_and_client() {
         Ok(())
     })
     .unwrap();
+}
+
+fn table_exists(conn: &Connection, name: &str) -> bool {
+    conn.query_row(
+        "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+        [name],
+        |r| r.get::<_, i64>(0),
+    )
+    .unwrap()
+        == 1
+}
+
+#[test]
+fn trajectory_db_creates_schema_with_incremental_vacuum() {
+    let tmp = tempfile::tempdir().unwrap();
+    let db = yi_core::storage::trajectory::TrajectoryDb::open(&tmp.path().join("trajectory.db"))
+        .unwrap();
+    db.0.with_conn(|c| {
+        for table in ["sessions", "threads", "steps", "step_items", "blobs"] {
+            assert!(table_exists(c, table), "missing table {table}");
+        }
+        // v2 is the change-cursor meta migration (`meta.last_seq`).
+        assert_eq!(user_version(c), 2);
+        let auto_vacuum: i64 = c.query_row("PRAGMA auto_vacuum", [], |r| r.get(0))?;
+        assert_eq!(auto_vacuum, 2);
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn main_and_trajectory_migrations_are_independent() {
+    let tmp = tempfile::tempdir().unwrap();
+    let main = Db::open(&tmp.path().join("yi-token.db")).unwrap();
+    let traj = yi_core::storage::trajectory::TrajectoryDb::open(&tmp.path().join("trajectory.db"))
+        .unwrap();
+    main.with_conn(|c| {
+        assert!(!table_exists(c, "steps"));
+        assert!(table_exists(c, "providers"));
+        Ok(())
+    })
+    .unwrap();
+    traj.0
+        .with_conn(|c| {
+            assert!(!table_exists(c, "providers"));
+            assert!(table_exists(c, "steps"));
+            Ok(())
+        })
+        .unwrap();
 }

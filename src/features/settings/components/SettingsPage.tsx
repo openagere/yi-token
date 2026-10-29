@@ -6,6 +6,8 @@ import { useNavigation } from "@/shared/navigation";
 import { useSettings } from "@/shared/settings";
 import { FONT_STACKS } from "@/shared/theme";
 import { PageHeader } from "@/shared/ui";
+import { ListenSettings } from "./ListenSettings";
+import { TrajectorySettings } from "./TrajectorySettings";
 
 interface OptionCardProps {
   selected: boolean;
@@ -104,6 +106,9 @@ export function SettingsPage() {
         </section>
 
         <p className="preference-status">{t("settings.autoSaved")}</p>
+
+        <ListenSettings />
+        <TrajectorySettings />
       </div>
     </section>
   );

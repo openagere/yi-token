@@ -45,6 +45,18 @@ pub fn run() {
             commands::list_provider_models,
             commands::select_terminal_model,
             commands::discover_provider_models,
+            commands::list_sessions,
+            commands::get_session,
+            commands::get_trajectory,
+            commands::get_step_context,
+            commands::get_blob,
+            commands::get_session_changes,
+            commands::delete_session,
+            commands::clear_sessions,
+            commands::get_trajectory_status,
+            commands::save_trajectory_settings,
+            commands::rebuild_trajectory_db,
+            commands::get_live_requests,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -27,7 +27,8 @@ for (const theme of ["light", "dark"] as const) {
     await page.screenshot({ path: testInfo.outputPath("providers.png") });
     for (const [name, title, ready] of [
       ["模型管理", "模型管理", ".standard-model-row"],
-      ["代理运行", "代理运行", ".proxy-monitor-facts"],
+      ["运行", "代理运行", ".proxy-monitor-facts"],
+      ["会话", "会话", ".sessions-page"],
       ["模型用量", "模型用量", ".analytics-summary"],
       ["终端管理", "Codex CLI", ".terminal-mode-switch"],
       ["设置", "设置", ".preference-options"],
@@ -48,6 +49,7 @@ for (const theme of ["light", "dark"] as const) {
       await expectFits(page);
       await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
     }
+    await expect(page.locator(".sidebar .side-section-label")).toHaveText(["配置", "观测"]);
     expect(errors).toEqual([]);
   });
 
@@ -63,7 +65,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.locator(".sidebar").getByRole("button", { name: "连接", exact: true }).click();
       await expectFits(page);
       await page.screenshot({ path: testInfo.outputPath(`providers-${viewport.width}.png`) });
-      for (const name of ["模型管理", "代理运行", "模型用量", "终端管理", "设置"]) {
+      for (const name of ["模型管理", "运行", "模型用量", "终端管理", "设置"]) {
         if (name === "终端管理") {
           const terminalGroup = page
             .locator(".sidebar")
@@ -73,7 +75,8 @@ for (const theme of ["light", "dark"] as const) {
         } else {
           await page.locator(".sidebar").getByRole("button", { name, exact: true }).click();
         }
-        await expect(page.locator("h1:visible")).toHaveText(name === "终端管理" ? "Codex CLI" : name);
+        const heading = ({ 终端管理: "Codex CLI", 运行: "代理运行" } as Record<string, string>)[name] ?? name;
+        await expect(page.locator("h1:visible")).toHaveText(heading);
         await expectFits(page);
       }
     }
@@ -182,22 +185,16 @@ test("narrow-screen sidebar expands as a drawer without shrinking the content", 
   await expect(page.locator(".app-shell")).toHaveClass(/sidebar-collapsed/);
 });
 
-test("proxy monitor remains primary while advanced settings, tabs and runtime actions work", async ({
+test("run page keeps status, live requests and logs on one page while runtime actions work", async ({
   page,
 }) => {
   await installBackend(page, "dark");
   await page.goto("/");
-  await page.locator(".sidebar").getByRole("button", { name: "代理运行", exact: true }).click();
+  await page.locator(".sidebar").getByRole("button", { name: "运行", exact: true }).click();
   await expect(page.locator(".proxy-monitor-facts")).toBeVisible();
-  await expect(page.locator("#proxy-listen-settings")).not.toBeVisible();
-  await page.locator(".workspace-header").getByRole("button", { name: "检查设置", exact: true }).click();
-  await expect(page.locator("#proxy-listen-settings")).toBeVisible();
-  await page.getByRole("button", { name: "关闭监听设置", exact: true }).click();
-  await page.locator(".main-panel").evaluate((el) => el.scrollTo({ top: 0 }));
-  await page.getByRole("tab", { name: "协议地址", exact: true }).click();
-  await expect(page.locator("#proxy-connections-panel")).toBeVisible();
-  await page.getByRole("tab", { name: "运行日志", exact: true }).click();
-  await expect(page.locator("#proxy-logs-panel")).toBeVisible();
+  await expect(page.locator("#proxy-listen-settings")).toHaveCount(0);
+  await expect(page.locator(".run-live-table")).toBeVisible();
+  await expect(page.locator(".run-log-drawer")).toBeVisible();
   await page.getByRole("button", { name: "停止代理", exact: true }).click();
   await expect(page.getByRole("button", { name: "启动代理", exact: true })).toBeVisible();
 });
@@ -216,7 +213,7 @@ for (const viewport of [
     for (const [name, ready] of [
       ["连接", ".connection-row"],
       ["模型管理", ".standard-model-row"],
-      ["代理运行", ".proxy-monitor-facts"],
+      ["运行", ".proxy-monitor-facts"],
       ["模型用量", ".analytics-summary"],
       ["终端管理", ".terminal-mode-switch"],
       ["设置", ".preference-options"],

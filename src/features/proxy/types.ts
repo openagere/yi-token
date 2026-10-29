@@ -1,4 +1,13 @@
-import type { LogLevel, SettingsView } from "@/generated";
+import type { LiveRequest, LogLevel, SettingsView } from "@/generated";
+
+export type { LivePhase, LiveRequest, LiveSnapshot } from "@/generated";
+
+/** 前端维护的实时请求状态：在途请求整体替换，已完成请求按 `seq` 追加（最多 500 条）。 */
+export interface LiveState {
+  inFlight: LiveRequest[];
+  completed: LiveRequest[];
+  seq: number;
+}
 
 export type LogLevelSetting = LogLevel;
 export type ServerSettings = SettingsView;

@@ -6,4 +6,4 @@ import type { RouteMode } from "./RouteMode";
 /**
  * One persisted request, as listed in the usage report.
  */
-export type UsageRecord = { id: string, requested_at: number, client: Client | null, route_mode: RouteMode | null, provider_name: string, protocol: Protocol, model: string, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, };
+export type UsageRecord = { id: string, requested_at: number, client: Client | null, route_mode: RouteMode | null, provider_name: string, protocol: Protocol, model: string, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, step_id: string | null, session_id: string | null, ttft_ms: number | null, duration_ms: number | null, status: number | null, };

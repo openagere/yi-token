@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import type { Client, UsageGroupBy } from "@/generated";
 import { useStandardModels, type StandardModel } from "@/features/models";
 import { useProviders, type ProviderView } from "@/features/providers";
 import { usageApi } from "./api";
@@ -8,14 +9,14 @@ import type { UsageDateRange } from "./types";
 
 export const usageKeys = {
   all: ["usage"] as const,
-  snapshot: (range: UsageDateRange, model: string) => ["usage", range.startDate, range.endDate, model] as const,
+  snapshot: (range: UsageDateRange, model: string, client: Client | null, groupBy: UsageGroupBy) => ["usage", range.startDate, range.endDate, model, client, groupBy] as const,
 };
 
-/** 读取某个日期范围（可选按模型过滤）的用量快照；切换范围或模型时保留上一份数据用于占位。 */
-export function useUsage(range: UsageDateRange, model: string, enabled = true) {
+/** 读取用量报告（范围、模型、终端、分组维度）；切换筛选时保留上一份数据用于占位。 */
+export function useUsage(range: UsageDateRange, model: string, client: Client | null, groupBy: UsageGroupBy, enabled = true) {
   return useQuery({
-    queryKey: usageKeys.snapshot(range, model),
-    queryFn: () => usageApi.get(range, model),
+    queryKey: usageKeys.snapshot(range, model, client, groupBy),
+    queryFn: () => usageApi.get(range, model, client, groupBy),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 0,

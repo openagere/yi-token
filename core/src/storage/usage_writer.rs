@@ -132,6 +132,11 @@ mod tests {
             output_tokens: 2,
             cached_tokens: 0,
             reasoning_tokens: 0,
+            step_id: None,
+            session_id: None,
+            ttft_ms: None,
+            duration_ms: None,
+            status: None,
         }
     }
 

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Client } from "@/generated";
 import { dismissNotification } from "../notify";
 
 /** 应用页面标识与导航类型定义。 */
@@ -8,6 +9,7 @@ export type Page =
   | "model-list"
   | "model-editor"
   | "proxy"
+  | "sessions"
   | "usage"
   | "terminal-codex"
   | "terminal-claude-code"
@@ -28,6 +30,14 @@ export type TerminalPageId = keyof typeof TERMINAL_PAGE_CLIENTS;
 export type MainPage = Exclude<Page, "provider-editor" | "model-editor">;
 export type EditorPage = Extract<Page, "provider-editor" | "model-editor">;
 
+/** 从其他页面跳到会话页时携带的预筛选条件；会话页读取一次后清空。 */
+export interface SessionTarget {
+  sessionId?: string;
+  stepId?: string;
+  client?: Client;
+  model?: string;
+}
+
 const COMPACT_QUERY = "(max-width: 760px)";
 const isCompact = () => window.matchMedia(COMPACT_QUERY).matches;
 
@@ -37,6 +47,8 @@ interface NavigationState {
   sidebarCollapsed: boolean;
   /** 代理页首次访问后保持挂载，以保留其本地状态。 */
   proxyVisited: boolean;
+  /** 待会话页消费的跳转目标；无则为 null。 */
+  sessionTarget: SessionTarget | null;
   dirty: boolean;
   busy: boolean;
   pendingDiscard: (() => void) | null;
@@ -45,6 +57,10 @@ interface NavigationState {
   /** 执行离开编辑器的动作：忙碌时忽略，有未保存修改时先弹出确认。 */
   guarded: (action: () => void) => void;
   navigate: (next: MainPage) => void;
+  /** 设置会话跳转目标并进入会话页。 */
+  openSessions: (target?: SessionTarget) => void;
+  /** 读取并清空会话跳转目标。 */
+  consumeSessionTarget: () => SessionTarget | null;
   back: () => void;
   close: () => void;
   /** 进入编辑页；`prepare` 在确认离开后、切页前执行（如设置选中项）。 */
@@ -65,6 +81,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   history: [],
   sidebarCollapsed: typeof window !== "undefined" && isCompact(),
   proxyVisited: false,
+  sessionTarget: null,
   dirty: false,
   busy: false,
   pendingDiscard: null,
@@ -97,6 +114,19 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
     // Terminal drafts are shared across child pages, so switching clients loses no edits.
     if (switchTerminal) move();
     else get().guarded(move);
+  },
+
+  openSessions: (target) => {
+    get().guarded(() => {
+      set({ sessionTarget: target ?? null });
+      get().navigate("sessions");
+    });
+  },
+
+  consumeSessionTarget: () => {
+    const target = get().sessionTarget;
+    if (target) set({ sessionTarget: null });
+    return target;
   },
 
   back: () => {

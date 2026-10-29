@@ -103,6 +103,18 @@
   --chart-cursor: #f3f3f5;
   --chart-axis: #85868b;
   --scrollbar-thumb: #d5d5d5;
+  --trajectory-kind-system-text: #6d6e73;
+  --trajectory-kind-system-bg: #f1f1f2;
+  --trajectory-kind-user-text: #3a3b3f;
+  --trajectory-kind-user-bg: #e9e9ea;
+  --trajectory-kind-message-text: #6b48a6;
+  --trajectory-kind-message-bg: #f2eef9;
+  --trajectory-kind-tool-text: #8a5a14;
+  --trajectory-kind-tool-bg: #fbf1de;
+  --trajectory-kind-subtool-text: #a06f2b;
+  --trajectory-kind-subtool-bg: #fbf7ef;
+  --trajectory-kind-compacted-text: #85868b;
+  --trajectory-kind-compacted-bg: #f3f3f4;
   --canvas: var(--app-bg);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-brand: "SF Pro Display", "Segoe UI Variable Display", "Aptos Display", "Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -199,4 +211,16 @@
   --chart-cursor: #292929;
   --chart-axis: #979797;
   --scrollbar-thumb: #414141;
+  --trajectory-kind-system-text: #a8a8a8;
+  --trajectory-kind-system-bg: #2a2a2a;
+  --trajectory-kind-user-text: #e8e8e8;
+  --trajectory-kind-user-bg: #333336;
+  --trajectory-kind-message-text: #b9a4e6;
+  --trajectory-kind-message-bg: #2b2536;
+  --trajectory-kind-tool-text: #e0b25c;
+  --trajectory-kind-tool-bg: #3a2e17;
+  --trajectory-kind-subtool-text: #d0ac72;
+  --trajectory-kind-subtool-bg: #302a1e;
+  --trajectory-kind-compacted-text: #979797;
+  --trajectory-kind-compacted-bg: #262626;
 }

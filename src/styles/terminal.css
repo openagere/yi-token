@@ -1,6 +1,7 @@
 /* Access modes are a compact control, not a second page header. */
-.terminal-mode-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.terminal-mode-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; min-height: 44px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .terminal-mode-label { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.terminal-mode-toolbar-end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; min-width: 0; max-width: 100%; }
 .terminal-mode-switch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-subtle); }
 .terminal-mode-switch > button { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 112px; min-height: 31px; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-secondary); transition: background .15s, border-color .15s; }
 .terminal-mode-switch > button:hover:not(:disabled) { color: var(--text-primary); }

@@ -10,4 +10,24 @@ export type UsageEvent = {
 /**
  * UTC milliseconds.
  */
-requested_at: number, client: Client | null, route_mode: RouteMode | null, provider_name: string, protocol: Protocol, model: string, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, };
+requested_at: number, client: Client | null, route_mode: RouteMode | null, provider_name: string, protocol: Protocol, model: string, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, 
+/**
+ * Trajectory step this request produced, when trajectory recording is on.
+ */
+step_id: string | null, 
+/**
+ * Trajectory session this request belongs to.
+ */
+session_id: string | null, 
+/**
+ * Milliseconds from request start to the first upstream token.
+ */
+ttft_ms: number | null, 
+/**
+ * Milliseconds from request start to completion.
+ */
+duration_ms: number | null, 
+/**
+ * Upstream HTTP status code.
+ */
+status: number | null, };

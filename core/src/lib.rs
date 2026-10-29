@@ -13,6 +13,7 @@ pub mod proxy;
 pub mod services;
 pub mod storage;
 pub mod terminal;
+pub mod trajectory;
 
 pub use error::{CoreError, CoreResult, ErrorCode, UpstreamError};
 pub use paths::AppPaths;

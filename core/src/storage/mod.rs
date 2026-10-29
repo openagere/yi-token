@@ -12,6 +12,7 @@ pub mod route_source;
 pub mod settings;
 pub mod standard_models;
 pub mod terminal;
+pub mod trajectory;
 pub mod usage;
 pub mod usage_writer;
 

@@ -2,7 +2,8 @@
 
 use super::{enum_str, parse_enum, query_as};
 use crate::domain::{
-    UsageClient, UsageDailyModel, UsageDay, UsageEvent, UsageModel, UsageRecord, UsageReport,
+    Client, UsageClient, UsageDailyModel, UsageDay, UsageEvent, UsageGroupBy, UsageGroupRow,
+    UsageModel, UsageRecord, UsageReport, UsageTotals,
 };
 use crate::error::CoreResult;
 use rusqlite::{Connection, params};
@@ -17,6 +18,7 @@ pub struct UsageQuery {
     pub start_ms: i64,
     pub end_ms: i64,
     pub model: Option<String>,
+    pub client: Option<Client>,
 }
 
 /// Inserts all events atomically (a savepoint, so it also nests in a transaction).
@@ -40,8 +42,9 @@ pub fn insert_batch(conn: &Connection, events: &[UsageEvent]) -> CoreResult<()> 
 fn insert_all(conn: &Connection, events: &[UsageEvent]) -> CoreResult<()> {
     let mut stmt = conn.prepare_cached(
         "INSERT INTO usage (id, requested_at, client, route_mode, provider_name, protocol, model, \
-           input_tokens, output_tokens, cached_tokens, reasoning_tokens) \
-         VALUES (?11, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+           input_tokens, output_tokens, cached_tokens, reasoning_tokens, \
+           step_id, session_id, ttft_ms, duration_ms, status) \
+         VALUES (?11, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?12, ?13, ?14, ?15, ?16)",
     )?;
     for e in events {
         stmt.execute(params![
@@ -56,12 +59,18 @@ fn insert_all(conn: &Connection, events: &[UsageEvent]) -> CoreResult<()> {
             e.cached_tokens,
             e.reasoning_tokens,
             uuid::Uuid::new_v4().to_string(),
+            e.step_id,
+            e.session_id,
+            e.ttft_ms,
+            e.duration_ms,
+            e.status,
         ])?;
     }
     Ok(())
 }
 
-const FILTER: &str = "requested_at >= ?1 AND requested_at < ?2 AND (?3 IS NULL OR model = ?3)";
+const FILTER: &str = "requested_at >= ?1 AND requested_at < ?2 AND (?3 IS NULL OR model = ?3) \
+     AND (?4 IS NULL OR client = ?4)";
 const DAY: &str = "date(requested_at / 1000, 'unixepoch', 'localtime')";
 
 #[derive(Deserialize)]
@@ -77,6 +86,11 @@ struct RecordRow {
     output_tokens: u32,
     cached_tokens: u32,
     reasoning_tokens: u32,
+    step_id: Option<String>,
+    session_id: Option<String>,
+    ttft_ms: Option<u32>,
+    duration_ms: Option<u32>,
+    status: Option<u16>,
 }
 
 impl RecordRow {
@@ -93,6 +107,11 @@ impl RecordRow {
             output_tokens: self.output_tokens,
             cached_tokens: self.cached_tokens,
             reasoning_tokens: self.reasoning_tokens,
+            step_id: self.step_id,
+            session_id: self.session_id,
+            ttft_ms: self.ttft_ms,
+            duration_ms: self.duration_ms,
+            status: self.status,
         })
     }
 }
@@ -105,7 +124,8 @@ fn unsigned(r: &rusqlite::Row<'_>, idx: usize) -> rusqlite::Result<u64> {
 /// Aggregates events in `[start_ms, end_ms)` by day, model, day x model and client.
 /// Day buckets (`days`, `daily_models`) use the local time zone.
 pub fn query(conn: &Connection, q: UsageQuery) -> CoreResult<UsageReport> {
-    let args = || (q.start_ms, q.end_ms, q.model.as_deref());
+    let client = q.client.as_ref().map(enum_str).transpose()?;
+    let args = || (q.start_ms, q.end_ms, q.model.as_deref(), client.as_deref());
 
     let (total_requests, input_tokens, output_tokens, cached_tokens, reasoning_tokens) = conn
         .query_row(
@@ -208,7 +228,8 @@ pub fn query(conn: &Connection, q: UsageQuery) -> CoreResult<UsageReport> {
         conn,
         &format!(
             "SELECT id, requested_at, client, route_mode, provider_name, protocol, model, \
-               input_tokens, output_tokens, cached_tokens, reasoning_tokens \
+               input_tokens, output_tokens, cached_tokens, reasoning_tokens, \
+               step_id, session_id, ttft_ms, duration_ms, status \
              FROM usage WHERE {FILTER} ORDER BY requested_at DESC, rowid DESC LIMIT {RECENT_LIMIT}"
         ),
         args(),
@@ -229,4 +250,79 @@ pub fn query(conn: &Connection, q: UsageQuery) -> CoreResult<UsageReport> {
         by_client,
         recent,
     })
+}
+
+/// `cached / input`, or `None` when no input tokens were recorded.
+fn hit_rate(cached: u64, input: u64) -> Option<f64> {
+    (input > 0).then(|| cached as f64 / input as f64)
+}
+
+/// Totals and timing averages over the same window and filters as [`query`].
+/// Averages skip NULL timings (rows from before the timing migration).
+pub fn totals(conn: &Connection, q: &UsageQuery) -> CoreResult<UsageTotals> {
+    let client = q.client.as_ref().map(enum_str).transpose()?;
+    let args = (q.start_ms, q.end_ms, q.model.as_deref(), client.as_deref());
+    Ok(conn.query_row(
+        &format!(
+            "SELECT COUNT(*), COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0), \
+               COALESCE(SUM(cached_tokens), 0), COALESCE(SUM(reasoning_tokens), 0), \
+               COUNT(CASE WHEN ttft_ms IS NOT NULL OR duration_ms IS NOT NULL THEN 1 END), \
+               AVG(ttft_ms), AVG(duration_ms) \
+             FROM usage WHERE {FILTER}"
+        ),
+        args,
+        |r| {
+            let input_tokens = unsigned(r, 1)?;
+            let cached_tokens = unsigned(r, 3)?;
+            Ok(UsageTotals {
+                requests: unsigned(r, 0)?,
+                input_tokens,
+                output_tokens: unsigned(r, 2)?,
+                cached_tokens,
+                reasoning_tokens: unsigned(r, 4)?,
+                cache_hit_rate: hit_rate(cached_tokens, input_tokens),
+                avg_ttft_ms: r.get(6)?,
+                avg_duration_ms: r.get(7)?,
+                timed_requests: unsigned(r, 5)?,
+            })
+        },
+    )?)
+}
+
+/// Aggregates by `by`, ordered by total tokens (descending), then key.
+pub fn groups(
+    conn: &Connection,
+    q: &UsageQuery,
+    by: UsageGroupBy,
+) -> CoreResult<Vec<UsageGroupRow>> {
+    // The column comes from this fixed match, never from user input.
+    let column = match by {
+        UsageGroupBy::Model => "model",
+        UsageGroupBy::Client => "COALESCE(client, '')",
+        UsageGroupBy::Provider => "provider_name",
+    };
+    let client = q.client.as_ref().map(enum_str).transpose()?;
+    let args = (q.start_ms, q.end_ms, q.model.as_deref(), client.as_deref());
+    conn.prepare(&format!(
+        "SELECT {column}, COUNT(*), SUM(input_tokens), SUM(output_tokens), SUM(cached_tokens), \
+           AVG(duration_ms) \
+         FROM usage WHERE {FILTER} GROUP BY 1 ORDER BY SUM(input_tokens + output_tokens) DESC, 1"
+    ))?
+    .query_map(args, |r| {
+        let key: String = r.get(0)?;
+        let input_tokens = unsigned(r, 2)?;
+        let cached_tokens = unsigned(r, 4)?;
+        Ok(UsageGroupRow {
+            label: key.clone(),
+            key,
+            requests: unsigned(r, 1)?,
+            input_tokens,
+            output_tokens: unsigned(r, 3)?,
+            cached_tokens,
+            cache_hit_rate: hit_rate(cached_tokens, input_tokens),
+            avg_duration_ms: r.get(5)?,
+        })
+    })?
+    .collect::<rusqlite::Result<Vec<_>>>()
+    .map_err(Into::into)
 }

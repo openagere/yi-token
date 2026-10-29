@@ -118,11 +118,15 @@ pub fn choose_upstream(
     }
 }
 
+/// Observer of every IR event the upstream parser produces, before translation.
+pub type EventTap = Box<dyn FnMut(&ir::StreamEvent) + Send>;
+
 /// Converts upstream SSE frames into client bytes while tracking usage.
 pub trait StreamTranslator {
     fn on_frame(&mut self, f: SseFrame) -> CoreResult<Vec<Bytes>>;
     fn finish(&mut self) -> Vec<Bytes>;
     fn usage(&self) -> Usage;
+    fn set_tap(&mut self, tap: EventTap);
 }
 
 /// Upstream stream parser producing IR events.
@@ -205,42 +209,70 @@ impl Sink {
 /// Same protocol: forward every frame unchanged, read usage on the side.
 struct PassthroughStream {
     source: Source,
+    tap: Option<EventTap>,
+}
+
+/// Hands the events to the tap, if one is attached. Nothing is returned.
+fn emit(tap: &mut Option<EventTap>, events: &[ir::StreamEvent]) {
+    if let Some(tap) = tap.as_mut() {
+        for event in events {
+            tap(event);
+        }
+    }
 }
 
 impl StreamTranslator for PassthroughStream {
     fn on_frame(&mut self, f: SseFrame) -> CoreResult<Vec<Bytes>> {
-        // Usage extraction must never break forwarding.
-        let _ = self.source.on_frame(&f);
+        // Usage extraction must never break forwarding, and a failed parse
+        // gives the tap nothing.
+        if let Ok(events) = self.source.on_frame(&f) {
+            emit(&mut self.tap, &events);
+        }
         Ok(vec![sse::encode(f.event.as_deref(), &f.data)])
     }
 
     fn finish(&mut self) -> Vec<Bytes> {
+        // Chat completes a stream on end without `[DONE]`. Those events reach
+        // the tap only; the client already has every byte.
+        let events = self.source.on_end();
+        emit(&mut self.tap, &events);
         Vec::new()
     }
 
     fn usage(&self) -> Usage {
         self.source.usage()
     }
+
+    fn set_tap(&mut self, tap: EventTap) {
+        self.tap = Some(tap);
+    }
 }
 
 struct TranslatingStream {
     source: Source,
     sink: Sink,
+    tap: Option<EventTap>,
 }
 
 impl StreamTranslator for TranslatingStream {
     fn on_frame(&mut self, f: SseFrame) -> CoreResult<Vec<Bytes>> {
         let events = self.source.on_frame(&f)?;
+        emit(&mut self.tap, &events);
         Ok(events.iter().flat_map(|e| self.sink.on_event(e)).collect())
     }
 
     fn finish(&mut self) -> Vec<Bytes> {
         let events = self.source.on_end();
+        emit(&mut self.tap, &events);
         events.iter().flat_map(|e| self.sink.on_event(e)).collect()
     }
 
     fn usage(&self) -> Usage {
         self.source.usage()
+    }
+
+    fn set_tap(&mut self, tap: EventTap) {
+        self.tap = Some(tap);
     }
 }
 
@@ -262,11 +294,13 @@ pub fn stream_translator_with_usage(
     if inbound == upstream {
         Box::new(PassthroughStream {
             source: Source::new(upstream),
+            tap: None,
         })
     } else {
         Box::new(TranslatingStream {
             source: Source::new(upstream),
             sink: Sink::new(inbound, include_usage),
+            tap: None,
         })
     }
 }
@@ -277,6 +311,16 @@ pub fn translate_response(
     upstream: Protocol,
     body: Value,
 ) -> CoreResult<(Value, Usage)> {
+    translate_response_parsed(inbound, upstream, body).map(|(out, usage, _)| (out, usage))
+}
+
+/// As [`translate_response`], and also returns the upstream response parsed
+/// into IR when the body parsed, so a caller can reuse it.
+pub fn translate_response_parsed(
+    inbound: Protocol,
+    upstream: Protocol,
+    body: Value,
+) -> CoreResult<(Value, Usage, Option<ir::Response>)> {
     let parsed: CoreResult<ir::Response> = match upstream {
         Protocol::Responses => serde_json::from_value(body.clone())
             .map_err(|e| CoreError::Validation(format!("无效的 Responses 响应: {e}"))),
@@ -285,8 +329,9 @@ pub fn translate_response(
     };
     if inbound == upstream {
         // Passthrough: usage extraction is best effort and never fails the call.
-        let usage = parsed.map(|r| r.usage()).unwrap_or_default();
-        return Ok((body, usage));
+        let resp = parsed.ok();
+        let usage = resp.as_ref().map(ir::Response::usage).unwrap_or_default();
+        return Ok((body, usage, resp));
     }
     let resp = parsed?;
     let usage = resp.usage();
@@ -296,7 +341,7 @@ pub fn translate_response(
         Protocol::OpenaiChat => chat::outbound::response_to_client(&resp),
         Protocol::Anthropic => anthropic::outbound::response_to_client(&resp),
     };
-    Ok((out, usage))
+    Ok((out, usage, Some(resp)))
 }
 
 #[cfg(test)]

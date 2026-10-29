@@ -1,5 +1,5 @@
-import type { Translate } from "@/shared/i18n";
-import type { ServerSettings } from "./types";
+import type { MessageKey, Translate } from "@/shared/i18n";
+import type { MonitorRoute, ServerSettings } from "./types";
 
 export function formatBytes(value: number): string {
   if (value < 1024) return `${Math.round(value)} B`;
@@ -31,4 +31,66 @@ export function formatUptime(startedAt: number | null, now: number, t: Translate
 
 export function formatListenAddress(settings: ServerSettings): string {
   return `${settings.host.includes(":") ? `[${settings.host}]` : settings.host}:${settings.port}`;
+}
+
+export const CLIENT_META: Record<string, { name?: string; label?: MessageKey; brand?: string }> = {
+  codex: { name: "Codex CLI", brand: "openai" },
+  "claude-code": { name: "Claude Code", brand: "claude" },
+  opencode: { name: "OpenCode", brand: "opencode" },
+  pi: { name: "Pi", brand: "pi" },
+  "deepseek-harness": { name: "DeepSeek Harness", brand: "deepseek" },
+  api: { label: "proxy.monitor.clients.api" },
+  unknown: { label: "proxy.monitor.clients.unknown" },
+};
+
+/** 终端的展示名称：优先使用固定名，其次是多语言标签，最后回退到原始标识。 */
+export function clientName(client: string, t: Translate): string {
+  const meta = CLIENT_META[client];
+  return meta?.label ? t(meta.label) : (meta?.name ?? client);
+}
+
+export interface ClientGroup {
+  client: string;
+  routes: MonitorRoute[];
+  requests: number;
+  active: number;
+  errors: number;
+  completed: number;
+  duration: number;
+  received: number;
+  sent: number;
+}
+
+/** 按终端聚合监控路由（入口统计）；请求数多的终端排在前面。 */
+export function group(routes: readonly MonitorRoute[]): ClientGroup[] {
+  const entries = new Map<string, ClientGroup>();
+  for (const route of routes) {
+    const entry = entries.get(route.client) ?? {
+      client: route.client,
+      routes: [],
+      requests: 0,
+      active: 0,
+      errors: 0,
+      completed: 0,
+      duration: 0,
+      received: 0,
+      sent: 0,
+    };
+    entry.routes.push(route);
+    entry.requests += route.requests;
+    entry.active += route.active_requests;
+    entry.errors += route.errors;
+    entry.completed += route.completed;
+    entry.duration += route.duration_ms;
+    entry.received += route.received_bytes;
+    entry.sent += route.sent_bytes;
+    entries.set(route.client, entry);
+  }
+  return [...entries.values()]
+    .map((entry) => ({ ...entry, routes: [...entry.routes].sort((a, b) => b.requests - a.requests) }))
+    .sort((a, b) => b.requests - a.requests);
+}
+
+export function formatLatency(value: number | null): string {
+  return value === null ? "--" : `${Math.max(0, Math.round(value))} ms`;
 }

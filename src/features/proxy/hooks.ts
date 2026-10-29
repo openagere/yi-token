@@ -3,7 +3,8 @@ import { describeError } from "@/shared/api";
 import { translate } from "@/shared/i18n";
 import { notify } from "@/shared/notify";
 import { proxyApi } from "./api";
-import type { ProxyAction, ProxyPhase, ServerSettings } from "./types";
+import type { LiveSnapshot } from "@/generated";
+import type { LiveState, ProxyAction, ProxyPhase, ServerSettings } from "./types";
 
 export const proxyKeys = {
   all: ["proxy"] as const,
@@ -12,10 +13,43 @@ export const proxyKeys = {
   monitor: (minutes: number) => ["proxy", "monitor", minutes] as const,
   logs: ["proxy", "logs"] as const,
   control: ["proxy", "control"] as const,
+  live: ["proxy", "live"] as const,
 };
 
 const POLL_INTERVAL = 2500;
 const TRANSITION_INTERVAL = 600;
+const LIVE_INTERVAL = 1000;
+/** 与后端环形缓冲一致：前端只保留最近 500 条已完成请求。 */
+export const LIVE_LIMIT = 500;
+const EMPTY_LIVE: LiveState = { inFlight: [], completed: [], seq: 0 };
+
+/**
+ * 合并一次轮询结果：在途请求整体替换；已完成请求按 `seq` 去重后追加。
+ * 代理重启后后端 `seq` 回退，此时丢弃旧缓冲重新开始。
+ */
+export function mergeLiveSnapshot(previous: LiveState, snapshot: LiveSnapshot): LiveState {
+  const restarted = snapshot.seq < previous.seq;
+  const base = restarted ? [] : previous.completed;
+  const known = new Set(base.map((item) => item.seq));
+  const fresh = snapshot.completed.filter((item) => !known.has(item.seq));
+  return { inFlight: snapshot.in_flight, completed: [...base, ...fresh].slice(-LIVE_LIMIT), seq: snapshot.seq };
+}
+
+/** 实时请求：每秒用 `since_seq` 增量拉取，仅在 `active` 时轮询。 */
+export function useLiveRequests(active: boolean) {
+  const client = useQueryClient();
+  return useQuery({
+    queryKey: proxyKeys.live,
+    queryFn: async () => {
+      const previous = client.getQueryData<LiveState>(proxyKeys.live) ?? EMPTY_LIVE;
+      return mergeLiveSnapshot(previous, await proxyApi.live(previous.seq));
+    },
+    enabled: active,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchInterval: active ? LIVE_INTERVAL : false,
+  });
+}
 
 /** 运行状态：启动/停止过渡期加快轮询；页面隐藏时 TanStack 默认暂停。 */
 export function useProxyRuntime() {

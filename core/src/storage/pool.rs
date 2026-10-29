@@ -14,6 +14,9 @@ const PRAGMAS: &str = "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA b
 
 static MEMORY_SEQ: AtomicU64 = AtomicU64::new(0);
 
+/// Applies one database's schema migrations to a freshly acquired connection.
+pub type MigrateFn = fn(&mut Connection) -> CoreResult<()>;
+
 /// Shared SQLite handle. Cheap to clone; every clone draws from the same pool.
 #[derive(Clone)]
 pub struct Db {
@@ -23,25 +26,43 @@ pub struct Db {
 impl Db {
     /// Opens (creating if needed) the database file and applies pending migrations.
     pub fn open(path: &Path) -> CoreResult<Db> {
+        Self::open_with(path, migrations::run)
+    }
+
+    /// Like [`Db::open`], but applies the migrations given by `migrate`.
+    pub fn open_with(path: &Path, migrate: MigrateFn) -> CoreResult<Db> {
         if let Some(parent) = path.parent()
             && !parent.as_os_str().is_empty()
         {
             std::fs::create_dir_all(parent)?;
         }
-        Self::build(SqliteConnectionManager::file(path), MAX_CONNECTIONS)
+        Self::build(
+            SqliteConnectionManager::file(path),
+            MAX_CONNECTIONS,
+            migrate,
+        )
     }
 
     /// A private in-memory database (shared-cache URI so every pooled connection sees it).
     pub fn open_in_memory() -> CoreResult<Db> {
+        Self::open_in_memory_with(migrations::run)
+    }
+
+    /// Like [`Db::open_in_memory`], but applies the migrations given by `migrate`.
+    pub fn open_in_memory_with(migrate: MigrateFn) -> CoreResult<Db> {
         let seq = MEMORY_SEQ.fetch_add(1, Ordering::Relaxed);
         let uri = format!(
             "file:yi-token-mem-{}-{seq}?mode=memory&cache=shared",
             std::process::id()
         );
-        Self::build(SqliteConnectionManager::file(uri), 4)
+        Self::build(SqliteConnectionManager::file(uri), 4, migrate)
     }
 
-    fn build(manager: SqliteConnectionManager, max_size: u32) -> CoreResult<Db> {
+    fn build(
+        manager: SqliteConnectionManager,
+        max_size: u32,
+        migrate: MigrateFn,
+    ) -> CoreResult<Db> {
         let manager = manager.with_init(|conn| conn.execute_batch(PRAGMAS));
         let pool = Pool::builder()
             .max_size(max_size)
@@ -49,7 +70,7 @@ impl Db {
             .build(manager)?;
         {
             let mut conn = pool.get()?;
-            migrations::run(&mut conn)?;
+            migrate(&mut conn)?;
         }
         Ok(Db { pool })
     }

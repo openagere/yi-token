@@ -1,6 +1,19 @@
 use std::collections::BTreeSet;
+use std::time::{Duration, Instant};
+
+mod common;
+
+use common::{CLAUDE_MODEL, RESP_MODEL, TestEnv, request_body, upstream_response};
+use secrecy::SecretString;
+use serde_json::json;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, ResponseTemplate};
 use yi_core::AppPaths;
-use yi_core::domain::{LogLevel, Protocol, Provider, Thinking, UsageEvent};
+use yi_core::backup;
+use yi_core::domain::{
+    Client, LogLevel, Protocol, Provider, SessionListInput, Thinking, TrajectorySettings,
+    UsageEvent,
+};
 use yi_core::error::ErrorCode;
 use yi_core::logging;
 use yi_core::services::{
@@ -175,6 +188,11 @@ fn event(requested_at: i64, model: &str, input: u32) -> UsageEvent {
         output_tokens: 1,
         cached_tokens: 0,
         reasoning_tokens: 0,
+        step_id: None,
+        session_id: None,
+        ttft_ms: None,
+        duration_ms: None,
+        status: None,
     }
 }
 
@@ -209,6 +227,7 @@ async fn get_usage_by_date_range() {
         model: model.map(str::to_owned),
         start_date: Some(start.into()),
         end_date: Some(end.into()),
+        ..UsageQueryInput::default()
     };
     let report = svc
         .get_usage(range("2026-03-10", "2026-03-11", None))
@@ -386,6 +405,8 @@ async fn dto_field_names_match_frontend() {
             "models",
             "by_client",
             "recent",
+            "totals",
+            "groups",
         ])
     );
     let rec = &u["recent"][0];
@@ -403,6 +424,11 @@ async fn dto_field_names_match_frontend() {
             "output_tokens",
             "cached_tokens",
             "reasoning_tokens",
+            "step_id",
+            "session_id",
+            "ttft_ms",
+            "duration_ms",
+            "status",
         ])
     );
     assert!(rec["id"].is_string());
@@ -464,4 +490,231 @@ async fn catalog_edit_refreshes_route_capabilities() {
         .unwrap();
     svc.list_standard_models().await.unwrap();
     assert_eq!(window_of(&svc), Some(2000));
+}
+
+// ------------------------------------------------------ trajectory lifecycle (task 11)
+
+const PASSPHRASE: &str = "correct horse battery";
+
+async fn mount_upstream(env: &TestEnv, protocol: Protocol, upstream_path: &str) {
+    Mock::given(method("POST"))
+        .and(path(upstream_path))
+        .respond_with(ResponseTemplate::new(200).set_body_json(upstream_response(protocol)))
+        .mount(&env.mock)
+        .await;
+}
+
+async fn set_trajectory(env: &TestEnv, change: impl FnOnce(&mut TrajectorySettings)) {
+    let mut settings = env.services.trajectory_status().await.unwrap().settings;
+    change(&mut settings);
+    env.services
+        .save_trajectory_settings(settings)
+        .await
+        .unwrap();
+}
+
+fn no_filter() -> SessionListInput {
+    SessionListInput {
+        client: None,
+        query: None,
+        model: None,
+        start_ms: None,
+        end_ms: None,
+        cursor: None,
+        limit: Some(200),
+    }
+}
+
+/// Adds a tool definition, so the request is a client turn rather than a side request
+/// (a keyless, tool-less, single-message request is not recorded).
+fn with_tools(mut body: serde_json::Value) -> serde_json::Value {
+    body["tools"] = serde_json::json!([{
+        "name": "shell",
+        "description": "run a command",
+        "input_schema": {"type": "object", "properties": {"cmd": {"type": "string"}}}
+    }]);
+    body
+}
+
+/// Steps committed across every session, read through the list service.
+async fn steps_total(env: &TestEnv) -> u32 {
+    env.services
+        .list_sessions(no_filter())
+        .await
+        .unwrap()
+        .items
+        .iter()
+        .map(|s| s.step_count)
+        .sum()
+}
+
+/// Waits until at least `min` steps are committed; the writer flushes within about 500 ms.
+async fn wait_for_steps(env: &TestEnv, min: u32) {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let total = steps_total(env).await;
+        if total >= min {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "only {total} of {min} steps committed"
+        );
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
+#[tokio::test]
+async fn corrupt_trajectory_db_does_not_block_startup() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("trajectory.db"), b"not a database").unwrap();
+    let env = TestEnv::start_capturing_in(dir).await;
+    mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
+
+    let status = env.services.trajectory_status().await.unwrap();
+    assert!(!status.available);
+    assert!(status.error.as_deref().is_some_and(|e| !e.is_empty()));
+
+    // The proxy and the usage writer keep working without the trajectory database.
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    assert_eq!(env.post(&route, &body).await.status(), 200);
+    assert_eq!(env.usage_count(1, Duration::from_secs(30)).await, 1);
+
+    env.services.rebuild_trajectory_db().await.unwrap();
+    assert!(env.services.trajectory_status().await.unwrap().available);
+    // The unreadable file is renamed for inspection, not deleted.
+    let kept: Vec<_> = std::fs::read_dir(&env.home)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("trajectory.db.broken-")
+        })
+        .map(|e| e.path())
+        .collect();
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(std::fs::read(&kept[0]).unwrap(), b"not a database");
+}
+
+#[tokio::test]
+async fn trajectory_toggle_takes_effect_without_restart() {
+    let env = TestEnv::start_capturing().await;
+    mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let body = with_tools(request_body(Protocol::Anthropic, CLAUDE_MODEL));
+
+    set_trajectory(&env, |s| s.enabled = false).await;
+    assert_eq!(env.post(&route, &body).await.status(), 200);
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    assert_eq!(steps_total(&env).await, 0);
+
+    set_trajectory(&env, |s| s.enabled = true).await;
+    assert_eq!(env.post(&route, &body).await.status(), 200);
+    wait_for_steps(&env, 1).await;
+}
+
+#[tokio::test]
+async fn disabled_client_is_not_captured() {
+    let env = TestEnv::start_capturing().await;
+    mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
+    mount_upstream(&env, Protocol::Responses, "/v1/responses").await;
+    set_trajectory(&env, |s| s.disabled_clients = vec![Client::ClaudeCode]).await;
+
+    let claude = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let codex = env.route_to(Protocol::Responses, Protocol::Responses);
+    assert_eq!(
+        env.post(&claude, &request_body(Protocol::Anthropic, CLAUDE_MODEL))
+            .await
+            .status(),
+        200
+    );
+    assert_eq!(
+        env.post(&codex, &with_tools(request_body(Protocol::Responses, RESP_MODEL)))
+            .await
+            .status(),
+        200
+    );
+    wait_for_steps(&env, 1).await;
+
+    let sessions = env.services.list_sessions(no_filter()).await.unwrap().items;
+    assert_eq!(steps_total(&env).await, 1);
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].client, Some(Client::Codex));
+}
+
+#[tokio::test]
+async fn backup_export_excludes_trajectory() {
+    let env = TestEnv::start_capturing().await;
+    mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let title = "confidential session title";
+    let body = with_tools(json!({"model": CLAUDE_MODEL, "max_tokens": 16,
+        "messages": [{"role": "user", "content": title}]}));
+    assert_eq!(env.post(&route, &body).await.status(), 200);
+    wait_for_steps(&env, 1).await;
+
+    let session = env
+        .services
+        .list_sessions(no_filter())
+        .await
+        .unwrap()
+        .items
+        .remove(0);
+    assert_eq!(session.title, title);
+    let step_id = env
+        .services
+        .live_requests(0)
+        .completed
+        .first()
+        .expect("completed request")
+        .step_id
+        .clone();
+
+    let exported = env
+        .services
+        .export_config(PASSPHRASE.to_owned())
+        .await
+        .unwrap();
+    let text = String::from_utf8(exported.contents).unwrap();
+    let payload = backup::decode(&text, &SecretString::from(PASSPHRASE.to_owned())).unwrap();
+    let payload_json = serde_json::to_value(&payload).unwrap().to_string();
+    // Decoding works (the provider is in the payload); the session and its steps are not.
+    assert!(payload_json.contains("name-pa"), "{payload_json}");
+    assert!(!payload_json.contains(title), "{payload_json}");
+    assert!(!payload_json.contains(&session.id), "{payload_json}");
+    assert!(!payload_json.contains(&step_id), "{payload_json}");
+}
+
+#[tokio::test]
+async fn clear_all_during_traffic_never_fails_requests() {
+    const REQUESTS: u64 = 40;
+    let env = TestEnv::start_capturing().await;
+    mount_upstream(&env, Protocol::Anthropic, "/v1/messages").await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let url = env.url(&route);
+    let body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    let http = env.http.clone();
+
+    let traffic = tokio::spawn(async move {
+        let mut statuses = Vec::new();
+        for _ in 0..REQUESTS {
+            let response = http.post(&url).json(&body).send().await.unwrap();
+            statuses.push(response.status().as_u16());
+        }
+        statuses
+    });
+    for _ in 0..3 {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        env.services.clear_sessions(None).await.unwrap();
+    }
+    let statuses = traffic.await.unwrap();
+
+    assert_eq!(statuses.len() as u64, REQUESTS);
+    assert!(statuses.iter().all(|s| *s == 200), "{statuses:?}");
+    assert_eq!(
+        env.usage_count(REQUESTS, Duration::from_secs(30)).await,
+        REQUESTS
+    );
 }

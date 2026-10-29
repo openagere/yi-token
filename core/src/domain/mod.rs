@@ -7,6 +7,7 @@ pub mod model;
 pub mod names;
 pub mod protocol;
 pub mod provider;
+pub mod session;
 pub mod settings;
 pub mod standard_model;
 pub mod terminal;
@@ -20,12 +21,19 @@ pub use model::Model;
 pub use names::{exposed_name, provider_slug};
 pub use protocol::Protocol;
 pub use provider::Provider;
-pub use settings::{LogLevel, Settings};
+pub use session::{
+    BlobView, ContextItem, KeySource, LivePhase, LiveRequest, LiveSnapshot, RecordKind,
+    SessionChanges, SessionDetail, SessionListInput, SessionPage, SessionSummary, StepContext,
+    ThreadKindView, ThreadView, TrajectoryInput, TrajectoryPage, TrajectoryRecord,
+    TrajectoryStatus, TrajectoryStep, TrajectoryTurn,
+};
+pub use settings::{LogLevel, Settings, TrajectorySettings};
 pub use standard_model::StandardModel;
 pub use terminal::{AUTO_MODEL, DirectProfile, ModelSource, ProfileModel, ProxyProfile, RouteMode};
 pub use thinking::Thinking;
 pub use usage::{
-    UsageClient, UsageDailyModel, UsageDay, UsageEvent, UsageModel, UsageRecord, UsageReport,
+    UsageClient, UsageDailyModel, UsageDay, UsageEvent, UsageGroupBy, UsageGroupRow, UsageModel,
+    UsageRecord, UsageReport, UsageTotals,
 };
 
 #[cfg(test)]

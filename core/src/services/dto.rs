@@ -4,7 +4,7 @@
 
 use crate::domain::{
     Capabilities, Client, DirectProfile, LogLevel, ProfileModel, Protocol, RouteMode,
-    StandardModel, Thinking, UsageReport,
+    StandardModel, Thinking, UsageGroupBy, UsageGroupRow, UsageReport, UsageTotals,
 };
 use crate::proxy::ProxyPhase;
 use serde::{Deserialize, Serialize};
@@ -253,13 +253,16 @@ pub struct ProxyRuntimeView {
     pub settings: SettingsView,
 }
 
-/// Usage report; same shape as the stored aggregate.
+/// Usage report: the stored aggregate (flattened, unchanged fields) plus the
+/// window `totals` and the `groups` for the requested `group_by`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/generated/")]
 pub struct UsageReportView {
     #[serde(flatten)]
     #[ts(flatten)]
     pub report: UsageReport,
+    pub totals: UsageTotals,
+    pub groups: Vec<UsageGroupRow>,
 }
 
 /// Filter of `get_usage`. Dates are local `YYYY-MM-DD`; both or neither.
@@ -270,6 +273,9 @@ pub struct UsageQueryInput {
     pub model: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub client: Option<Client>,
+    /// Defaults to `Model` when absent.
+    pub group_by: Option<UsageGroupBy>,
 }
 
 /// Tail of the log file, oldest line first.

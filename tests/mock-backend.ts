@@ -1,4 +1,7 @@
 import type { Page } from "@playwright/test";
+import { resetTrajectoryFixture, trajectoryCommand } from "./fixtures/trajectory";
+
+const fixtureBoundPages = new WeakSet<Page>();
 
 /** Browser-only IPC fixture. Production code and real local configuration stay untouched. */
 export async function installBackend(
@@ -6,11 +9,19 @@ export async function installBackend(
   theme: "light" | "dark",
   empty = false,
   failure = false,
-  options: { native?: boolean; fullPage?: boolean; manyModels?: boolean; pagedModels?: boolean } = {
+  options: { native?: boolean; fullPage?: boolean; manyModels?: boolean; pagedModels?: boolean; startFailure?: boolean } = {
     native: false,
     fullPage: false,
   },
 ) {
+  // Session and trajectory commands are served from Node-side fixture data, since the init script runs in the page.
+  // A page may install the backend more than once (reload with a new scenario), but the binding can be registered once.
+  // A fresh page starts from the default fixture data; tests that need other data call `resetTrajectoryFixture` afterwards.
+  if (!fixtureBoundPages.has(page)) {
+    fixtureBoundPages.add(page);
+    resetTrajectoryFixture();
+    await page.exposeFunction("__trajectoryFixture", trajectoryCommand);
+  }
   await page.addInitScript(
     ({ theme, empty, failure, options }) => {
       if (!localStorage.getItem("yi-token:settings"))
@@ -175,7 +186,55 @@ export async function installBackend(
       Object.defineProperty(window, "isTauri", { value: options.native, configurable: true });
       Object.defineProperty(window, "__nativeCommands", { value: nativeCommands, configurable: true });
       Object.defineProperty(window, "__transferCalls", { value: transferCalls, configurable: true });
-      let phase = "running";
+      let phase = options.startFailure ? "error" : "running";
+      // Live registry: the in-flight request stays put; the second poll reveals one more completed request (incremental merge).
+      let liveCalls = 0;
+      const liveNow = Date.now();
+      const liveInFlight = {
+        seq: 0,
+        step_id: "step-8",
+        client: "codex",
+        model: "gpt-5",
+        provider_name: "OpenAI",
+        started_at: liveNow - 4000,
+        first_token_at: null,
+        finished_at: null,
+        phase: "waiting",
+        status: null,
+        input_tokens: 9000,
+        output_tokens: 0,
+        session_id: null,
+      };
+      const liveDone = {
+        seq: 1,
+        step_id: "step-2",
+        client: "codex",
+        model: "gpt-5",
+        provider_name: "OpenAI",
+        started_at: liveNow - 120000,
+        first_token_at: liveNow - 119000,
+        finished_at: liveNow - 112000,
+        phase: "done",
+        status: 200,
+        input_tokens: 12000,
+        output_tokens: 800,
+        session_id: "session-long-codex",
+      };
+      const liveFailed = {
+        seq: 2,
+        step_id: "step-claude-2",
+        client: "claude-code",
+        model: "claude-sonnet-4",
+        provider_name: "Anthropic",
+        started_at: liveNow - 60000,
+        first_token_at: null,
+        finished_at: liveNow - 30000,
+        phase: "error",
+        status: 502,
+        input_tokens: 3000,
+        output_tokens: 0,
+        session_id: "session-claude-sse",
+      };
       type MockEngine = { client: string; model_id: string; exposed_name: string; provider_name: string };
       let activeEngines: MockEngine[] = [];
       let settings = { host: "127.0.0.1", port: 11435, log_level: "info" };
@@ -221,6 +280,41 @@ export async function installBackend(
             reasoning_tokens: 300,
           })),
         ),
+      };
+      // Aggregates in the shape of the backend `totals` and `groups` (UsageReportView), keyed by UsageGroupBy.
+      const usageTotals = {
+        requests: totals.total_requests,
+        input_tokens: totals.input_tokens,
+        output_tokens: totals.output_tokens,
+        cached_tokens: totals.cached_tokens,
+        reasoning_tokens: totals.reasoning_tokens,
+        cache_hit_rate: totals.cached_tokens / totals.input_tokens,
+        avg_ttft_ms: 1420,
+        avg_duration_ms: 6800,
+        timed_requests: 40,
+      };
+      const groupRow = (key: string, label: string, item: (typeof usageModels)[number]) => ({
+        key,
+        label,
+        requests: item.requests,
+        input_tokens: item.input_tokens,
+        output_tokens: item.output_tokens,
+        cached_tokens: item.cached_tokens,
+        cache_hit_rate: item.cached_tokens / item.input_tokens,
+        avg_duration_ms: 5200,
+      });
+      const usageGroups: Record<string, ReturnType<typeof groupRow>[]> = {
+        model: usageModels.map((item) => groupRow(item.model, item.model, item)),
+        client: [
+          groupRow("codex", "codex", usageModels[0]),
+          groupRow("claude-code", "claude-code", usageModels[1]),
+          groupRow("", "", usageModels[2]),
+        ],
+        provider: [
+          groupRow("OpenAI", "OpenAI", usageModels[0]),
+          groupRow("Anthropic", "Anthropic", usageModels[1]),
+          groupRow("DeepSeek", "DeepSeek", usageModels[2]),
+        ],
       };
       const totalsMonitor = {
         connections: 3,
@@ -303,8 +397,8 @@ export async function installBackend(
                   phase,
                   desired_running: phase === "running",
                   started_at: now - 3600000,
-                  address: "127.0.0.1:11435",
-                  last_error: null,
+                  address: options.startFailure ? null : "127.0.0.1:11435",
+                  last_error: options.startFailure ? "端口 11435 已被占用" : null,
                   active_requests: 1,
                   active_connections: 3,
                   settings,
@@ -330,20 +424,41 @@ export async function installBackend(
                     received_bytes: 12000 + i * 100,
                     sent_bytes: 5000 + i * 30,
                   })),
-                  routes: [{ client: "codex", protocol: "responses", ...totalsMonitor }],
+                  routes: [
+                    { client: "codex", protocol: "responses", ...totalsMonitor },
+                    { client: "claude-code", protocol: "anthropic", ...totalsMonitor, requests: 12, completed: 11, errors: 1 },
+                  ],
                 };
+              case "get_live_requests": {
+                liveCalls += 1;
+                const revealed = liveCalls >= 2;
+                const completed = [liveDone, ...(revealed ? [liveFailed] : [])].filter(
+                  (item) => item.seq > (args.sinceSeq ?? 0),
+                );
+                return {
+                  in_flight: [liveInFlight],
+                  completed,
+                  seq: revealed ? 2 : 1,
+                };
+              }
               case "get_settings":
                 return settings;
               case "save_settings":
                 settings = { host: args.host, port: args.port, log_level: args.logLevel };
                 return;
               case "get_usage":
-                return structuredClone(usage);
+                return structuredClone({
+                  ...usage,
+                  totals: usageTotals,
+                  groups: usageGroups[args.groupBy ?? "model"] ?? [],
+                });
               case "get_logs":
                 return {
                   lines: [
                     "2026-09-29T18:00:00.000Z INFO Proxy listening on 127.0.0.1:11435",
                     "2026-09-29T18:01:00.000Z INFO POST /v1/responses 200",
+                    "2026-09-29T18:02:00.000Z WARN upstream responded slowly",
+                    "2026-09-29T18:03:00.000Z ERROR upstream timeout",
                   ],
                 };
               case "get_terminal_profiles":
@@ -535,8 +650,19 @@ export async function installBackend(
                   terminal_config_warnings:
                     args.filename === "warnings.yitoken" ? ["codex 配置未更新：请在终端接入中更新配置"] : [],
                 };
-              default:
-                throw ipcError("not_found", `Unmocked IPC command: ${command}`);
+              default: {
+                const fixture = await (
+                  window as unknown as {
+                    __trajectoryFixture: (
+                      command: string,
+                      args: IpcArgs,
+                    ) => Promise<{ handled: boolean; value?: unknown; error?: { code: string; message: string } }>;
+                  }
+                ).__trajectoryFixture(command, args);
+                if (!fixture.handled) throw ipcError("not_found", `Unmocked IPC command: ${command}`);
+                if (fixture.error) throw ipcError(fixture.error.code, fixture.error.message);
+                return fixture.value;
+              }
             }
           },
         },

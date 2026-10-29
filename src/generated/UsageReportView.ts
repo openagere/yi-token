@@ -2,13 +2,16 @@
 import type { UsageClient } from "./UsageClient";
 import type { UsageDailyModel } from "./UsageDailyModel";
 import type { UsageDay } from "./UsageDay";
+import type { UsageGroupRow } from "./UsageGroupRow";
 import type { UsageModel } from "./UsageModel";
 import type { UsageRecord } from "./UsageRecord";
+import type { UsageTotals } from "./UsageTotals";
 
 /**
- * Usage report; same shape as the stored aggregate.
+ * Usage report: the stored aggregate (flattened, unchanged fields) plus the
+ * window `totals` and the `groups` for the requested `group_by`.
  */
-export type UsageReportView = { total_requests: number, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, days: Array<UsageDay>, daily_models: Array<UsageDailyModel>, models: Array<UsageModel>, by_client: Array<UsageClient>, 
+export type UsageReportView = { totals: UsageTotals, groups: Array<UsageGroupRow>, total_requests: number, input_tokens: number, output_tokens: number, cached_tokens: number, reasoning_tokens: number, days: Array<UsageDay>, daily_models: Array<UsageDailyModel>, models: Array<UsageModel>, by_client: Array<UsageClient>, 
 /**
  * Most recent requests first, capped at 100.
  */

@@ -13,6 +13,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodRouter, get, post};
 use serde_json::{Value, json};
 
+use super::live::LiveRegistry;
 use super::monitor::Monitor;
 use super::pipeline;
 use super::request_log;
@@ -21,6 +22,7 @@ use super::upstream::UpstreamClient;
 use crate::domain::{AUTO_MODEL, Client, Protocol, RouteMode};
 use crate::error::CoreError;
 use crate::storage::usage_writer::UsageSink;
+use crate::trajectory::record::CaptureSlot;
 
 /// Shared handler state.
 #[derive(Clone)]
@@ -29,6 +31,10 @@ pub struct ProxyState {
     pub usage: UsageSink,
     pub http: UpstreamClient,
     pub monitor: Monitor,
+    /// Trajectory capture sink; empty (no capture) by default.
+    pub capture: CaptureSlot,
+    /// Requests in flight and recently completed, for the live view.
+    pub live: LiveRegistry,
 }
 
 impl ProxyState {
@@ -51,6 +57,8 @@ impl ProxyState {
             usage,
             http,
             monitor,
+            capture: CaptureSlot::default(),
+            live: LiveRegistry::default(),
         }
     }
 

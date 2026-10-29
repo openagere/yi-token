@@ -61,6 +61,7 @@ function saveAccessModes(modes: Partial<Record<TerminalClient, AccessMode>>) {
 export function TerminalPage() {
   const { t } = useI18n();
   const page = useNavigationStore((state) => state.page);
+  const openSessions = useNavigationStore((state) => state.openSessions);
   const client = TERMINAL_PAGE_CLIENTS[page as keyof typeof TERMINAL_PAGE_CLIENTS] ?? "codex";
   const providers = useProviders();
   const profiles = useTerminalProfiles();
@@ -209,6 +210,7 @@ export function TerminalPage() {
     <section className="terminal-page">
       <div className="terminal-mode-toolbar">
         <span className="terminal-mode-label">{t("terminal.modeTabs.label")}</span>
+        <div className="terminal-mode-toolbar-end">
         <div
           className="terminal-mode-switch"
           role="tablist"
@@ -254,6 +256,10 @@ export function TerminalPage() {
               </button>
             );
           })}
+        </div>
+        <button type="button" className="secondary-button" onClick={() => openSessions({ client })}>
+          {t("terminal.header.viewSessions")}
+        </button>
         </div>
       </div>
 

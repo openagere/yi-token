@@ -1,1 +1,1 @@
-export { ProxyPage } from "./components/ProxyPage";
+export { RunPage as ProxyPage } from "./components/RunPage";

@@ -11,6 +11,7 @@ const ProviderEditorPage = lazyPage(() => import("@/features/providers/pages"), 
 const ModelListPage = lazyPage(() => import("@/features/models/pages"), "ModelListPage");
 const ModelEditorPage = lazyPage(() => import("@/features/models/pages"), "ModelEditorPage");
 const UsagePage = lazyPage(() => import("@/features/usage/pages"), "UsagePage");
+const SessionsPage = lazyPage(() => import("@/features/sessions/pages"), "SessionsPage");
 const TerminalPage = lazyPage(() => import("@/features/terminal/pages"), "TerminalPage");
 const SettingsPage = lazyPage(() => import("@/features/settings/pages"), "SettingsPage");
 const ProxyPage = lazy(() =>
@@ -22,6 +23,7 @@ const PAGES: Record<Exclude<Page, "proxy">, ComponentType> = {
   "provider-editor": ProviderEditorPage,
   "model-list": ModelListPage,
   "model-editor": ModelEditorPage,
+  sessions: SessionsPage,
   usage: UsagePage,
   "terminal-codex": TerminalPage,
   "terminal-claude-code": TerminalPage,

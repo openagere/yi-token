@@ -65,6 +65,28 @@
 - `ModelMapping.id` 与 `UsageRecord.id` 在前端为 string。
 - 视觉基线中隐藏 Auto 新增的“路由模式”步骤，其余布局与 yi-llm v0.1.8 对齐。
 
+## 会话轨迹规格（2026-10-28）
+
+规格原文 `docs/superpowers/specs/2026-10-28-session-trajectory-design.md`，实施计划
+`docs/superpowers/plans/2026-10-28-session-trajectory-implementation.md`。
+
+| 规格章节 | 内容 | 验证 |
+| --- | --- | --- |
+| §4.1–4.5 | 采集挂接、采集线程、会话归属、线程与回合、停止原因 | `core/tests/trajectory_capture.rs`；`core/src/trajectory/link.rs`、`keys.rs`、`normalize.rs`（内联） |
+| §5.1 | 轨迹库结构与迁移 | `core/src/storage/trajectory/migrations.rs`、`repo.rs`（内联） |
+| §5.2 | 主库 `usage.session_id` 变更与回填 | `core/tests/trajectory_capture.rs`（`usage_session_id_is_backfilled`）；`core/src/storage/trajectory/writer.rs`（内联，回填队列） |
+| §5.3 | 保留、容量、累计删除超过 25% 时 vacuum、256 步触发 | `core/src/storage/trajectory/retention.rs`、`writer.rs`（内联） |
+| §5.4 | 失败隔离（写入失败不影响请求） | `core/src/storage/trajectory/writer.rs`（内联，丢弃与回填上限） |
+| §6 | 实时运行数据（内存注册表） | `core/src/proxy/live.rs`（内联）；`tests/run-page.spec.ts` |
+| §7 | 服务与命令接口 | `core/tests/trajectory_view.rs` |
+| §8.1 | 侧边栏与导航 | `tests/workspace.spec.ts`；`tests/zz-visual.spec.ts` |
+| §8.2 | 运行页 | `tests/run-page.spec.ts` |
+| §8.3 / §8.3.1 | 会话页与轨迹视图 | `tests/sessions.spec.ts`；`core/src/services/trajectory_view.rs`（内联，`is_error` 与配对） |
+| §8.4 | 用量页 | `tests/usage.spec.ts`；`core/tests/usage_report.rs` |
+| §8.5 | 设置页轨迹设置 | `tests/settings.spec.ts` |
+| §9 | 测试策略与视觉基线 | `tests/zz-visual.spec.ts`（`sessions-*`、`usage-*`、`proxy-*`）；`core/tests/proxy_pipeline.rs`（`capture_overhead_is_small`，`--ignored`） |
+| 附录 A | 客户端会话标识抓包 | 待用户用真实客户端完成，见 `task-21-report.md` |
+
 ## 验收命令
 
 ```powershell

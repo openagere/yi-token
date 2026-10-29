@@ -44,7 +44,7 @@ for (const theme of ["light", "dark"] as const) {
     };
     await expect(page.getByRole("button", { name: "添加 Provider" })).toBeVisible();
     await assertPrimaryActions(); // Add Provider
-    for (const name of ["模型管理", "代理运行", "模型用量"]) {
+    for (const name of ["模型管理", "运行", "模型用量"]) {
       await page.locator(".sidebar").getByRole("button", { name, exact: true }).click();
       await assertPrimaryActions();
     }

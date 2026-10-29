@@ -8,7 +8,11 @@ use serde::Serialize;
 use std::sync::Arc;
 use tauri::State;
 use yi_core::backup::{FILE_EXTENSION, FILE_FORMAT_NAME};
-use yi_core::domain::{Client, DirectProfile, LogLevel};
+use yi_core::domain::{
+    BlobView, Client, DirectProfile, LiveSnapshot, LogLevel, SessionChanges, SessionDetail,
+    SessionListInput, SessionPage, StepContext, TrajectoryInput, TrajectoryPage,
+    TrajectorySettings, TrajectoryStatus, UsageGroupBy,
+};
 use yi_core::services::{
     ActiveEngineView, CatalogInfo, LogsView, ModelInput, MonitorView, ProviderInput, ProviderView,
     ProxyRuntimeView, Services, SettingsView, StandardModelView, TerminalApplyResult,
@@ -115,12 +119,16 @@ async fn get_usage_impl(
     model: Option<String>,
     start_date: Option<String>,
     end_date: Option<String>,
+    client: Option<Client>,
+    group_by: Option<UsageGroupBy>,
 ) -> CoreResult<UsageReportView> {
     s.get_usage(UsageQueryInput {
         days,
         model,
         start_date,
         end_date,
+        client,
+        group_by,
     })
     .await
 }
@@ -191,6 +199,54 @@ async fn discover_provider_models_impl(
     provider: ProviderInput,
 ) -> CoreResult<Vec<yi_core::domain::DiscoveredModel>> {
     s.discover_provider_models(provider).await
+}
+
+async fn list_sessions_impl(s: &Svc, input: SessionListInput) -> CoreResult<SessionPage> {
+    s.list_sessions(input).await
+}
+
+async fn get_session_impl(s: &Svc, id: String) -> CoreResult<SessionDetail> {
+    s.get_session(id).await
+}
+
+async fn get_trajectory_impl(s: &Svc, input: TrajectoryInput) -> CoreResult<TrajectoryPage> {
+    s.get_trajectory(input).await
+}
+
+async fn get_step_context_impl(s: &Svc, step_id: String) -> CoreResult<StepContext> {
+    s.get_step_context(step_id).await
+}
+
+async fn get_blob_impl(s: &Svc, hash: String) -> CoreResult<BlobView> {
+    s.get_blob(hash).await
+}
+
+async fn get_session_changes_impl(s: &Svc, since_seq: u64) -> CoreResult<SessionChanges> {
+    s.session_changes(since_seq).await
+}
+
+async fn delete_session_impl(s: &Svc, id: String) -> CoreResult<()> {
+    s.delete_session(id).await
+}
+
+async fn clear_sessions_impl(s: &Svc, client: Option<Client>) -> CoreResult<u32> {
+    s.clear_sessions(client).await
+}
+
+async fn get_trajectory_status_impl(s: &Svc) -> CoreResult<TrajectoryStatus> {
+    s.trajectory_status().await
+}
+
+async fn save_trajectory_settings_impl(s: &Svc, settings: TrajectorySettings) -> CoreResult<()> {
+    s.save_trajectory_settings(settings).await
+}
+
+async fn rebuild_trajectory_db_impl(s: &Svc) -> CoreResult<()> {
+    s.rebuild_trajectory_db().await
+}
+
+fn get_live_requests_impl(s: &Svc, since_seq: u64) -> LiveSnapshot {
+    s.live_requests(since_seq)
 }
 
 async fn export_provider_config_impl(
@@ -360,8 +416,10 @@ pub async fn get_usage(
     model: Option<String>,
     start_date: Option<String>,
     end_date: Option<String>,
+    client: Option<Client>,
+    group_by: Option<UsageGroupBy>,
 ) -> CoreResult<UsageReportView> {
-    get_usage_impl(&state.0, days, model, start_date, end_date).await
+    get_usage_impl(&state.0, days, model, start_date, end_date, client, group_by).await
 }
 
 #[tauri::command]
@@ -449,6 +507,81 @@ pub async fn discover_provider_models(
     discover_provider_models_impl(&state.0, provider).await
 }
 
+#[tauri::command]
+pub async fn list_sessions(
+    state: State<'_, AppState>,
+    input: SessionListInput,
+) -> CoreResult<SessionPage> {
+    list_sessions_impl(&state.0, input).await
+}
+
+#[tauri::command]
+pub async fn get_session(state: State<'_, AppState>, id: String) -> CoreResult<SessionDetail> {
+    get_session_impl(&state.0, id).await
+}
+
+#[tauri::command]
+pub async fn get_trajectory(
+    state: State<'_, AppState>,
+    input: TrajectoryInput,
+) -> CoreResult<TrajectoryPage> {
+    get_trajectory_impl(&state.0, input).await
+}
+
+#[tauri::command]
+pub async fn get_step_context(
+    state: State<'_, AppState>,
+    step_id: String,
+) -> CoreResult<StepContext> {
+    get_step_context_impl(&state.0, step_id).await
+}
+
+#[tauri::command]
+pub async fn get_blob(state: State<'_, AppState>, hash: String) -> CoreResult<BlobView> {
+    get_blob_impl(&state.0, hash).await
+}
+
+#[tauri::command]
+pub async fn get_session_changes(
+    state: State<'_, AppState>,
+    since_seq: u64,
+) -> CoreResult<SessionChanges> {
+    get_session_changes_impl(&state.0, since_seq).await
+}
+
+#[tauri::command]
+pub async fn delete_session(state: State<'_, AppState>, id: String) -> CoreResult<()> {
+    delete_session_impl(&state.0, id).await
+}
+
+#[tauri::command]
+pub async fn clear_sessions(state: State<'_, AppState>, client: Option<Client>) -> CoreResult<u32> {
+    clear_sessions_impl(&state.0, client).await
+}
+
+#[tauri::command]
+pub async fn get_trajectory_status(state: State<'_, AppState>) -> CoreResult<TrajectoryStatus> {
+    get_trajectory_status_impl(&state.0).await
+}
+
+#[tauri::command]
+pub async fn save_trajectory_settings(
+    state: State<'_, AppState>,
+    settings: TrajectorySettings,
+) -> CoreResult<()> {
+    save_trajectory_settings_impl(&state.0, settings).await
+}
+
+#[tauri::command]
+pub async fn rebuild_trajectory_db(state: State<'_, AppState>) -> CoreResult<()> {
+    rebuild_trajectory_db_impl(&state.0).await
+}
+
+#[tauri::command]
+pub fn get_live_requests(state: State<'_, AppState>, since_seq: u64) -> LiveSnapshot {
+    get_live_requests_impl(&state.0, since_seq)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -477,7 +610,7 @@ mod tests {
 
         assert!(!get_settings_impl(&s).await.unwrap().host.is_empty());
         assert!(get_logs_impl(&s).await.is_ok());
-        assert!(get_usage_impl(&s, Some(7), None, None, None).await.is_ok());
+        assert!(get_usage_impl(&s, Some(7), None, None, None, None, None).await.is_ok());
         assert!(!list_standard_models_impl(&s).await.unwrap().is_empty());
         assert!(get_model_catalog_info_impl(&s).await.is_ok());
     }
@@ -504,5 +637,40 @@ mod tests {
             .unwrap_err();
         let v = serde_json::to_value(&err).unwrap();
         assert!(v.get("code").is_some() && v.get("message").is_some());
+    }
+
+    fn all_sessions() -> SessionListInput {
+        SessionListInput {
+            client: None,
+            query: None,
+            model: None,
+            start_ms: None,
+            end_ms: None,
+            cursor: None,
+            limit: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn session_commands_delegate_to_services() {
+        let home = tempfile::tempdir().unwrap();
+        let s = Services::for_test(home.path());
+        let page = list_sessions_impl(&s, all_sessions()).await.unwrap();
+        assert!(page.items.is_empty());
+        assert!(page.next_cursor.is_none());
+    }
+
+    #[tokio::test]
+    async fn get_trajectory_reports_missing_session() {
+        let home = tempfile::tempdir().unwrap();
+        let s = Services::for_test(home.path());
+        let input = TrajectoryInput {
+            session_id: "missing".into(),
+            thread_id: None,
+            before_turn: None,
+            limit_turns: None,
+        };
+        let err = get_trajectory_impl(&s, input).await.unwrap_err();
+        assert!(matches!(err, CoreError::NotFound(_)), "{err:?}");
     }
 }

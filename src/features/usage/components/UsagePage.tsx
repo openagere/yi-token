@@ -1,83 +1,72 @@
-import { useRef, useState } from "react";
-import { Boxes, ChartNoAxesColumnIncreasing, History, LoaderCircle, RefreshCw, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Boxes, LoaderCircle, RefreshCw, Terminal, X } from "lucide-react";
 import "@/styles/usage.css";
+import { TERMINALS } from "@/features/terminal";
+import type { Client, UsageGroupBy } from "@/generated";
 import { useI18n } from "@/shared/i18n";
-import { useNavigation } from "@/shared/navigation";
+import { useNavigation, useNavigationStore } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
-import { PageHeader, ProviderIcon, Select } from "@/shared/ui";
-import { presetRange, type UsageDatePreset } from "../dateRange";
+import { PageHeader, ProviderIcon, Select, type SelectOption } from "@/shared/ui";
+import { defaultUsageFilter, readUsageFilter, writeUsageFilter, type UsageFilter } from "../filterStorage";
+import { presetRange } from "../dateRange";
 import { dateRange } from "../format";
 import { useUsage, useUsageModelNames } from "../hooks";
 import type { TrendMode, UsageDateRange } from "../types";
-import { UsageEmpty } from "./UsageCommon";
+import { UsageBreakdown } from "./UsageBreakdown";
 import { UsageDateFilter } from "./UsageDateFilter";
-import { UsageModels } from "./UsageModels";
+import { UsageEmpty } from "./UsageCommon";
 import { UsageOverview } from "./UsageOverview";
-import { UsageRecords } from "./UsageRecords";
 
-type UsageTab = "overview" | "models" | "records";
-const TABS = [
-  { id: "overview", label: "usage.tabs.overview", icon: ChartNoAxesColumnIncreasing },
-  { id: "models", label: "usage.tabs.models", icon: Boxes },
-  { id: "records", label: "usage.tabs.records", icon: History },
-] as const;
-
+/** 用量页（spec 8.4）：一条筛选栏（日期、终端、模型、刷新），汇总卡、趋势图与明细表。 */
 export function UsagePage() {
   const { t, language } = useI18n();
   const { back, close } = useNavigation();
+  const openSessions = useNavigationStore((state) => state.openSessions);
   const { formatModel, resolveBrand } = useUsageModelNames();
-  const [tab, setTab] = useState<UsageTab>("overview");
+  const [filter, setFilter] = useState<UsageFilter>(() => readUsageFilter() ?? defaultUsageFilter());
   const [trendMode, setTrendMode] = useState<TrendMode>("tokens");
-  const [dateSelection, setDateSelection] = useState(() => ({ range: presetRange("7"), preset: "7" as UsageDatePreset }));
-  const [model, setModel] = useState("");
-  const tabList = useRef<HTMLDivElement>(null);
-  const workspace = useRef<HTMLElement>(null);
-  const { range, preset } = dateSelection;
-  const scope = `${range.startDate}:${range.endDate}:${model}`;
-  const catalog = useUsage(range, "");
-  const selected = useUsage(range, model, Boolean(model));
-  const activeQuery = model ? selected : catalog;
-  const snapshot = activeQuery.isPlaceholderData ? undefined : activeQuery.data;
-  const waiting = activeQuery.isFetching && !snapshot;
-  const failed = activeQuery.isError && !snapshot;
-  const stale = activeQuery.isError && Boolean(snapshot);
-  const modelChoices = [...new Set([...(catalog.data?.models.map((item) => item.model) ?? []), ...(model ? [model] : [])])].sort((a, b) => formatModel(a).localeCompare(formatModel(b)) || a.localeCompare(b));
+  const [groupBy, setGroupBy] = useState<UsageGroupBy>("model");
+  const { range, preset, client, model } = filter;
+  const clientFilter: Client | null = client || null;
+
+  useEffect(() => { writeUsageFilter(filter); }, [filter]);
+
+  // The model dropdown lists the models present in the chosen range and terminal; it ignores the model filter itself.
+  const choices = useUsage(range, "", clientFilter, "model");
+  const active = useUsage(range, model, clientFilter, groupBy);
+  const snapshot = active.isPlaceholderData ? undefined : active.data;
+  const waiting = active.isFetching && !snapshot;
+  const failed = active.isError && !snapshot;
+  const stale = active.isError && Boolean(snapshot);
+  const modelChoices = [...new Set([...(choices.data?.groups.map((item) => item.key) ?? []), ...(model ? [model] : [])])].sort((a, b) => formatModel(a).localeCompare(formatModel(b)) || a.localeCompare(b));
+  const terminalOptions: SelectOption[] = [
+    { value: "", label: t("usage.filter.allClients"), icon: Terminal },
+    ...TERMINALS.map((item) => ({ value: item.id, label: item.name, leading: <ProviderIcon brand={item.brand} size={16} /> })),
+  ];
 
   function refresh() {
-    if (preset !== "custom") setDateSelection({ range: presetRange(preset), preset });
-    void activeQuery.refetch().then((result) => { if (!result.isError) notify(t("usage.page.refreshed")); });
+    if (preset !== "custom") setFilter((current) => ({ ...current, range: presetRange(preset) }));
+    void active.refetch().then((result) => { if (!result.isError) notify(t("usage.page.refreshed")); });
   }
-  function chooseTab(nextTab: UsageTab) {
-    setTab(nextTab);
-    workspace.current?.scrollIntoView({ block: "start" });
-  }
-  function moveTab(key: string) {
-    const index = TABS.findIndex((item) => item.id === tab);
-    const next = key === "Home" ? 0 : key === "End" ? TABS.length - 1 : (index + (key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
-    chooseTab(TABS[next].id);
-    tabList.current?.querySelector<HTMLButtonElement>(`#usage-tab-${TABS[next].id}`)?.focus();
-  }
-  function changeRange(nextRange: UsageDateRange, nextPreset: UsageDatePreset) {
-    setDateSelection({ range: nextRange, preset: nextPreset });
+  function changeRange(nextRange: UsageDateRange, nextPreset: UsageFilter["preset"]) {
+    setFilter((current) => ({ ...current, range: nextRange, preset: nextPreset }));
   }
 
-  return <section className="usage-page analytics-workspace" ref={workspace}>
-    <PageHeader navigationInToolbar eyebrow={t("usage.page.eyebrow")} title={t("usage.page.title")} subtitle={t("pageDescriptions.usage")} onBack={back} onClose={close} closeLabel={t("usage.page.close")} actions={<button type="button" className="icon-button" title={t("usage.page.refresh")} aria-label={t("usage.page.refresh")} disabled={waiting} onClick={refresh}><RefreshCw size={17} className={waiting ? "spinning" : ""} /></button>} />
-    <div className="analytics-tabs" role="tablist" aria-label={t("usage.tabs.label")} ref={tabList} onKeyDown={(event) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); moveTab(event.key); } }}>
-      {TABS.map(({ id, label, icon: Icon }) => <button type="button" role="tab" key={id} id={`usage-tab-${id}`} aria-controls={`usage-panel-${id}`} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} onClick={() => chooseTab(id)}><Icon size={15} />{t(label)}</button>)}
-    </div>
+  return <section className="usage-page analytics-workspace">
+    <PageHeader navigationInToolbar eyebrow={t("usage.page.eyebrow")} title={t("usage.page.title")} subtitle={t("pageDescriptions.usage")} onBack={back} onClose={close} closeLabel={t("usage.page.close")} />
     <div className="analytics-global-filters">
       <UsageDateFilter range={range} preset={preset} onChange={changeRange} />
-      <Select className="analytics-model-select" icon={Boxes} label={t("usage.filter.modelSelect")} value={model} onValueChange={setModel} disabled={waiting && !catalog.data} options={[{ value: "", label: t("usage.filter.allModels"), icon: Boxes }, ...modelChoices.map((name) => ({ value: name, label: formatModel(name), leading: <ProviderIcon brand={resolveBrand(name)} size={16} /> }))]} />
-      {model && <button type="button" className="icon-button analytics-clear-model" title={t("usage.filter.clearModel")} aria-label={t("usage.filter.clearModel")} onClick={() => setModel("")}><X size={14} /></button>}
+      <Select className="analytics-client-select" icon={Terminal} label={t("usage.filter.clientSelect")} value={client} onValueChange={(value) => setFilter((current) => ({ ...current, client: value as Client | "" }))} options={[...terminalOptions]} />
+      <Select className="analytics-model-select" icon={Boxes} label={t("usage.filter.modelSelect")} value={model} onValueChange={(value) => setFilter((current) => ({ ...current, model: value }))} disabled={waiting && !choices.data} options={[{ value: "", label: t("usage.filter.allModels"), icon: Boxes }, ...modelChoices.map((name) => ({ value: name, label: formatModel(name), leading: <ProviderIcon brand={resolveBrand(name)} size={16} /> }))]} />
+      {model && <button type="button" className="icon-button analytics-clear-model" title={t("usage.filter.clearModel")} aria-label={t("usage.filter.clearModel")} onClick={() => setFilter((current) => ({ ...current, model: "" }))}><X size={14} /></button>}
+      <button type="button" className="icon-button analytics-refresh" title={t("usage.page.refresh")} aria-label={t("usage.page.refresh")} disabled={waiting} onClick={refresh}><RefreshCw size={17} className={waiting ? "spinning" : ""} /></button>
     </div>
-    <div className={`analytics-content ${activeQuery.isFetching && snapshot ? "is-refreshing" : ""}`} aria-busy={waiting}>
+    <div className={`analytics-content ${active.isFetching && snapshot ? "is-refreshing" : ""}`} aria-busy={waiting}>
       {snapshot ? <>
-        <section role="tabpanel" id="usage-panel-overview" aria-labelledby="usage-tab-overview" hidden={tab !== "overview"} tabIndex={0}><UsageOverview snapshot={snapshot} range={range} active={tab === "overview"} mode={trendMode} onMode={setTrendMode} formatModel={formatModel} resolveBrand={resolveBrand} /></section>
-        <section role="tabpanel" id="usage-panel-models" aria-labelledby="usage-tab-models" hidden={tab !== "models"} tabIndex={0}><UsageModels snapshot={snapshot} onModel={(name) => { setModel(name); chooseTab("records"); }} formatModel={formatModel} resolveBrand={resolveBrand} /></section>
-        <section role="tabpanel" id="usage-panel-records" aria-labelledby="usage-tab-records" hidden={tab !== "records"} tabIndex={0}><UsageRecords snapshot={snapshot} scope={scope} formatModel={formatModel} resolveBrand={resolveBrand} /></section>
+        <UsageOverview snapshot={snapshot} range={range} mode={trendMode} onMode={setTrendMode} formatModel={formatModel} resolveBrand={resolveBrand} />
+        <UsageBreakdown snapshot={snapshot} groupBy={groupBy} onGroupBy={setGroupBy} onOpenSessions={openSessions} formatModel={formatModel} resolveBrand={resolveBrand} />
       </> : waiting ? <div className="analytics-loading" role="status"><div className="analytics-summary-skeleton">{[0, 1, 2, 3].map((index) => <span key={index}><i /><i /><i /></span>)}</div><div><LoaderCircle size={20} className="spinning" /><span>{t("usage.page.loading")}</span></div></div> : <UsageEmpty title={t("usage.page.loadFailed")} action={refresh} actionLabel={t("usage.page.reload")} />}
     </div>
-    <footer className="analytics-page-footer"><span className={stale || failed ? "analytics-stale" : ""}>{waiting ? <><LoaderCircle size={12} className="spinning" />{t("usage.page.updating")}</> : stale ? t("usage.page.staleFailed") : failed ? t("usage.page.readFailed") : <><span className="analytics-updated-dot" />{t("usage.page.updatedAt", { time: new Date(activeQuery.dataUpdatedAt).toLocaleTimeString(language, { hour12: false }) })}</>}</span><span>{model ? formatModel(model) : t("usage.filter.allModels")} · {dateRange(range)}</span></footer>
+    <footer className="analytics-page-footer"><span className={stale || failed ? "analytics-stale" : ""}>{waiting ? <><LoaderCircle size={12} className="spinning" />{t("usage.page.updating")}</> : stale ? t("usage.page.staleFailed") : failed ? t("usage.page.readFailed") : <><span className="analytics-updated-dot" />{t("usage.page.updatedAt", { time: new Date(active.dataUpdatedAt).toLocaleTimeString(language, { hour12: false }) })}</>}</span><span>{model ? formatModel(model) : t("usage.filter.allModels")} · {dateRange(range)}</span></footer>
   </section>;
 }

@@ -1,7 +1,8 @@
 mod common;
 
 use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use common::*;
 use serde_json::{json, Value};
@@ -10,6 +11,9 @@ use wiremock::{Mock, ResponseTemplate};
 use yi_core::domain::capabilities::{Effort, Support};
 use yi_core::domain::{Capabilities, Client, Protocol, Thinking};
 use yi_core::services::{ProtocolSupport, ProviderInput};
+use yi_core::protocol::Usage;
+use yi_core::protocol::ir::{InputItem, Response};
+use yi_core::trajectory::record::{CaptureRecord, CaptureSink, StopReason};
 use yi_core::CoreError;
 
 async fn mount_json(env: &TestEnv, p: Protocol) {
@@ -737,4 +741,384 @@ async fn test_provider_reports_success_and_failure() {
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::Validation(_)));
+}
+
+// ------------------------------------------------------------------ capture
+
+#[derive(Default)]
+struct RecordingSink {
+    enabled: bool,
+    records: Mutex<Vec<CaptureRecord>>,
+}
+
+impl CaptureSink for RecordingSink {
+    fn enabled_for(&self, _client: Option<Client>) -> bool {
+        self.enabled
+    }
+
+    fn submit(&self, record: CaptureRecord) {
+        self.records.lock().unwrap().push(record);
+    }
+}
+
+fn recording_sink() -> Arc<RecordingSink> {
+    Arc::new(RecordingSink {
+        enabled: true,
+        records: Mutex::new(Vec::new()),
+    })
+}
+
+fn set_sink(env: &TestEnv, sink: Option<Arc<RecordingSink>>) {
+    env.state
+        .capture
+        .set(sink.map(|s| s as Arc<dyn CaptureSink>));
+}
+
+/// Waits until the sink holds at least `min` records (or five seconds pass).
+async fn wait_records(sink: &RecordingSink, min: usize) -> Vec<CaptureRecord> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let got = sink.records.lock().unwrap().clone();
+        if got.len() >= min || Instant::now() >= deadline {
+            return got;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+/// Text of the message items in a captured response, in output order.
+fn output_text(resp: &Response) -> String {
+    let v = serde_json::to_value(resp).unwrap();
+    let mut out = String::new();
+    for item in v["output"].as_array().into_iter().flatten() {
+        if item["type"].as_str().is_some_and(|t| t != "message") {
+            continue;
+        }
+        match &item["content"] {
+            Value::String(s) => out.push_str(s),
+            Value::Array(parts) => {
+                for part in parts {
+                    if let Some(t) = part["text"].as_str() {
+                        out.push_str(t);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+async fn post_raw(env: &TestEnv, path: &str, body: &Value) -> Vec<u8> {
+    env.http
+        .post(env.url(path))
+        .json(body)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap()
+        .to_vec()
+}
+
+#[tokio::test]
+async fn capture_passthrough_stream_collects_output_and_ttft() {
+    let env = TestEnv::start().await;
+    Mock::given(method("POST"))
+        .and(path(upstream_path(Protocol::Anthropic)))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(include_str!("fixtures/anthropic/stream_text_tool.sse")),
+        )
+        .mount(&env.mock)
+        .await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let mut body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    body["stream"] = json!(true);
+
+    set_sink(&env, None);
+    let plain = post_raw(&env, &route, &body).await;
+
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let captured = post_raw(&env, &route, &body).await;
+    assert_eq!(captured, plain, "capture must not change client bytes");
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    let rec = &records[0];
+    let resp = rec.response.as_ref().expect("collected response");
+    assert!(
+        resp.output
+            .iter()
+            .any(|i| matches!(i, InputItem::Message(_)))
+    );
+    assert!(
+        resp.output
+            .iter()
+            .any(|i| matches!(i, InputItem::FunctionCall(_)))
+    );
+    assert!(rec.first_token_at.is_some());
+    assert_eq!(rec.stop_reason, StopReason::ToolUse);
+    assert_eq!(rec.status, Some(200));
+}
+
+#[tokio::test]
+async fn capture_translated_stream_matches_client_view() {
+    let env = TestEnv::start().await;
+    mount_sse(&env, Protocol::Anthropic, "hello").await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let mut body = request_body(Protocol::OpenaiChat, exposed(Protocol::Anthropic));
+    body["stream"] = json!(true);
+    let route = env.route_to(Protocol::OpenaiChat, Protocol::Anthropic);
+    let text = env.post(&route, &body).await.text().await.unwrap();
+    let client_text = stream_text(Protocol::OpenaiChat, &text);
+    assert_eq!(client_text, "hello");
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    let resp = records[0].response.as_ref().expect("collected response");
+    assert_eq!(output_text(resp), client_text);
+    assert_eq!(records[0].inbound, Protocol::OpenaiChat);
+    assert_eq!(records[0].upstream, Protocol::Anthropic);
+}
+
+fn chat_chunk(delta: Value, finish: Value) -> String {
+    format!(
+        "data: {}\n\n",
+        json!({"id": "c1", "object": "chat.completion.chunk", "created": 1,
+            "model": "chat-up",
+            "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]})
+    )
+}
+
+#[tokio::test]
+async fn capture_chat_passthrough_includes_on_end_events() {
+    let env = TestEnv::start().await;
+    let frames = [
+        chat_chunk(
+            json!({"role": "assistant", "content": "hello"}),
+            Value::Null,
+        ),
+        chat_chunk(json!({}), json!("stop")),
+        "data: [DONE]\n\n".to_owned(),
+    ]
+    .concat();
+    Mock::given(method("POST"))
+        .and(path(upstream_path(Protocol::OpenaiChat)))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(frames),
+        )
+        .mount(&env.mock)
+        .await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let mut body = request_body(Protocol::OpenaiChat, exposed(Protocol::OpenaiChat));
+    body["stream"] = json!(true);
+    let route = env.route_to(Protocol::OpenaiChat, Protocol::OpenaiChat);
+    let _ = env.post(&route, &body).await.text().await.unwrap();
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    let resp = records[0].response.as_ref().expect("collected response");
+    assert_eq!(output_text(resp), "hello");
+}
+
+#[tokio::test]
+async fn capture_chat_passthrough_without_done_uses_on_end() {
+    let env = TestEnv::start().await;
+    // No [DONE] and no usage frame: only `on_end` can complete the response.
+    let frames = [
+        chat_chunk(
+            json!({"role": "assistant", "content": "hello"}),
+            Value::Null,
+        ),
+        chat_chunk(json!({}), json!("stop")),
+    ]
+    .concat();
+    Mock::given(method("POST"))
+        .and(path(upstream_path(Protocol::OpenaiChat)))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(frames),
+        )
+        .mount(&env.mock)
+        .await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let mut body = request_body(Protocol::OpenaiChat, exposed(Protocol::OpenaiChat));
+    body["stream"] = json!(true);
+    let route = env.route_to(Protocol::OpenaiChat, Protocol::OpenaiChat);
+    let _ = env.post(&route, &body).await.text().await.unwrap();
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    let resp = records[0]
+        .response
+        .as_ref()
+        .expect("on_end completes the response");
+    assert_eq!(output_text(resp), "hello");
+}
+
+#[tokio::test]
+async fn capture_non_stream_reuses_parse() {
+    let env = TestEnv::start().await;
+    mount_json(&env, Protocol::Anthropic).await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let resp = env
+        .post(&route, &request_body(Protocol::Anthropic, CLAUDE_MODEL))
+        .await;
+    assert_eq!(resp.status(), 200);
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    assert!(records[0].response.is_some());
+    assert!(records[0].response_body.is_none());
+    assert_eq!(env.usage_count(1, Duration::from_secs(5)).await, 1);
+    let row = env.usage_report().recent[0].clone();
+    assert_eq!(records[0].usage.input_tokens, u64::from(row.input_tokens));
+    assert_eq!(records[0].usage.output_tokens, u64::from(row.output_tokens));
+    assert_eq!(
+        records[0].usage,
+        Usage {
+            input_tokens: 3,
+            output_tokens: 2,
+            cached_tokens: 0,
+            reasoning_tokens: 0,
+        }
+    );
+}
+
+#[tokio::test]
+async fn upstream_error_is_error_not_cancelled() {
+    let env = TestEnv::start().await;
+    Mock::given(method("POST"))
+        .and(path(upstream_path(Protocol::Anthropic)))
+        .respond_with(ResponseTemplate::new(500).set_body_string("upstream exploded"))
+        .mount(&env.mock)
+        .await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let resp = env
+        .post(&route, &request_body(Protocol::Anthropic, CLAUDE_MODEL))
+        .await;
+    assert_eq!(resp.status(), 500);
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    let rec = &records[0];
+    assert_eq!(rec.stop_reason, StopReason::Error);
+    assert_eq!(rec.status, Some(500));
+    assert!(
+        rec.error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("upstream exploded"),
+        "{:?}",
+        rec.error
+    );
+}
+
+#[tokio::test]
+async fn capture_disabled_for_client_submits_nothing() {
+    let env = TestEnv::start().await;
+    mount_json(&env, Protocol::Anthropic).await;
+    let sink = Arc::new(RecordingSink {
+        enabled: false,
+        records: Mutex::new(Vec::new()),
+    });
+    set_sink(&env, Some(sink.clone()));
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let resp = env
+        .post(&route, &request_body(Protocol::Anthropic, CLAUDE_MODEL))
+        .await;
+    assert_eq!(resp.status(), 200);
+
+    assert_eq!(env.usage_count(1, Duration::from_secs(5)).await, 1);
+    assert!(sink.records.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn usage_row_has_step_id_and_timings() {
+    let env = TestEnv::start().await;
+    mount_sse(&env, Protocol::Anthropic, "hello").await;
+    let sink = recording_sink();
+    set_sink(&env, Some(sink.clone()));
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let mut body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    body["stream"] = json!(true);
+    let _ = env.post(&route, &body).await.text().await.unwrap();
+
+    let records = wait_records(&sink, 1).await;
+    assert_eq!(records.len(), 1);
+    assert_eq!(env.usage_count(1, Duration::from_secs(5)).await, 1);
+    let row = env.usage_report().recent[0].clone();
+    assert_eq!(row.step_id.as_deref(), Some(records[0].step_id.as_str()));
+    assert!(row.ttft_ms.is_some());
+    assert!(row.duration_ms.is_some());
+    assert_eq!(row.status, Some(200));
+}
+
+/// Performance baseline from spec section 9. Run manually in task 21 with
+/// `cargo test -p yi-core --release --test proxy_pipeline capture_overhead -- --ignored`.
+#[tokio::test]
+#[ignore = "performance baseline, run manually in task 21"]
+async fn capture_overhead_is_small() {
+    struct DropSink;
+    impl CaptureSink for DropSink {
+        fn enabled_for(&self, _client: Option<Client>) -> bool {
+            true
+        }
+        fn submit(&self, record: CaptureRecord) {
+            drop(record);
+        }
+    }
+
+    let env = TestEnv::start().await;
+    mount_json(&env, Protocol::Anthropic).await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let mut body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    body["messages"] = json!([{"role": "user", "content": "x".repeat(4 << 20)}]);
+
+    let mut off = Vec::with_capacity(200);
+    env.state.capture.set(None);
+    for _ in 0..200 {
+        let started = Instant::now();
+        let _ = post_raw(&env, &route, &body).await;
+        off.push(started.elapsed());
+    }
+    let mut on = Vec::with_capacity(200);
+    env.state
+        .capture
+        .set(Some(Arc::new(DropSink) as Arc<dyn CaptureSink>));
+    for _ in 0..200 {
+        let started = Instant::now();
+        let _ = post_raw(&env, &route, &body).await;
+        on.push(started.elapsed());
+    }
+    off.sort();
+    on.sort();
+    let pct = |v: &[Duration], p: usize| v[(v.len() * p / 100).min(v.len() - 1)];
+    let delta_p50 = pct(&on, 50).saturating_sub(pct(&off, 50));
+    println!(
+        "capture overhead: off p50 {:?} p95 {:?}; on p50 {:?} p95 {:?}; p50 delta {:?}",
+        pct(&off, 50),
+        pct(&off, 95),
+        pct(&on, 50),
+        pct(&on, 95),
+        delta_p50
+    );
+    assert!(
+        delta_p50 < Duration::from_millis(1),
+        "p50 delta {delta_p50:?}"
+    );
 }

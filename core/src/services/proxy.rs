@@ -4,7 +4,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use super::{ProxyRuntimeView, Services, SettingsView};
-use crate::domain::Settings;
+use crate::domain::{LiveSnapshot, Settings};
 use crate::error::{CoreError, CoreResult};
 use crate::proxy::monitor::MonitorView;
 use crate::storage::settings;
@@ -88,6 +88,11 @@ impl Services {
 
     pub fn get_proxy_monitor(&self, minutes: Option<u32>) -> MonitorView {
         self.monitor.snapshot(minutes)
+    }
+
+    /// In-flight requests, plus completed ones with a sequence number above `since_seq`.
+    pub fn live_requests(&self, since_seq: u64) -> LiveSnapshot {
+        self.live.snapshot(since_seq)
     }
 
     /// Applies a `start` / `stop` / `restart` action to the listener.

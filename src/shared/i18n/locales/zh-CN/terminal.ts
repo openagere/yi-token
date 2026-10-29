@@ -4,6 +4,7 @@ const terminal = {
     header: {
       eyebrow: "终端管理",
       protocol: "接入协议",
+      viewSessions: "查看会话",
     },
     modeTabs: {
       label: "终端接入方式",
