@@ -32,11 +32,8 @@ impl Drop for RequestLog {
     fn drop(&mut self) {
         let elapsed_ms = self.started.elapsed().as_millis() as u64;
         let received_body_bytes = self.received_body_bytes.load(Ordering::Relaxed);
-        self.monitor.finish(
-            &self.metric_key,
-            self.status >= 400 || !self.completed || self.body_error,
-            elapsed_ms,
-        );
+        let failed = self.status >= 400 || self.body_error;
+        self.monitor.finish(&self.metric_key, failed, elapsed_ms);
         let span = tracing::info_span!(
             "proxy_request",
             method = %self.method,
@@ -117,4 +114,41 @@ pub async fn log_request(monitor: Monitor, request: Request, next: Next) -> Resp
         drop(log);
     });
     Response::from_parts(parts, body)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn log_for(monitor: &Monitor, status: u16, completed: bool, body_error: bool) -> RequestLog {
+        RequestLog {
+            monitor: monitor.clone(),
+            metric_key: monitor.begin("/v1/responses"),
+            started: Instant::now(),
+            method: "POST".into(),
+            path: "/v1/responses".into(),
+            request_content_length: None,
+            received_body_bytes: Arc::new(AtomicU64::new(0)),
+            status,
+            completed,
+            body_error,
+        }
+    }
+
+    #[test]
+    fn successful_response_closed_early_is_not_an_error() {
+        let monitor = Monitor::default();
+        drop(log_for(&monitor, 200, false, false));
+        let totals = monitor.totals();
+        assert_eq!((totals.completed, totals.errors), (1, 0));
+    }
+
+    #[test]
+    fn error_status_or_broken_body_is_an_error() {
+        let monitor = Monitor::default();
+        drop(log_for(&monitor, 502, true, false));
+        drop(log_for(&monitor, 200, false, true));
+        let totals = monitor.totals();
+        assert_eq!((totals.completed, totals.errors), (2, 2));
+    }
 }
