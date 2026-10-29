@@ -48,7 +48,7 @@
 .modality-option input, .effort-levels input { flex: none; width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
 .token-capacity-input { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 8px; }
 .token-capacity-input input { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.standard-model-editor .ui-select { position: relative; --control-height: 39px; }
+.standard-model-editor .ui-select { position: relative; }
 .token-capacity-detail { display: flex; align-items: flex-start; gap: 8px; min-height: 19px; color: var(--text-muted); }
 .token-capacity-detail > small { flex: 1; font-size: 12px; font-weight: 450; line-height: 1.7; }
 .token-capacity-detail > span { display: flex; padding-top: 2px; }
@@ -118,7 +118,6 @@
 .standard-model-editor .connection-form-section { padding: 14px 0; }
 .standard-model-editor .connection-section-title { margin-bottom: 10px; }
 .standard-model-editor .field { gap: 5px; }
-.standard-model-editor .ui-select { --control-height: 34px; }
 .standard-model-editor .standard-model-identity-grid { gap: 12px; grid-template-columns: minmax(0, 1fr) 160px; }
 .standard-model-editor .standard-model-protocol-field .upstream-selector { height: 34px; }
 .standard-model-editor .standard-model-protocol-field .upstream-choice { height: 28px; }

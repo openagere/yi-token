@@ -119,7 +119,6 @@ button.connection-protocol:hover:not(:disabled) { border-color: var(--border-str
 .provider-model-nonstandard .toggle::after { top: 2px; left: 2px; }
 .provider-model-nonstandard input:checked + .toggle::after { transform: translateX(14px); }
 .connection-model-head > span:nth-child(3) { text-align: center; }
-.provider-standard-model-select { --control-height: 39px; }
 .connection-model-row select { width: 100%; min-width: 0; height: 39px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--surface); font-size: 12px; }
 .connection-model-row { align-items: start; }
 .connection-model-head { color: var(--text-secondary); font-size: 12px; }
@@ -264,7 +263,6 @@ button.connection-protocol:hover:not(:disabled) { border-color: var(--border-str
 .connection-editor-page .editor-client-protocol { min-height: 44px; gap: 6px; }
 .connection-editor-page .client-protocol-copy small { font-size: 11px; }
 .connection-editor-page .connection-model-row input, .connection-editor-page .connection-model-row select { height: 34px; }
-.connection-editor-page .provider-standard-model-select { --control-height: 34px; }
 .connection-editor-page .provider-model-nonstandard { height: 34px; }
 .connection-editor-page .connection-advanced > summary { min-height: 38px; }
 .connection-editor-page .connection-editor-footer { min-height: 46px; }

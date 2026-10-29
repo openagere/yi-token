@@ -38,8 +38,9 @@ for (const theme of ["light", "dark"] as const) {
         return { label: element.textContent?.trim(), background: style.backgroundColor, text: style.color };
       }));
       for (const style of styles) {
-        expect(style.background, style.label).toBe(theme === "light" ? "rgb(255, 255, 255)" : "rgb(57, 58, 62)");
-        expect(style.text, style.label).toBe(theme === "light" ? "rgb(37, 38, 40)" : "rgb(255, 255, 255)");
+        // Primary actions are solid: dark on the light theme, light on the dark theme.
+        expect(style.background, style.label).toBe(theme === "light" ? "rgb(39, 40, 43)" : "rgb(236, 236, 236)");
+        expect(style.text, style.label).toBe(theme === "light" ? "rgb(255, 255, 255)" : "rgb(24, 24, 26)");
       }
     };
     await expect(page.getByRole("button", { name: "添加 Provider" })).toBeVisible();

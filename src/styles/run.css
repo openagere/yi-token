@@ -102,5 +102,5 @@
   .run-pulse { animation: none; }
 }
 .run-tab-panel .proxy-log-toolbar { margin-bottom: 10px; }
-.run-tab-panel .proxy-issue-count { height: 28px; padding: 0 8px; cursor: pointer; }
+.run-tab-panel .proxy-issue-count { height: var(--control-height); padding: 0 10px; border-radius: var(--control-radius); cursor: pointer; }
 .run-tab-panel .proxy-issue-count[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--warning); }

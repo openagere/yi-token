@@ -8,6 +8,7 @@ import { detectPlatform } from "@/shared/lib";
 import "@/shared/settings";
 import "./styles/base.css";
 import "./styles/workspace.css";
+import "./styles/control-system.css";
 
 // 首帧渲染前标记当前平台，样式与组件据此差异化（如 macOS 系统标题栏适配）；浏览器开发环境固定为 "web"。
 document.documentElement.dataset.platform = isTauri() ? detectPlatform() : "web";

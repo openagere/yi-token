@@ -1,0 +1,194 @@
+/*
+ * Shared control system: buttons, search boxes, dropdowns, form fields, segmented switches and chips.
+ * One height (32px, 28px for compact chips), one radius, one hairline border and one focus treatment.
+ *
+ * Feature stylesheets load after this file and carry their own historical sizes, so every rule here
+ * is scoped under `:root:not(#control-system)`: the :not(#id) adds ID specificity, letting this file
+ * win without !important. Geometry and states belong here; layout (width, flex, margins) stays with
+ * the features.
+ */
+:root {
+  --control-height: 32px;
+  --control-height-sm: 28px;
+  --control-radius: 8px;
+  --control-font-size: 13px;
+  --control-border: var(--control-line);
+  --control-focus: var(--focus-ring);
+}
+
+/* Buttons. */
+:root:not(#control-system) :is(.primary-button, .secondary-button, .danger-button, .outline-action-button) {
+  height: auto;
+  min-height: var(--control-height);
+  padding: 0 14px;
+  border-width: 1px;
+  border-radius: var(--control-radius);
+  font-size: var(--control-font-size);
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: none;
+}
+:root:not(#control-system) :is(.primary-button, .outline-action-button):not(:disabled) { border-color: var(--btn-primary-border); color: var(--btn-primary-text); background: var(--btn-primary-bg); }
+:root:not(#control-system) :is(.primary-button, .outline-action-button):hover:not(:disabled) { border-color: var(--btn-primary-hover); background: var(--btn-primary-hover); }
+:root:not(#control-system) :is(.primary-button, .outline-action-button):active:not(:disabled) { background: var(--btn-primary-active); }
+:root:not(#control-system) .secondary-button:not(.danger-button):not(:disabled) { border-color: var(--btn-secondary-border); color: var(--btn-secondary-text); background: var(--btn-secondary-bg); }
+:root:not(#control-system) .secondary-button:not(.danger-button):hover:not(:disabled) { border-color: var(--btn-secondary-border-hover); background: var(--btn-secondary-hover); }
+:root:not(#control-system) .secondary-button:not(.danger-button):active:not(:disabled) { background: var(--btn-secondary-active); }
+:root:not(#control-system) .workspace-header .transfer-action { min-height: var(--control-height); padding: 0 12px; border-radius: var(--control-radius); font-size: var(--control-font-size); }
+:root:not(#control-system) :is(.primary-button, .secondary-button, .danger-button, .outline-action-button, .transfer-action) > svg { flex: none; width: 15px; height: 15px; }
+:root:not(#control-system) .workspace-header .icon-button { width: var(--control-height); height: var(--control-height); min-height: var(--control-height); border-radius: var(--control-radius); }
+
+/* Search boxes: an icon, an input and an optional clear button inside one hairline field. */
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: var(--control-height);
+  min-height: 0;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  outline: none;
+  color: var(--text-muted);
+  background: var(--control-bg);
+  box-shadow: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+:root:not(#control-system) .trajectory-search { height: var(--control-height-sm); }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search):hover { border-color: var(--control-line-hover); }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search):focus-within,
+:root:not(#control-system) .sidebar-search:focus-within {
+  border-color: var(--control-focus);
+  outline: none;
+  background: var(--control-bg);
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
+}
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) > svg { flex: none; width: 15px; height: 15px; }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: var(--control-font-size);
+}
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) input:focus-visible { outline: 0; box-shadow: none; }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) input::placeholder { color: var(--control-placeholder); }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) input::-webkit-search-cancel-button { display: none; }
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) > button {
+  display: grid;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+}
+:root:not(#control-system) :is(.connection-search, .analytics-search, .proxy-log-search, .session-search, .terminal-model-search, .provider-model-catalog-search, .trajectory-search, .sidebar-search) > button:hover { color: var(--text-primary); background: var(--surface-hover); }
+/* The sidebar search sits on the grey sidebar, so it is filled until focused. */
+:root:not(#control-system) .sidebar-search { height: var(--control-height); min-height: 0; gap: 7px; padding: 0 8px 0 10px; border: 1px solid transparent; border-radius: var(--control-radius); outline: none; background: var(--surface-selected); }
+
+/* Dropdowns and form fields share the search box surface. */
+:root:not(#control-system) .ui-select-trigger {
+  height: var(--control-height);
+  padding: 0 10px;
+  gap: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--control-bg);
+  font-size: var(--control-font-size);
+  font-weight: 500;
+  box-shadow: none;
+}
+:root:not(#control-system) .ui-select-trigger:hover:not(:disabled) { border-color: var(--control-line-hover); background: var(--control-bg); }
+:root:not(#control-system) :is(.ui-select-trigger:focus-visible, .ui-select-trigger[data-state="open"]) { border-color: var(--control-focus); outline: none; box-shadow: 0 0 0 3px var(--focus-ring-soft); }
+:root:not(#control-system) .ui-select-trigger .ui-select-leading-icon { width: 15px; height: 15px; }
+:root:not(#control-system) .ui-select-menu { border-radius: 10px; }
+:root:not(#control-system) .ui-select-option { min-height: 32px; border-radius: 6px; font-size: var(--control-font-size); }
+:root:not(#control-system) .app-shell :is(.field input:not([type="checkbox"]):not([type="radio"]), .field select, .json-input:not(textarea)) {
+  height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--control-bg);
+  font-size: var(--control-font-size);
+  box-shadow: none;
+}
+:root:not(#control-system) .app-shell :is(.field input, .field select, .field textarea, .json-input):hover:not(:disabled):not(:focus) { border-color: var(--control-line-hover); }
+:root:not(#control-system) .app-shell :is(.field input, .field select, .field textarea, .json-input):focus { border-color: var(--control-focus); outline: none; box-shadow: 0 0 0 3px var(--focus-ring-soft); }
+:root:not(#control-system) .app-shell .field textarea.json-input { border-radius: var(--control-radius); font-size: var(--control-font-size); }
+
+/* Segmented switches: a soft track with one raised segment, 32px tall overall. */
+:root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-height);
+  padding: 3px;
+  border: 0;
+  border-radius: calc(var(--control-radius) + 1px);
+  background: var(--segment-track);
+}
+:root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  min-height: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 500;
+  white-space: nowrap;
+}
+:root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) > button:hover:not(:disabled) { color: var(--text-primary); }
+:root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) > button:is(.selected, [aria-pressed="true"], [aria-selected="true"]) {
+  color: var(--text-primary);
+  background: var(--segment-thumb);
+  box-shadow: var(--shadow-sm);
+}
+:root:not(#control-system) .terminal-mode-switch > button strong { font-size: var(--control-font-size); font-weight: 500; }
+:root:not(#control-system) .connection-filters > button span { font-size: 12px; }
+
+/* Compact chips and toggles inside panels: 28px, same border and radius as the controls. */
+:root:not(#control-system) :is(.run-chip, .run-errors-toggle, .thread-chip, .trajectory-toolbar-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-height-sm);
+  padding: 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+:root:not(#control-system) :is(.run-chip, .run-errors-toggle, .thread-chip, .trajectory-toolbar-button):hover:not(:disabled) { border-color: var(--control-line-hover); color: var(--text-primary); background: var(--control-bg); }
+:root:not(#control-system) :is(.run-chip, .thread-chip, .trajectory-toolbar-button):is([aria-pressed="true"], [aria-checked="true"]) {
+  border-color: var(--control-line-hover);
+  color: var(--text-primary);
+  background: var(--surface-selected);
+}
+:root:not(#control-system) .run-errors-toggle[aria-pressed="true"] { border-color: var(--danger-border); color: var(--danger); background: var(--danger-soft); }
+:root:not(#control-system) .trajectory-toolbar-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+/* Narrow windows: segments tighten instead of pushing the track past the page edge. */
+:root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) { max-width: 100%; }
+@media (max-width: 560px) {
+  :root:not(#control-system) :is(.connection-filters, .segmented-control, .analytics-mode-control, .terminal-mode-switch, .upstream-selector) > button { flex: 1 1 auto; min-width: 0; padding: 0 7px; gap: 4px; }
+}
