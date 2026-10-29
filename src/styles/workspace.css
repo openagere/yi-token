@@ -2,7 +2,19 @@
 :root { --toolbar-height: 36px; --sidebar-width: 196px; --page-gutter: clamp(22px, 2.4vw, 36px); --workspace-height: calc(100dvh - var(--toolbar-height)); }
 html, body, #root { height: 100%; }
 body { min-width: 320px; background: var(--app-bg); }
-:where(*) { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+/* Scrollbars: a slim rounded thumb with no track or arrow buttons. Chromium (WebView2) ignores the
+   ::-webkit-scrollbar rules as soon as scrollbar-color/width is set, so the standard properties are
+   only used where the pseudo-elements are unsupported (Firefox). */
+@supports not selector(::-webkit-scrollbar) { :where(*) { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; } }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb { min-height: 32px; border: 3px solid transparent; border-radius: 999px; background: var(--scrollbar-thumb) padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-subtle); }
+/* The sidebar only shows its thumb while hovered, so a short window does not leave a bar beside the nav. */
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { border-width: 1px; background-color: transparent; }
+.sidebar:hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }
 ::selection { color: var(--text-primary); background: var(--surface-selected); }
 .app-shell {
   display: grid;
@@ -74,7 +86,7 @@ html[data-platform="macos"] .workspace-toolbar { padding-left: 78px; }
 .proxy-nav-dot, .proxy-status-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
 .proxy-nav-dot.running, .proxy-status-dot.running { background: var(--success); }
 .proxy-nav-dot.error, .proxy-status-dot.error { background: var(--danger); }
-.main-panel { grid-column: 2; grid-row: 1; position: relative; width: 100%; height: 100%; min-height: 0; overflow: auto; border: 1px solid var(--border); border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; background: var(--surface); }
+.main-panel { grid-column: 2; grid-row: 1; position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden auto; border: 1px solid var(--border); border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; background: var(--surface); }
 /* One page frame everywhere: header on top, content in the middle, footer (pager, status, actions)
    resting on the bottom edge however short the content is. */
 .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) { display: flex; flex-direction: column; width: min(100%, 1160px); min-height: 100%; margin: 0 auto; padding: 22px var(--page-gutter) 20px; background: transparent; }

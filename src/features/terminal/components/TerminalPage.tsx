@@ -207,7 +207,7 @@ export function TerminalPage() {
   }
 
   return (
-    <section className="terminal-page">
+    <section className={`terminal-page terminal-page-${accessMode}`}>
       <div className="terminal-mode-toolbar">
         <span className="terminal-mode-label">{t("terminal.modeTabs.label")}</span>
         <div className="terminal-mode-toolbar-end">

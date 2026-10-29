@@ -1,6 +1,6 @@
 /* Settings: one tab per area; each area is a single bordered group of label-left / control-right rows. */
 .settings-tab-host { padding-top: 14px; }
-.settings-panel { gap: 12px; padding-bottom: 4px; overflow-y: auto; scrollbar-color: var(--border-strong) transparent; }
+.settings-panel { gap: 12px; padding-bottom: 4px; overflow-y: auto; }
 .settings-page .settings-section { display: grid; flex: none; gap: 0; width: 100%; max-width: 1000px; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .settings-page .settings-section > .editor-section { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: start; gap: 24px; margin: 0; padding: 18px 20px; border: 0; border-top: 1px solid var(--border); }
 .settings-page .settings-section > .editor-section:first-child { border-top: 0; }

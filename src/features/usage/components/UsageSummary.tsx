@@ -17,7 +17,7 @@ export function UsageSummary({ snapshot }: { snapshot: UsageSnapshot }) {
     <Kpi icon={Database} label={t("usage.summary.cacheHitRate")}><span className="analytics-kpi-value">{ratePercent(totals.cache_hit_rate)}</span></Kpi>
     <Kpi icon={Gauge} label={t("usage.summary.avgTtft")}>
       <span className="analytics-kpi-value">{durationMs(totals.avg_ttft_ms)}</span>
-      {showTtftNote && <small className="analytics-kpi-note">{t("usage.summary.ttftNote", { count: totals.timed_requests })}</small>}
+      {showTtftNote && <small className="analytics-kpi-note" title={t("usage.summary.ttftNote", { count: totals.timed_requests })}>{t("usage.summary.ttftNote", { count: totals.timed_requests })}</small>}
     </Kpi>
   </section>;
 }

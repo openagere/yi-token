@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   AlertTriangle,
   Check,
@@ -38,9 +38,40 @@ interface Props {
 }
 
 const ALL_PROVIDERS = "__all__";
-const PAGE_SIZE = 10;
-/** Rows from this index on open their hover detail upwards so it stays inside the board. */
-const UPWARD_FROM_ROW = 3;
+/** Card height before the first card is measured; matches the fixed card height in terminal.css. */
+const FALLBACK_CARD_HEIGHT = 58;
+
+interface GridCapacity {
+  columns: number;
+  rows: number;
+}
+
+/**
+ * How many cards the board holds without scrolling: the column count comes from the CSS
+ * auto-fill grid, the row count from the board's free height. Re-measured whenever the board resizes.
+ */
+function useGridCapacity(ref: RefObject<HTMLDivElement | null>, revision: number): GridCapacity {
+  const [capacity, setCapacity] = useState<GridCapacity>({ columns: 2, rows: 5 });
+  useLayoutEffect(() => {
+    const board = ref.current;
+    if (!board) return;
+    const measure = () => {
+      const style = getComputedStyle(board);
+      const columns = Math.max(1, style.gridTemplateColumns.split(" ").filter(Boolean).length);
+      const gap = parseFloat(style.rowGap) || 0;
+      const card = board.querySelector<HTMLElement>(".terminal-engine-card");
+      const height = card?.offsetHeight || FALLBACK_CARD_HEIGHT;
+      const rows = Math.max(1, Math.floor((board.clientHeight + gap) / (height + gap)));
+      setCapacity((current) => (current.columns === columns && current.rows === rows ? current : { columns, rows }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(board);
+    return () => observer.disconnect();
+    // `revision` re-measures once cards appear or the list changes, without waiting for a resize.
+  }, [ref, revision]);
+  return capacity;
+}
 
 /** Card chips favour a short reading (200K, 1M); the detail layer keeps the exact figure. */
 function compactTokens(value: number) {
@@ -49,7 +80,7 @@ function compactTokens(value: number) {
 
 type Entry = { provider: ProviderView; model: ProviderView["models"][number] };
 
-/** Proxy access keeps the terminal on yi-token: every saved model as a paged card grid, details on hover. */
+/** Proxy access keeps the terminal on yi-token: every saved model as a card grid sized to the window, paged, details on hover. */
 export function ProxyTerminalSection({
   client,
   clientName,
@@ -79,20 +110,23 @@ export function ProxyTerminalSection({
     .filter(({ provider, model }) =>
       `${model.name} ${model.route_id} ${provider.name}`.toLowerCase().includes(query),
     );
-  const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const board = useRef<HTMLDivElement>(null);
+  const { columns, rows } = useGridCapacity(board, entries.length);
+  const pageSize = columns * rows;
+  const pages = Math.max(1, Math.ceil(entries.length / pageSize));
   const engineKey = `${client}:${activeEngine?.model_id ?? ""}`;
   if (paging.engineKey !== engineKey) {
     const index = activeEngine ? entries.findIndex((entry) => entry.model.id === activeEngine.model_id) : -1;
     if (!activeEngine || index >= 0) {
       setPaging({
         engineKey,
-        page: index < 0 ? 1 : Math.floor(index / PAGE_SIZE) + 1,
+        page: index < 0 ? 1 : Math.floor(index / pageSize) + 1,
       });
     }
   }
   const page = paging.engineKey === engineKey ? paging.page : 1;
   const current = Math.min(page, pages);
-  const visible = entries.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const visible = entries.slice((current - 1) * pageSize, current * pageSize);
   const total = eligible.reduce(
     (sum, provider) => sum + provider.models.filter((model) => model.id).length,
     0,
@@ -205,15 +239,15 @@ export function ProxyTerminalSection({
         </div>
       </div>
 
-      <div className="terminal-model-list" role="list" aria-label={t("terminal.proxy.modelsLabel")}>
+      <div ref={board} className="terminal-model-list" role="list" aria-label={t("terminal.proxy.modelsLabel")}>
         {visible.map(({ provider, model }, index) => {
           const pressed = model.id === activeEngine?.model_id;
           const pending = pendingId === model.id;
           const standard = standardOf(model.standard_model_id);
           const caps = model.capabilities ?? standard?.capabilities;
           const brand = standard?.brand || modelBrand(model.name);
-          const row = Math.floor(index / 2);
-          const upward = row >= UPWARD_FROM_ROW;
+          // Cards in the lower half open their hover detail upwards so it stays inside the board.
+          const upward = rows > 1 && Math.floor(index / columns) >= Math.floor(rows / 2);
           const icon = (
             <span className="terminal-engine-icon">
               {brand ? (
@@ -243,7 +277,7 @@ export function ProxyTerminalSection({
                 </span>
                 {icon}
                 <span className="terminal-engine-copy">
-                  <strong>{model.name}</strong>
+                  <strong title={model.name}>{model.name}</strong>
                   <small>
                     <span className="terminal-engine-provider">
                       <ProviderIcon provider={provider} size={12} />
@@ -273,7 +307,7 @@ export function ProxyTerminalSection({
                     {pressed && <Check size={11} strokeWidth={3} />}
                   </span>
                   {icon}
-                  <strong>{model.name}</strong>
+                  <strong title={model.name}>{model.name}</strong>
                   {pressed ? (
                     <em className="terminal-engine-current">{t("terminal.proxy.current")}</em>
                   ) : (
@@ -364,7 +398,7 @@ export function ProxyTerminalSection({
         <div className="terminal-proxy-pager">
           <span role="status" aria-live="polite">
             {entries.length
-              ? `${(current - 1) * PAGE_SIZE + 1} - ${Math.min(current * PAGE_SIZE, entries.length)} / ${entries.length}`
+              ? `${(current - 1) * pageSize + 1} - ${Math.min(current * pageSize, entries.length)} / ${entries.length}`
               : "0"}{" "}
             {t("terminal.proxy.modelUnit")}
           </span>

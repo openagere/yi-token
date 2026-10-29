@@ -96,7 +96,9 @@
 .terminal-proxy em.terminal-engine-switch { border: 1px solid var(--border-strong); color: var(--text-primary); }
 
 /* Detail layer: same header as the card, so it reads as the card unfolding. Opens after a short hover delay. */
-.terminal-engine-detail { position: absolute; top: 0; right: 0; left: 0; visibility: hidden; opacity: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); box-shadow: var(--shadow-popover); cursor: pointer; transform: translateY(2px); transition: opacity .12s, transform .12s, visibility 0s linear .12s; }
+.terminal-engine-detail { position: absolute; top: 0; right: 0; left: 0; visibility: hidden; opacity: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); box-shadow: var(--shadow-popover); cursor: pointer; transform: translateY(2px); transition: opacity .12s, transform .12s, visibility 0s linear .12s, display .12s allow-discrete; }
+/* Hidden details stay out of layout (display: none), so a tall layer below the last row cannot stretch the page. */
+.terminal-engine-detail { display: none; }
 .terminal-engine-detail.upward { top: auto; bottom: 0; transform: translateY(-2px); }
 /* The detail layer covers the card while hovered, so it repeats the selected look of the current model. */
 .terminal-engine-card.current .terminal-engine-detail { border-color: var(--success-border); background: var(--success-soft); }
@@ -104,7 +106,11 @@
 .terminal-engine-card.current .terminal-engine-detail-body { background: var(--surface); }
 /* The radio is a direct pick target, so pointing at it never unfolds the detail. */
 .terminal-engine-card:hover:not(:has(.terminal-engine-radio:hover)) .terminal-engine-detail,
-.terminal-engine-card:has(.terminal-engine-option:focus-visible) .terminal-engine-detail { visibility: visible; opacity: 1; transform: none; transition: opacity .15s .28s, transform .15s .28s, visibility 0s linear .28s; }
+.terminal-engine-card:has(.terminal-engine-option:focus-visible) .terminal-engine-detail { display: block; visibility: visible; opacity: 1; transform: none; transition: opacity .15s .28s, transform .15s .28s, visibility 0s linear .28s, display 0s .28s allow-discrete; }
+@starting-style {
+  .terminal-engine-card:hover:not(:has(.terminal-engine-radio:hover)) .terminal-engine-detail,
+  .terminal-engine-card:has(.terminal-engine-option:focus-visible) .terminal-engine-detail { visibility: hidden; opacity: 0; transform: translateY(2px); }
+}
 .terminal-engine-detail-head { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 14px; }
 .terminal-engine-detail-head strong { flex: 1; min-width: 0; color: var(--text-primary); font-size: 14px; font-weight: 620; overflow-wrap: anywhere; }
 .terminal-engine-detail-body { display: grid; gap: 10px; margin: 0 10px 10px; padding: 12px 14px; border-radius: 8px; background: var(--surface-subtle); }
@@ -284,3 +290,15 @@
   .terminal-page .terminal-direct-layout .terminal-preview-section { grid-column: 1; grid-row: 2; height: 100%; min-height: 180px; margin-top: 22px; overflow: hidden; }
   .terminal-page .terminal-direct-layout .terminal-preview { min-height: 0; max-height: 320px; }
 }
+
+/* Proxy mode fills exactly one screen: the card board takes the free height and its column count
+   follows the width; the section pages by how many cards fit instead of scrolling. */
+.app-shell .terminal-page.terminal-page-proxy { width: min(100%, 1320px); height: 100%; min-height: 480px; }
+.terminal-page-proxy #terminal-mode-panel, .terminal-page-proxy .terminal-proxy-layout, .terminal-page-proxy .terminal-proxy { min-height: 0; }
+.terminal-page-proxy .terminal-proxy-layout { padding-top: 14px; }
+.terminal-page-proxy .terminal-proxy { gap: 12px; }
+.terminal-page-proxy .terminal-proxy > * { flex: none; }
+.terminal-page-proxy .terminal-proxy .terminal-model-list { flex: 1 1 0; grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr)); align-content: start; gap: 10px; min-height: 58px; }
+.terminal-page-proxy .terminal-engine-option { gap: 10px; height: 58px; min-height: 0; padding: 8px 12px; }
+.terminal-page-proxy .terminal-engine-icon { width: 32px; height: 32px; }
+.terminal-page-proxy .terminal-page-footer { position: static; padding: 12px 0 0; }
