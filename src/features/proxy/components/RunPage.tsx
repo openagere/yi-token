@@ -7,7 +7,7 @@ import { useProviders } from "@/features/providers";
 import { useI18n } from "@/shared/i18n";
 import { useNavigation, useNavigationStore } from "@/shared/navigation";
 import { PageHeader, PageTabs, tabId, tabPanelId, type PageTab } from "@/shared/ui";
-import { formatListenAddress, formatUptime } from "../format";
+import { formatListenAddress, formatRequestsPerMinute, formatUptime } from "../format";
 import { useLiveRequests, useProxyControl, useProxyLogs, useProxyMonitor, useProxyRuntime } from "../hooks";
 import { parseLogs } from "../logs";
 import { LiveRequests } from "./LiveRequests";
@@ -51,7 +51,7 @@ export function RunPage({ active }: { active: boolean }) {
     };
   }, [logsQuery.data, language]);
   const monitor = monitorQuery.data;
-  const rate = monitor && !monitorQuery.isError ? monitor.requests_per_second.toFixed(2) : "--";
+  const rate = monitor && !monitorQuery.isError ? formatRequestsPerMinute(monitor.requests_per_second, language) : "--";
   const tabs: PageTab<RunTab>[] = [
     { id: "requests", label: t("proxy.live.title"), icon: List, badge: inFlight > 0 ? t("proxy.run.inFlightBadge", { count: inFlight }) : undefined, badgeTone: "info" },
     { id: "traffic", label: t("proxy.traffic.title"), icon: Gauge, badge: monitor && !monitorQuery.isError ? t("proxy.run.rateBadge", { rate }) : undefined },

@@ -91,6 +91,15 @@ export function group(routes: readonly MonitorRoute[]): ClientGroup[] {
     .sort((a, b) => b.requests - a.requests);
 }
 
+/** 耗时：一秒以内用毫秒，之后用秒保留一位小数，避免表格里出现 30000 ms 这样的长数字。 */
 export function formatLatency(value: number | null): string {
-  return value === null ? "--" : `${Math.max(0, Math.round(value))} ms`;
+  if (value === null) return "--";
+  const ms = Math.max(0, value);
+  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+/** 每秒请求数换算为每分钟；低流量时保留一位小数，流量大时取整并压缩。 */
+export function formatRequestsPerMinute(perSecond: number, language: string): string {
+  const perMinute = Math.max(0, perSecond) * 60;
+  return perMinute < 10 ? perMinute.toFixed(1) : formatCount(Math.round(perMinute), language);
 }

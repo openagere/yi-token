@@ -85,7 +85,7 @@ const proxy = {
       avgDuration: "平均耗时",
       avgDurationValue: "平均耗时{value}",
       avgDurationHint: "从请求开始到流式响应结束或中断",
-      perSecond: "{value} 请求 / 秒",
+      perSecond: "{value} 请求 / 分钟",
       perSecondHint: "最近两个完整的 5 秒采样区间",
       series: {
         receivedRate: "接收 / 秒",
@@ -134,7 +134,7 @@ const proxy = {
     run: {
       tabs: "运行视图",
       inFlightBadge: "{count} 在途",
-      rateBadge: "{rate}/秒",
+      rateBadge: "{rate}/分",
       goSettings: "去设置",
       facts: {
         connections: "连接数",
@@ -143,7 +143,7 @@ const proxy = {
     },
     traffic: {
       title: "流量",
-      requests: "请求 / 秒",
+      requests: "请求 / 分钟",
       errors: "错误 / 秒",
       windowRequests: "窗口请求数",
       windowErrors: "窗口错误数",

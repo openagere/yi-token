@@ -3,7 +3,7 @@ import { CircleAlert, Download, Gauge, RefreshCw } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { describeError } from "@/shared/api";
 import { useI18n, type MessageKey } from "@/shared/i18n";
-import { formatBytes, formatClock, formatCount } from "../format";
+import { formatBytes, formatClock, formatCount, formatRequestsPerMinute } from "../format";
 import { useProxyMonitor } from "../hooks";
 
 const SERIES = {
@@ -48,6 +48,6 @@ export function ProxyMonitor({ visible }: { visible: boolean }) {
     <div className="proxy-monitor-chart" aria-label={t("proxy.monitor.trend")}>
       {visible && snapshot && !stale && series.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0}><LineChart data={series} margin={{ top: 15, right: 15, left: 0, bottom: 5 }}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="timestamp" type="number" domain={[snapshot.sampled_at - minutes * 60_000, snapshot.sampled_at]} tickFormatter={clock} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={60} /><YAxis tickFormatter={mode === "traffic" ? formatBytes : (value: number) => count(value)} allowDecimals={mode === "traffic"} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={65} /><Tooltip labelFormatter={(value) => clock(Number(value))} formatter={(value, name) => [mode === "traffic" ? `${formatBytes(Number(value))}/s` : count(Number(value)), name]} /><Legend wrapperStyle={{ fontSize: 11 }} />{SERIES[mode].map((line) => <Line key={line.key} dataKey={line.key} name={t(line.label)} stroke={line.color} strokeWidth={2} type={mode === "connections" ? "stepAfter" : "linear"} dot={series.length === 1} isAnimationActive={false} />)}</LineChart></ResponsiveContainer> : <div className="proxy-loading">{stale ? t("proxy.monitor.dataUnavailable") : snapshot ? t("proxy.monitor.waiting") : t("proxy.loading.monitor")}</div>}
     </div>
-    <div className="proxy-monitor-summary"><span title={t("proxy.monitor.avgDurationHint")}>{t("proxy.monitor.avgDurationValue", { value: total && !stale ? `${Math.round(total.duration_ms / Math.max(1, total.completed))} ms` : "--" })}</span><span title={t("proxy.monitor.perSecondHint")}>{t("proxy.monitor.perSecond", { value: snapshot && !stale ? snapshot.requests_per_second.toFixed(2) : "--" })}</span></div>
+    <div className="proxy-monitor-summary"><span title={t("proxy.monitor.avgDurationHint")}>{t("proxy.monitor.avgDurationValue", { value: total && !stale ? `${Math.round(total.duration_ms / Math.max(1, total.completed))} ms` : "--" })}</span><span title={t("proxy.monitor.perSecondHint")}>{t("proxy.monitor.perSecond", { value: snapshot && !stale ? formatRequestsPerMinute(snapshot.requests_per_second, language) : "--" })}</span></div>
   </section>;
 }

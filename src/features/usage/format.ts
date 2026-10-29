@@ -17,9 +17,10 @@ export function ratePercent(rate: number | null): string {
   return rate === null ? "—" : `${numberFormat().format(rate * 100)}%`;
 }
 
-/** 毫秒耗时；无记录时为 null，显示为破折号。 */
+/** 耗时：一秒以内用毫秒，之后用秒保留一位小数；无记录时为 null，显示为破折号。 */
 export function durationMs(ms: number | null): string {
-  return ms === null ? "—" : `${integerFormat().format(Math.round(ms))} ms`;
+  if (ms === null) return "—";
+  return ms < 1000 ? `${integerFormat().format(Math.round(ms))} ms` : `${numberFormat().format(ms / 1000)} s`;
 }
 
 export function localDay(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }

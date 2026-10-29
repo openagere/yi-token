@@ -88,7 +88,7 @@ const proxy: DeepString<typeof zh> = {
       avgDuration: "Avg. duration",
       avgDurationValue: "Avg. duration {value}",
       avgDurationHint: "From request start until the streaming response completes or is interrupted",
-      perSecond: "{value} requests / sec",
+      perSecond: "{value} requests / min",
       perSecondHint: "The latest two complete 5-second sampling intervals",
       series: {
         receivedRate: "Received / sec",
@@ -137,7 +137,7 @@ const proxy: DeepString<typeof zh> = {
     run: {
       tabs: "Run views",
       inFlightBadge: "{count} in flight",
-      rateBadge: "{rate}/s",
+      rateBadge: "{rate}/min",
       goSettings: "Open settings",
       facts: {
         connections: "Connections",
@@ -146,7 +146,7 @@ const proxy: DeepString<typeof zh> = {
     },
     traffic: {
       title: "Traffic",
-      requests: "Requests / s",
+      requests: "Requests / min",
       errors: "Errors / s",
       windowRequests: "Requests in window",
       windowErrors: "Errors in window",
