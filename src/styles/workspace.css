@@ -86,7 +86,7 @@ html[data-platform="macos"] .workspace-toolbar { padding-left: 78px; }
 .proxy-nav-dot, .proxy-status-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
 .proxy-nav-dot.running, .proxy-status-dot.running { background: var(--success); }
 .proxy-nav-dot.error, .proxy-status-dot.error { background: var(--danger); }
-.main-panel { grid-column: 2; grid-row: 1; position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden auto; border: 1px solid var(--border); border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; background: var(--surface); }
+.main-panel { grid-column: 2; grid-row: 1; position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable; border: 1px solid var(--border); border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; background: var(--surface); }
 /* One page frame everywhere: header on top, content in the middle, footer (pager, status, actions)
    resting on the bottom edge however short the content is. */
 .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) { display: flex; flex-direction: column; width: min(100%, 1160px); min-height: 100%; margin: 0 auto; padding: 22px var(--page-gutter) 20px; background: transparent; }
@@ -193,7 +193,7 @@ h1 { font-weight: 500; }
   .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) { padding-top: 20px; }
 }
 /* Compact windows (COMPACT_SIDEBAR_QUERY): the sidebar is an icon rail, and opening it lays it over the page. */
-@media (max-width: 1100px) {
+@media (max-width: 880px) {
   .app-shell { --sidebar-width: 66px; }
   .sidebar-resizer { display: none; }
   .app-shell:not(.sidebar-collapsed) .sidebar { position: fixed; z-index: 30; top: var(--toolbar-height); bottom: 0; left: 0; width: 244px; height: auto; padding: 14px 12px; border-right: 1px solid var(--border); box-shadow: var(--shadow-popover); }
@@ -234,3 +234,12 @@ h1 { font-weight: 500; }
 @media (prefers-reduced-motion: reduce) {
   :is(.primary-button, .secondary-button, .danger-button, .outline-action-button, .icon-button, .text-button):active:not(:disabled) { transform: none; }
 }
+
+/* Icon rail: terminal sub-items line up with the other rail items; their status dot sits on the
+   icon's corner instead of beside it. */
+.sidebar-collapsed .nav-terminal-items { gap: 2px; margin: 2px 0 4px; padding-left: 0; border-left: 0; }
+.sidebar-collapsed .nav-terminal-item { position: relative; min-height: 40px; padding: 0; }
+.sidebar-collapsed .nav-terminal-item .nav-terminal-dot { position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--sidebar-bg); }
+.sidebar-collapsed .nav-terminal-item.selected .nav-terminal-dot { box-shadow: 0 0 0 2px var(--surface-selected); }
+/* The sidebar scrolls when it is taller than the window; its rows keep their height instead of being squeezed. */
+.sidebar > * { flex-shrink: 0; }

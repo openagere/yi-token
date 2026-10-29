@@ -42,7 +42,7 @@ export interface SessionTarget {
 export type SettingsSection = "general" | "listen" | "trajectory";
 
 /** Below this width the sidebar folds to its icon rail; expanding it opens an overlay (keep in sync with workspace.css). */
-export const COMPACT_SIDEBAR_QUERY = "(max-width: 1100px)";
+export const COMPACT_SIDEBAR_QUERY = "(max-width: 880px)";
 const COMPACT_QUERY = COMPACT_SIDEBAR_QUERY;
 const isCompact = () => window.matchMedia(COMPACT_QUERY).matches;
 

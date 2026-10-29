@@ -310,3 +310,11 @@
 .terminal-engine-detail-body dl > div { min-width: 0; }
 .terminal-engine-detail-body dd { flex: 1 1 auto; flex-wrap: wrap; }
 .terminal-engine-detail-body dd code { min-width: 0; overflow-wrap: anywhere; }
+
+/* A compact hover detail that never leaves the board: capped to the room on its side
+   (--detail-room, set per card) and scrolling inside when the window is small. */
+.terminal-page-proxy .terminal-engine-detail { --detail-room: none; width: max(100%, 320px); max-height: var(--detail-room); overflow: hidden auto; overscroll-behavior: contain; }
+.terminal-page-proxy .terminal-engine-detail-head { min-height: 56px; padding: 8px 12px; }
+.terminal-page-proxy .terminal-engine-detail-head strong { font-size: 13px; }
+.terminal-page-proxy .terminal-engine-detail-body { gap: 6px; margin: 0 8px 8px; padding: 8px 12px; }
+.terminal-page-proxy .terminal-engine-detail-body dl > div { gap: 12px; padding: 6px 0; }

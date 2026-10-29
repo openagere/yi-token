@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import {
   AlertTriangle,
   Check,
@@ -38,12 +38,17 @@ interface Props {
 }
 
 const ALL_PROVIDERS = "__all__";
+/** Extra room a downward detail may take below the board (none: it stops at the board edge). */
+const DETAIL_OVERHANG = 0;
 /** Card height before the first card is measured; matches the fixed card height in terminal.css. */
 const FALLBACK_CARD_HEIGHT = 58;
 
 interface GridCapacity {
   columns: number;
   rows: number;
+  /** Card height plus the row gap. */
+  pitch: number;
+  gap: number;
 }
 
 /**
@@ -51,7 +56,12 @@ interface GridCapacity {
  * auto-fill grid, the row count from the board's free height. Re-measured whenever the board resizes.
  */
 function useGridCapacity(ref: RefObject<HTMLDivElement | null>, revision: number): GridCapacity {
-  const [capacity, setCapacity] = useState<GridCapacity>({ columns: 2, rows: 5 });
+  const [capacity, setCapacity] = useState<GridCapacity>({
+    columns: 2,
+    rows: 5,
+    pitch: FALLBACK_CARD_HEIGHT + 10,
+    gap: 10,
+  });
   useLayoutEffect(() => {
     const board = ref.current;
     if (!board) return;
@@ -62,7 +72,12 @@ function useGridCapacity(ref: RefObject<HTMLDivElement | null>, revision: number
       const card = board.querySelector<HTMLElement>(".terminal-engine-card");
       const height = card?.offsetHeight || FALLBACK_CARD_HEIGHT;
       const rows = Math.max(1, Math.floor((board.clientHeight + gap) / (height + gap)));
-      setCapacity((current) => (current.columns === columns && current.rows === rows ? current : { columns, rows }));
+      const pitch = height + gap;
+      setCapacity((current) =>
+        current.columns === columns && current.rows === rows && current.pitch === pitch
+          ? current
+          : { columns, rows, pitch, gap },
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -111,7 +126,7 @@ export function ProxyTerminalSection({
       `${model.name} ${model.route_id} ${provider.name}`.toLowerCase().includes(query),
     );
   const board = useRef<HTMLDivElement>(null);
-  const { columns, rows } = useGridCapacity(board, entries.length);
+  const { columns, rows, pitch, gap } = useGridCapacity(board, entries.length);
   const pageSize = columns * rows;
   const pages = Math.max(1, Math.ceil(entries.length / pageSize));
   const engineKey = `${client}:${activeEngine?.model_id ?? ""}`;
@@ -246,8 +261,13 @@ export function ProxyTerminalSection({
           const standard = standardOf(model.standard_model_id);
           const caps = model.capabilities ?? standard?.capabilities;
           const brand = standard?.brand || modelBrand(model.name);
-          // Cards in the lower half open their hover detail upwards so it stays inside the board.
-          const upward = rows > 1 && Math.floor(index / columns) >= Math.floor(rows / 2);
+          // The hover detail opens towards the side with more room and is capped to that room, so it
+          // never reaches past the board (which would add a scrollbar and reflow the grid under the pointer).
+          const row = Math.floor(index / columns);
+          const roomBelow = (rows - row) * pitch - gap + DETAIL_OVERHANG;
+          const roomAbove = (row + 1) * pitch - gap;
+          const upward = roomAbove > roomBelow;
+          const detailRoom = Math.max(upward ? roomAbove : roomBelow, pitch - gap);
           // The detail is wider than a narrow card; in the last column it grows leftwards instead.
           const end = columns > 1 && index % columns === columns - 1;
           const icon = (
@@ -302,6 +322,7 @@ export function ProxyTerminalSection({
 
               <div
                 className={`terminal-engine-detail${upward ? " upward" : ""}${end ? " end" : ""}`}
+                style={{ "--detail-room": `${detailRoom}px` } as CSSProperties}
                 onClick={() => choose(model.id)}
               >
                 <div className="terminal-engine-detail-head">
