@@ -2,8 +2,8 @@
 
 use super::{enum_str, parse_enum, query_as};
 use crate::domain::{
-    Client, UsageClient, UsageDailyModel, UsageDay, UsageEvent, UsageGroupBy, UsageGroupRow,
-    UsageModel, UsageRecord, UsageReport, UsageTotals,
+    Client, LivePhase, LiveRequest, UsageClient, UsageDailyModel, UsageDay, UsageEvent,
+    UsageGroupBy, UsageGroupRow, UsageModel, UsageRecord, UsageReport, UsageTotals,
 };
 use crate::error::CoreResult;
 use rusqlite::{Connection, params};
@@ -325,4 +325,71 @@ pub fn groups(
     })?
     .collect::<rusqlite::Result<Vec<_>>>()
     .map_err(Into::into)
+}
+
+/// The most recent `limit` requests, oldest first, shaped like live-registry entries so the
+/// live view can show them again after a restart.
+pub fn recent_live_requests(conn: &Connection, limit: usize) -> CoreResult<Vec<LiveRequest>> {
+    let mut stmt = conn.prepare(
+        "SELECT requested_at, client, provider_name, model, input_tokens, output_tokens, \
+           step_id, session_id, ttft_ms, duration_ms, status \
+         FROM usage ORDER BY requested_at DESC, rowid DESC LIMIT ?1",
+    )?;
+    let rows = stmt
+        .query_map([limit as i64], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, Option<String>>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, i64>(4)?,
+                r.get::<_, i64>(5)?,
+                r.get::<_, Option<String>>(6)?,
+                r.get::<_, Option<String>>(7)?,
+                r.get::<_, Option<i64>>(8)?,
+                r.get::<_, Option<i64>>(9)?,
+                r.get::<_, Option<i64>>(10)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(
+        rows.into_iter()
+            .rev()
+            .map(|row| {
+                let (
+                    at,
+                    client,
+                    provider,
+                    model,
+                    input,
+                    output,
+                    step,
+                    session,
+                    ttft,
+                    duration,
+                    status,
+                ) = row;
+                let status = status.map(|s| s as u16);
+                LiveRequest {
+                    seq: 0,
+                    step_id: step.unwrap_or_default(),
+                    client: client.and_then(|c| parse_enum::<Client>(&c).ok()),
+                    model,
+                    provider_name: provider,
+                    started_at: at,
+                    first_token_at: ttft.map(|t| at + t),
+                    finished_at: duration.map(|d| at + d),
+                    phase: if status.is_some_and(|s| s >= 400) {
+                        LivePhase::Error
+                    } else {
+                        LivePhase::Done
+                    },
+                    status,
+                    input_tokens: input as u64,
+                    output_tokens: output as u64,
+                    session_id: session,
+                }
+            })
+            .collect(),
+    )
 }

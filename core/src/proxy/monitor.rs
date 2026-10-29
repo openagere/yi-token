@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -26,7 +26,7 @@ pub fn now() -> u64 {
         .as_millis() as u64
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Counters {
     pub connections: u64,
     pub accepted_connections: u64,
@@ -41,7 +41,7 @@ pub struct Counters {
     pub duration_ms: u64,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sample {
     pub timestamp: u64,
     pub connections: u64,
@@ -52,7 +52,7 @@ pub struct Sample {
     pub sent_bytes: u64,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RouteStats {
     pub client: String,
     pub protocol: String,
@@ -80,6 +80,17 @@ pub struct Snapshot {
 
 /// The shape returned by the monitor command.
 pub type MonitorView = Snapshot;
+
+/// What survives a restart: lifetime totals, route stats and the retained buckets.
+/// Gauges (open connections, requests in flight) are not kept; nothing is in flight
+/// when the app starts.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MonitorState {
+    pub since: u64,
+    pub totals: Counters,
+    pub samples: Vec<Sample>,
+    pub routes: Vec<RouteStats>,
+}
 
 type Clock = dyn Fn() -> u64 + Send + Sync;
 
@@ -137,6 +148,55 @@ impl Monitor {
 
     pub fn totals(&self) -> Counters {
         self.lock().totals.clone()
+    }
+
+    /// Copies the parts that survive a restart.
+    pub fn export(&self) -> MonitorState {
+        let inner = self.lock();
+        MonitorState {
+            since: inner.since,
+            totals: inner.totals.clone(),
+            samples: inner.samples.iter().cloned().collect(),
+            routes: inner.routes.values().cloned().collect(),
+        }
+    }
+
+    /// Replaces the retained history with `state`. Gauges are reset, and buckets older
+    /// than the retention window are dropped.
+    pub fn restore(&self, state: MonitorState) {
+        let time = (self.clock)() / INTERVAL_MS * INTERVAL_MS;
+        let floor = time.saturating_sub((CAPACITY as u64 - 1) * INTERVAL_MS);
+        let mut inner = self.lock();
+        inner.since = state.since;
+        inner.totals = Counters {
+            connections: 0,
+            active_requests: 0,
+            ..state.totals
+        };
+        inner.samples = state
+            .samples
+            .into_iter()
+            .filter(|s| s.timestamp >= floor)
+            .map(|s| Sample {
+                connections: 0,
+                active_requests: 0,
+                ..s
+            })
+            .collect();
+        inner.routes = state
+            .routes
+            .into_iter()
+            .map(|route| {
+                let key = format!("{}:{}", route.client, route.protocol);
+                (
+                    key,
+                    RouteStats {
+                        active_requests: 0,
+                        ..route
+                    },
+                )
+            })
+            .collect();
     }
 
     /// Number of retained five-second buckets (bounded by [`CAPACITY`]).

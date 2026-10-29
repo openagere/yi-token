@@ -252,8 +252,20 @@ pub fn v6() -> M<'static> {
     )
 }
 
+/// Run page state (proxy monitor totals, routes and retained buckets), kept as one JSON row
+/// so the run page keeps its history across restarts.
+pub fn v7() -> M<'static> {
+    M::up(
+        "CREATE TABLE run_monitor (
+             id       INTEGER PRIMARY KEY CHECK (id = 1),
+             state    TEXT NOT NULL,
+             saved_at INTEGER NOT NULL
+         );",
+    )
+}
+
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![v1(), v2(), v3(), v4(), v5(), v6()])
+    Migrations::new(vec![v1(), v2(), v3(), v4(), v5(), v6(), v7()])
 }
 
 pub fn run(conn: &mut Connection) -> CoreResult<()> {

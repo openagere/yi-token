@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CircleAlert, LoaderCircle, Plug } from "lucide-react";
 import { useI18n } from "@/shared/i18n";
+import { compactNumber } from "@/features/usage";
 import { useNavigationStore } from "@/shared/navigation";
 import { ProviderIcon } from "@/shared/ui";
 import { CLIENT_META, clientName, formatClock, formatLatency, group } from "../format";
@@ -171,7 +172,7 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
                   </td>
                   <td>{formatLatency(end - item.started_at)}</td>
                   <td>
-                    {count(item.input_tokens)} / {count(item.output_tokens)}
+                    {compactNumber(item.input_tokens, language)} / {compactNumber(item.output_tokens, language)}
                   </td>
                   <td>
                     <button

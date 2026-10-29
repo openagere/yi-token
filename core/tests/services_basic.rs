@@ -634,9 +634,12 @@ async fn disabled_client_is_not_captured() {
         200
     );
     assert_eq!(
-        env.post(&codex, &with_tools(request_body(Protocol::Responses, RESP_MODEL)))
-            .await
-            .status(),
+        env.post(
+            &codex,
+            &with_tools(request_body(Protocol::Responses, RESP_MODEL))
+        )
+        .await
+        .status(),
         200
     );
     wait_for_steps(&env, 1).await;
@@ -768,3 +771,18 @@ async fn model_protocol_override_must_match_the_standard_company() {
     assert_eq!(err.code(), ErrorCode::Validation);
 }
 
+/// The run page's counters and history come back after the app restarts.
+#[tokio::test]
+async fn run_monitor_survives_a_restart() {
+    let home = tempfile::tempdir().unwrap();
+    {
+        let svc = Services::for_test(home.path());
+        let key = svc.monitor().begin("/clients/claude-code/v1/messages");
+        svc.monitor().finish(&key, false, 40);
+        svc.shutdown();
+    }
+    let svc = Services::for_test(home.path());
+    let totals = svc.monitor().totals();
+    assert_eq!((totals.requests, totals.completed), (1, 1));
+    assert_eq!(totals.active_requests, 0);
+}

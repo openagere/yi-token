@@ -188,3 +188,33 @@ async fn request_log_updates_monitor() {
         (1, 1, 0)
     );
 }
+
+#[test]
+fn restored_monitor_keeps_history_but_not_gauges() {
+    let monitor = Monitor::default();
+    let done = monitor.begin("/clients/codex/v1/responses");
+    monitor.payload(&done, 10, 20);
+    monitor.finish(&done, true, 42);
+    let _open = monitor.begin("/clients/codex/v1/responses");
+    monitor.connection(true);
+
+    let restored = Monitor::default();
+    restored.restore(monitor.export());
+    let totals = restored.totals();
+    assert_eq!(
+        (totals.requests, totals.completed, totals.errors),
+        (2, 1, 1)
+    );
+    assert_eq!((totals.active_requests, totals.connections), (0, 0));
+    let snapshot = restored.snapshot(Some(15));
+    let codex = snapshot
+        .routes
+        .iter()
+        .find(|r| r.client == "codex" && r.protocol == "responses")
+        .expect("codex route restored");
+    assert_eq!(
+        (codex.requests, codex.errors, codex.active_requests),
+        (2, 1, 0)
+    );
+    assert!(restored.bucket_count() > 0);
+}

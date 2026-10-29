@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Plug } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "@/shared/i18n";
 import { ProviderIcon } from "@/shared/ui";
-import { CLIENT_META, clientName, formatClock, formatLatency, group } from "../format";
+import { CLIENT_META, clientName, formatClock, formatLatency, formatRequestsPerMinute, group } from "../format";
 import type { ProxyMonitorSnapshot } from "../types";
 
 interface Props {
@@ -12,29 +12,44 @@ interface Props {
   minutes: number;
 }
 
-/** 流量面板：窗口汇总、请求/秒与错误/秒折线（完整采样区间），以及按终端的请求分布。 */
+/** Monitor sampling interval in seconds (see `INTERVAL_MS` in the backend). */
+const SAMPLE_SECONDS = 5;
+/** The chart draws at most this many bars, so each one stays wide enough to read. */
+const MAX_BARS = 60;
+
+/** 流量面板：窗口汇总、每分钟请求与错误，以及按时间分组的请求/错误柱状图和按终端的分布。 */
 export function TrafficPanel({ snapshot, stale, minutes }: Props) {
   const { t, language } = useI18n();
-  const series = useMemo(() => {
-    if (!snapshot) return [];
-    const seconds = snapshot.rate_seconds || 5;
-    return snapshot.samples
-      .filter((sample) => sample.timestamp + seconds * 1000 <= snapshot.sampled_at)
-      .map((sample) => ({
-        timestamp: sample.timestamp,
-        requests: sample.requests / seconds,
-        errors: sample.errors / seconds,
-      }));
+  const { bars, seconds, errorsPerSecond } = useMemo(() => {
+    if (!snapshot) return { bars: [], seconds: SAMPLE_SECONDS, errorsPerSecond: 0 };
+    // Only buckets that have closed; the current one is still filling up.
+    const closed = snapshot.samples.filter((sample) => sample.timestamp + SAMPLE_SECONDS * 1000 <= snapshot.sampled_at);
+    // Same window as the backend's rate: the last two closed buckets.
+    const recent = closed.slice(-2);
+    const perBar = Math.max(1, Math.ceil(closed.length / MAX_BARS));
+    const bars: { timestamp: number; requests: number; errors: number }[] = [];
+    for (let index = 0; index < closed.length; index += perBar) {
+      const chunk = closed.slice(index, index + perBar);
+      bars.push({
+        timestamp: chunk[0].timestamp,
+        requests: chunk.reduce((sum, sample) => sum + sample.requests, 0),
+        errors: chunk.reduce((sum, sample) => sum + sample.errors, 0),
+      });
+    }
+    return {
+      bars,
+      seconds: perBar * SAMPLE_SECONDS,
+      errorsPerSecond: recent.reduce((sum, sample) => sum + sample.errors, 0) / (recent.length * SAMPLE_SECONDS || 1),
+    };
   }, [snapshot]);
   const groups = useMemo(() => group(snapshot?.routes ?? []), [snapshot]);
   const ready = snapshot && !stale;
-  const last = series.at(-1);
   const totals = snapshot?.totals;
   const count = (value: number) => value.toLocaleString(language);
   const max = Math.max(1, ...groups.map((entry) => entry.requests));
   const stats = [
-    { label: t("proxy.traffic.requests"), value: ready ? snapshot.requests_per_second.toFixed(2) : "--", tone: "requests" },
-    { label: t("proxy.traffic.errors"), value: ready ? (last?.errors ?? 0).toFixed(2) : "--", tone: "errors" },
+    { label: t("proxy.traffic.requests"), value: ready ? formatRequestsPerMinute(snapshot.requests_per_second, language) : "--", tone: "requests" },
+    { label: t("proxy.traffic.errors"), value: ready ? formatRequestsPerMinute(errorsPerSecond, language) : "--", tone: "errors" },
     { label: t("proxy.traffic.windowRequests"), value: ready && totals ? count(totals.requests) : "--" },
     { label: t("proxy.traffic.windowErrors"), value: ready && totals ? count(totals.errors) : "--" },
     {
@@ -56,16 +71,19 @@ export function TrafficPanel({ snapshot, stale, minutes }: Props) {
       <div className="run-traffic-body">
         <div className="run-traffic-chart-card">
           <div className="run-traffic-chart-head">
-            <span>{t("proxy.traffic.window", { minutes })}</span>
+            <span>
+              {t("proxy.traffic.window", { minutes })}
+              <small>{t("proxy.traffic.bucket", { seconds })}</small>
+            </span>
             <div className="run-traffic-legend" aria-hidden="true">
-              <span className="requests">{t("proxy.traffic.requests")}</span>
-              <span className="errors">{t("proxy.traffic.errors")}</span>
+              <span className="requests">{t("proxy.traffic.legendRequests")}</span>
+              <span className="errors">{t("proxy.traffic.legendErrors")}</span>
             </div>
           </div>
           <div className="run-traffic-chart" aria-label={t("proxy.traffic.chartLabel")}>
-            {ready && series.length ? (
+            {ready && bars.length ? (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <LineChart data={series} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <BarChart data={bars} margin={{ top: 8, right: 12, bottom: 0, left: 0 }} barCategoryGap="25%">
                   <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 4" vertical={false} />
                   <XAxis
                     dataKey="timestamp"
@@ -77,16 +95,24 @@ export function TrafficPanel({ snapshot, stale, minutes }: Props) {
                     axisLine={false}
                     minTickGap={40}
                   />
-                  <YAxis tick={{ fontSize: 10, fill: "var(--chart-axis)" }} tickLine={false} axisLine={false} width={36} domain={[0, "auto"]} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--chart-axis)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                    allowDecimals={false}
+                    domain={[0, "auto"]}
+                  />
                   <Tooltip
                     isAnimationActive={false}
+                    cursor={{ fill: "var(--surface-subtle)" }}
                     labelFormatter={(value) => formatClock(Number(value), language)}
-                    formatter={(value) => Number(value).toFixed(2)}
+                    formatter={(value) => count(Number(value))}
                     contentStyle={{ border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", fontSize: 12 }}
                   />
-                  <Line dataKey="requests" name={t("proxy.traffic.requests")} stroke="var(--success)" strokeWidth={1.75} dot={false} isAnimationActive={false} />
-                  <Line dataKey="errors" name={t("proxy.traffic.errors")} stroke="var(--danger)" strokeWidth={1.75} dot={false} isAnimationActive={false} />
-                </LineChart>
+                  <Bar dataKey="requests" name={t("proxy.traffic.legendRequests")} fill="var(--success)" maxBarSize={12} isAnimationActive={false} />
+                  <Bar dataKey="errors" name={t("proxy.traffic.legendErrors")} fill="var(--danger)" maxBarSize={12} isAnimationActive={false} />
+                </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="proxy-loading">{stale ? t("proxy.monitor.dataUnavailable") : snapshot ? t("proxy.monitor.waiting") : t("proxy.loading.monitor")}</div>

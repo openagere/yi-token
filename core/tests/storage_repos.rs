@@ -1,9 +1,9 @@
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 use yi_core::domain::{
-    Capabilities, Client, Company, DirectProfile, LogLevel, Model, ModelSource, ProfileModel,
-    Protocol, Provider, ProxyProfile, RouteMode, Settings, StandardModel, TrajectorySettings,
-    UsageEvent,
+    Capabilities, Client, Company, DirectProfile, LivePhase, LogLevel, Model, ModelSource,
+    ProfileModel, Protocol, Provider, ProxyProfile, RouteMode, Settings, StandardModel,
+    TrajectorySettings, UsageEvent,
 };
 use yi_core::storage::usage::UsageQuery;
 use yi_core::storage::{Db, engines, migrations, models, providers, settings, standard_models};
@@ -67,7 +67,7 @@ fn count(db: &Db, table: &str) -> i64 {
 fn migration_sets_user_version_4() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 6);
+        assert_eq!(user_version(c), 7);
         let fk: i64 = c.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
         assert_eq!(fk, 1);
         for index in ["idx_usage_requested_at", "idx_usage_client"] {
@@ -117,7 +117,7 @@ fn file_database_uses_wal_and_foreign_keys() {
     drop(db);
     let db = Db::open(&dir.path().join("nested").join("t.db")).unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 6);
+        assert_eq!(user_version(c), 7);
         Ok(())
     })
     .unwrap();
@@ -134,7 +134,9 @@ fn migrations_with_failing_v2() -> Migrations<'static> {
 #[test]
 fn migration_is_atomic() {
     let mut conn = Connection::open_in_memory().unwrap();
-    Migrations::new(vec![migrations::v1()]).to_latest(&mut conn).unwrap();
+    Migrations::new(vec![migrations::v1()])
+        .to_latest(&mut conn)
+        .unwrap();
     assert_eq!(user_version(&conn), 1);
     assert!(migrations_with_failing_v2().to_latest(&mut conn).is_err());
     assert_eq!(user_version(&conn), 1);
@@ -608,7 +610,7 @@ fn v4_adds_usage_columns_and_keeps_old_rows() {
     )
     .unwrap();
     migrations::migrations().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 6);
+    assert_eq!(user_version(&conn), 7);
 
     let r = usage::query(
         &conn,
@@ -891,7 +893,7 @@ fn v6_merges_protocol_standards_into_companies() {
     )
     .unwrap();
     migrations::migrations().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 6);
+    assert_eq!(user_version(&conn), 7);
 
     let rows: Vec<(String, String, String)> = conn
         .prepare("SELECT id, name, company FROM standard_models ORDER BY id")
@@ -923,8 +925,63 @@ fn v6_merges_protocol_standards_into_companies() {
         ]
     );
     let overrides: i64 = conn
-        .query_row("SELECT COUNT(*) FROM models WHERE protocol IS NOT NULL", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM models WHERE protocol IS NOT NULL",
+            [],
+            |r| r.get(0),
+        )
         .unwrap();
     assert_eq!(overrides, 0);
 }
 
+#[test]
+fn run_monitor_state_round_trips() {
+    let db = Db::open_in_memory().unwrap();
+    db.with_conn(|c| {
+        assert_eq!(yi_core::storage::run_state::load(c)?, None);
+        yi_core::storage::run_state::save(c, r#"{"a":1}"#, 10)?;
+        yi_core::storage::run_state::save(c, r#"{"a":2}"#, 20)?;
+        assert_eq!(
+            yi_core::storage::run_state::load(c)?.as_deref(),
+            Some(r#"{"a":2}"#)
+        );
+        assert_eq!(count(&db, "run_monitor"), 1);
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn recent_requests_come_back_oldest_first_with_phase_and_timing() {
+    let db = Db::open_in_memory().unwrap();
+    let mut ok = event(1_000, Some(Client::Codex), "gpt", 9_000, 0);
+    ok.step_id = Some("step-ok".into());
+    ok.ttft_ms = Some(120);
+    ok.duration_ms = Some(4_000);
+    ok.status = Some(200);
+    let mut failed = event(2_000, Some(Client::ClaudeCode), "claude", 3_000, 0);
+    failed.step_id = Some("step-502".into());
+    failed.duration_ms = Some(30_000);
+    failed.status = Some(502);
+    db.with_conn(|c| usage::insert_batch(c, &[failed.clone(), ok.clone()]))
+        .unwrap();
+    let rows = db
+        .with_conn(|c| usage::recent_live_requests(c, 10))
+        .unwrap();
+    let ids: Vec<_> = rows.iter().map(|r| r.step_id.as_str()).collect();
+    assert_eq!(ids, ["step-ok", "step-502"]);
+    let first = &rows[0];
+    assert_eq!(first.client, Some(Client::Codex));
+    assert_eq!(first.first_token_at, Some(1_120));
+    assert_eq!(first.finished_at, Some(5_000));
+    assert_eq!((first.input_tokens, first.output_tokens), (9_000, 0));
+    assert_eq!(first.phase, LivePhase::Done);
+    assert_eq!(rows[1].phase, LivePhase::Error);
+    assert_eq!(rows[1].status, Some(502));
+    assert_eq!(
+        db.with_conn(|c| usage::recent_live_requests(c, 1))
+            .unwrap()
+            .len(),
+        1
+    );
+}

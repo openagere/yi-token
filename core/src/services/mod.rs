@@ -8,6 +8,7 @@ mod models;
 mod probe;
 mod providers;
 mod proxy;
+mod run_state;
 mod sessions;
 mod settings;
 mod terminal;
@@ -58,6 +59,7 @@ pub struct Services {
     routes: Arc<Routes>,
     pub(crate) http: UpstreamClient,
     writer: Mutex<Option<UsageWriterHandle>>,
+    monitor_saver: Mutex<Option<run_state::MonitorSaver>>,
     /// Trajectory database and its writer; `Unavailable` keeps the service running (spec 5.4).
     trajectory: Mutex<TrajectoryState>,
     /// Producer slot shared with the proxy state; holds the trajectory sink while capture is on.
@@ -137,6 +139,11 @@ impl Services {
             ProxyState::with_http(routes.clone(), sink.clone(), http.clone(), monitor.clone());
         let capture = proxy_state.capture.clone();
         let live = proxy_state.live.clone();
+        run_state::restore_monitor(&db, &monitor)?;
+        live.restore(db.with_conn(|c| {
+            crate::storage::usage::recent_live_requests(c, crate::proxy::live::RING_CAPACITY)
+        })?);
+        let monitor_saver = run_state::spawn_monitor_saver(db.clone(), monitor.clone());
         let trajectory = open_trajectory(&paths.trajectory_db, &db, &live, &capture);
         let proxy = ProxyHandle::with_monitor(move || build(proxy_state.clone()), monitor.clone());
         let proxy_rt = tokio::runtime::Builder::new_multi_thread()
@@ -153,6 +160,7 @@ impl Services {
             routes,
             http,
             writer: Mutex::new(Some(writer)),
+            monitor_saver: Mutex::new(Some(monitor_saver)),
             trajectory: Mutex::new(trajectory),
             capture,
             live,
@@ -185,6 +193,11 @@ impl Services {
     }
 
     /// Producer handle for usage events (used by the proxy).
+    /// The proxy traffic monitor (run page counters).
+    pub fn monitor(&self) -> Monitor {
+        self.monitor.clone()
+    }
+
     pub fn usage_sink(&self) -> UsageSink {
         self.sink.clone()
     }
@@ -204,6 +217,9 @@ impl Services {
         trajectory.shutdown();
         if let Some(writer) = lock(&self.writer).take() {
             writer.shutdown();
+        }
+        if let Some(saver) = lock(&self.monitor_saver).take() {
+            saver.shutdown();
         }
     }
 

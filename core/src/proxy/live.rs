@@ -7,7 +7,7 @@ use crate::domain::{Client, LivePhase, LiveRequest, LiveSnapshot};
 use crate::protocol::Usage;
 
 /// Completed requests kept for the live view.
-const RING_CAPACITY: usize = 500;
+pub const RING_CAPACITY: usize = 500;
 
 /// Shared by the pipeline (writer) and the live view (reader). Cheap to clone.
 #[derive(Clone, Default)]
@@ -93,6 +93,19 @@ impl LiveRegistry {
         }
     }
 
+    /// Seeds the completed ring with requests from before a restart, oldest first.
+    pub fn restore(&self, rows: Vec<LiveRequest>) {
+        let mut st = self.lock();
+        for mut req in rows {
+            st.seq += 1;
+            req.seq = st.seq;
+            st.completed.push_back(req);
+        }
+        while st.completed.len() > RING_CAPACITY {
+            st.completed.pop_front();
+        }
+    }
+
     /// Attaches the session identifier once the writer has resolved it.
     pub fn set_session(&self, step_id: &str, session_id: &str) {
         let mut guard = self.lock();
@@ -137,6 +150,36 @@ mod tests {
 
     fn finish_ok(reg: &LiveRegistry, id: &str) {
         reg.finish(id, LivePhase::Done, Some(200), Usage::default(), Some(2));
+    }
+
+    #[test]
+    fn restored_requests_continue_the_sequence() {
+        let reg = LiveRegistry::default();
+        let row = |id: &str| LiveRequest {
+            seq: 0,
+            step_id: id.into(),
+            client: Some(Client::Codex),
+            model: "m".into(),
+            provider_name: "p".into(),
+            started_at: 1,
+            first_token_at: None,
+            finished_at: Some(2),
+            phase: LivePhase::Done,
+            status: Some(200),
+            input_tokens: 0,
+            output_tokens: 0,
+            session_id: None,
+        };
+        reg.restore(vec![row("old-a"), row("old-b")]);
+        reg.begin("new", Some(Client::Codex), "m", "p", 1);
+        finish_ok(&reg, "new");
+        let snapshot = reg.snapshot(0);
+        let seqs: Vec<_> = snapshot
+            .completed
+            .iter()
+            .map(|r| (r.step_id.as_str(), r.seq))
+            .collect();
+        assert_eq!(seqs, [("old-a", 1), ("old-b", 2), ("new", 3)]);
     }
 
     #[test]
