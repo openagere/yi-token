@@ -189,16 +189,14 @@ impl ClientSpec for Codex {
             set_reasoning(
                 config,
                 selection.map(|selection| selection.capabilities),
-                selection.map_or(Protocol::Responses, |selection| {
-                    selection.provider.provider_type
-                }),
+                selection.map_or(Protocol::Responses, |selection| selection.upstream()),
             )?;
         }
         if !auto {
             models.extend(resolved.iter().enumerate().map(|(index, resolved)| {
                 catalog_entry(
                     &resolved.selection.model,
-                    resolved.provider.provider_type,
+                    resolved.upstream(),
                     resolved.capabilities,
                     index + 1,
                     "yi-token".to_owned(),

@@ -6,17 +6,17 @@
   "required": ["version", "models"],
   "properties": {
     "$schema": { "type": "string" },
-    "version": { "const": 1 },
+    "version": { "const": 2 },
     "models": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "protocol"],
+        "required": ["id", "name", "company"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "name": { "type": "string", "minLength": 1 },
-          "protocol": { "enum": ["responses", "openai_chat", "anthropic"] },
+          "company": { "enum": ["openai", "anthropic"] },
           "brand": { "type": "string", "maxLength": 64, "pattern": "^[A-Za-z0-9_-]*$" },
           "capabilities": { "$ref": "#/$defs/capabilities" }
         }

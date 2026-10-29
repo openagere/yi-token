@@ -6,8 +6,8 @@ use yi_core::ErrorCode;
 use yi_core::backup::payload::{BackupSettings, EngineSelection, Payload};
 use yi_core::backup::{self, import::ImportReport};
 use yi_core::domain::{
-    Capabilities, Client, DirectProfile, LogLevel, Model, ModelSource, ProfileModel, Protocol,
-    Provider, ProxyProfile, RouteMode, Settings, StandardModel,
+    Capabilities, Client, Company, DirectProfile, LogLevel, Model, ModelSource, ProfileModel,
+    Protocol, Provider, ProxyProfile, RouteMode, Settings, StandardModel,
 };
 use yi_core::services::{Services, TerminalProfileView};
 use yi_core::storage::{engines, models, providers, settings, standard_models, terminal};
@@ -40,6 +40,7 @@ fn model(id: &str, upstream: &str) -> Model {
         id: id.into(),
         provider_id: String::new(),
         standard_model_id: None,
+        protocol: None,
         upstream_model: upstream.into(),
         exposed_name: String::new(),
         capabilities: Capabilities::default(),
@@ -135,7 +136,7 @@ fn seed_roundtrip(services: &Services) {
     let standard = StandardModel {
         id: "backup-standard".into(),
         name: "Backup Standard".into(),
-        protocol: Protocol::OpenaiChat,
+        company: Company::Openai,
         brand: "test".into(),
         capabilities: Capabilities::default(),
     };

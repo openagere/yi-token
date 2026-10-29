@@ -42,7 +42,7 @@ export async function installBackend(
             {
               id: "gpt",
               name: "GPT-5",
-              protocol: "responses",
+              company: "openai",
               brand: "openai",
               capabilities,
               provider_count: 2,
@@ -50,7 +50,7 @@ export async function installBackend(
             {
               id: "claude",
               name: "Claude Sonnet",
-              protocol: "anthropic",
+              company: "anthropic",
               brand: "anthropic",
               capabilities,
               provider_count: 1,
@@ -58,7 +58,7 @@ export async function installBackend(
             {
               id: "deepseek",
               name: "DeepSeek V3",
-              protocol: "openai_chat",
+              company: "openai",
               brand: "deepseek",
               capabilities: {
                 ...capabilities,
@@ -70,7 +70,7 @@ export async function installBackend(
             {
               id: "gemini",
               name: "Gemini Pro",
-              protocol: "openai_chat",
+              company: "openai",
               brand: "gemini",
               capabilities,
               provider_count: 0,
@@ -78,7 +78,7 @@ export async function installBackend(
             {
               id: "kimi",
               name: "Kimi K2",
-              protocol: "openai_chat",
+              company: "openai",
               brand: "kimi",
               capabilities,
               provider_count: 0,

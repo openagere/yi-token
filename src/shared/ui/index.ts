@@ -5,6 +5,7 @@ export { PageHeader } from "./PageHeader";
 export { useFitRows } from "./useFitRows";
 export { PageTabs, tabId, tabPanelId, type PageTab } from "./PageTabs";
 export { BRAND_ICONS, modelBrand, ProviderIcon, providerBrand } from "./ProviderIcon";
+export { CompanySelector } from "./CompanySelector";
 export { ProtocolSelector } from "./ProtocolSelector";
 export { Select, type SelectOption } from "./Select";
 export { Toast } from "./Toast";

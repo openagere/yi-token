@@ -57,6 +57,7 @@ pub fn model(id: &str, upstream: &str) -> Model {
         id: id.into(),
         provider_id: String::new(),
         standard_model_id: None,
+        protocol: None,
         upstream_model: upstream.into(),
         exposed_name: String::new(),
         capabilities: Capabilities::default(),

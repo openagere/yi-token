@@ -110,7 +110,7 @@ button.connection-protocol:hover:not(:disabled) { border-color: var(--border-str
 .client-protocol-copy small { color: var(--text-muted); font-size: 12px; }
 .native-protocol-status { display: flex; flex: none; align-items: center; color: var(--accent); }
 .connection-model-table { display: grid; gap: 10px; border-radius: 4px; }
-.connection-model-head, .connection-model-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 54px 35px; align-items: center; gap: 12px; }
+.connection-model-head, .connection-model-row { display: grid; grid-template-columns: minmax(0, 1fr) 128px minmax(0, 1fr) 54px 35px; align-items: center; gap: 12px; }
 .provider-model-binding { display: grid; gap: 9px; padding-bottom: 13px; border-bottom: 1px solid var(--border); }
 .provider-model-binding:last-of-type { border-bottom: 0; }
 .provider-model-nonstandard { position: relative; display: flex; justify-content: center; align-items: center; height: 39px; }
@@ -118,7 +118,7 @@ button.connection-protocol:hover:not(:disabled) { border-color: var(--border-str
 .provider-model-nonstandard .toggle { pointer-events: none; width: 32px; height: 18px; }
 .provider-model-nonstandard .toggle::after { top: 2px; left: 2px; }
 .provider-model-nonstandard input:checked + .toggle::after { transform: translateX(14px); }
-.connection-model-head > span:nth-child(3) { text-align: center; }
+.connection-model-head > span:nth-child(4) { text-align: center; }
 .connection-model-row select { width: 100%; min-width: 0; height: 39px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--surface); font-size: 12px; }
 .connection-model-row { align-items: start; }
 .connection-model-head { color: var(--text-secondary); font-size: 12px; }

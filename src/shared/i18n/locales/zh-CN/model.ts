@@ -105,16 +105,16 @@ const model = {
       },
       errors: {
         nameRequired: "请填写标准模型名称",
-        nameDuplicate: "同一协议下的模型名称不能重复",
-        protocolConflict: "此模型被 {count} 个 Provider 引用，切换协议前需在 Provider 中解除关联。",
+        nameDuplicate: "同一公司下的模型名称不能重复",
+        companyConflict: "此模型被 {count} 个 Provider 引用，切换公司前需在 Provider 中解除关联。",
       },
       info: {
         title: "模型信息",
         references: "{count} 个 Provider 引用",
         name: "标准模型名称",
         namePlaceholder: "例如：GPT-4.1",
-        protocol: "模型协议",
-        protocolLabel: "标准模型协议",
+        company: "模型公司",
+        companyLabel: "标准模型公司",
       },
       brand: {
         label: "公司图标",

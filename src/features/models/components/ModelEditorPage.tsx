@@ -2,7 +2,8 @@ import { Brain, Boxes, CheckCircle2, CircleHelp, Gauge, LoaderCircle, MinusCircl
 import "@/styles/models.css";
 import { useI18n } from "@/shared/i18n";
 import { useNavigation } from "@/shared/navigation";
-import { modelBrand, PageHeader, ProtocolSelector, Select } from "@/shared/ui";
+import { CompanySelector, modelBrand, PageHeader, Select } from "@/shared/ui";
+import { companyProtocol } from "@/shared/lib";
 import { effortLevels } from "../capabilities";
 import { CAPACITY_FIELDS } from "../draft";
 import { useStandardModels } from "../hooks";
@@ -23,7 +24,7 @@ function ModelEditorForm({ model, models }: { model: StandardModel | null; model
   const { t } = useI18n();
   const { back } = useNavigation();
   const form = useModelForm(model, models);
-  const { draft, tokenDrafts, errors, busy, dirty, existing, protocolConflict, initial } = form;
+  const { draft, tokenDrafts, errors, busy, dirty, existing, companyConflict, initial } = form;
   const caps = draft.capabilities;
   const footer = busy ? t("model.editor.footer.saving") : dirty ? t("model.editor.footer.unsaved") : existing ? t("model.editor.footer.saved") : t("model.editor.footer.fresh");
 
@@ -35,9 +36,9 @@ function ModelEditorForm({ model, models }: { model: StandardModel | null; model
           <div className="connection-section-title"><Boxes size={17} /><h2>{t("model.editor.info.title")}</h2>{draft.provider_count > 0 && <span className="standard-model-reference-count">{t("model.editor.info.references", { count: draft.provider_count })}</span>}</div>
           <div className="standard-model-identity-grid"><label className="field"><span>{t("model.editor.info.name")}<span className="required-mark">*</span></span><input autoFocus aria-invalid={Boolean(errors.name)} value={draft.name} onChange={(event) => form.setName(event.target.value)} placeholder={t("model.editor.info.namePlaceholder")} />{errors.name && <small className="field-error">{errors.name}</small>}</label>
             <BrandIconPicker value={draft.brand} automatic={modelBrand(draft.name)} disabled={busy} onChange={form.setBrand} />
-            <div className="field standard-model-protocol-field"><span>{t("model.editor.info.protocol")}</span>
-              <ProtocolSelector value={draft.protocol} onChange={form.changeProtocol} label={t("model.editor.info.protocolLabel")} disabled={busy} invalid={Boolean(protocolConflict)} describedBy={protocolConflict ? "model-protocol-error" : undefined} />
-              {protocolConflict && <small id="model-protocol-error" className="field-error" role="alert">{protocolConflict}</small>}
+            <div className="field standard-model-company-field"><span>{t("model.editor.info.company")}</span>
+              <CompanySelector value={draft.company} onChange={form.changeCompany} label={t("model.editor.info.companyLabel")} disabled={busy} invalid={Boolean(companyConflict)} describedBy={companyConflict ? "model-company-error" : undefined} />
+              {companyConflict && <small id="model-company-error" className="field-error" role="alert">{companyConflict}</small>}
             </div>
           </div>
         </section>
@@ -52,7 +53,7 @@ function ModelEditorForm({ model, models }: { model: StandardModel | null; model
             <input type="radio" name="effort-support" value={value} checked={caps.effort.support === value} onChange={() => form.changeEffortSupport(value)} /><Icon size={15} /><span>{t(labelKey)}</span>
           </label>)}</div>
           {caps.effort.support === "supported" && <div className="effort-configuration">
-            <fieldset className="effort-level-fieldset" aria-invalid={Boolean(errors.effort)} tabIndex={errors.effort ? -1 : undefined}><legend>{t("model.editor.effort.levels")}</legend><div className="effort-levels">{effortLevels(draft.protocol).map((level) => <label className={caps.effort.levels.includes(level) ? "selected" : ""} key={level}>
+            <fieldset className="effort-level-fieldset" aria-invalid={Boolean(errors.effort)} tabIndex={errors.effort ? -1 : undefined}><legend>{t("model.editor.effort.levels")}</legend><div className="effort-levels">{effortLevels(companyProtocol(draft.company)).map((level) => <label className={caps.effort.levels.includes(level) ? "selected" : ""} key={level}>
               <span><strong>{level}</strong><small>{t(`model.editor.effort.names.${level as "low"}`)}</small></span><input type="checkbox" aria-label={level} checked={caps.effort.levels.includes(level)} onChange={(event) => form.toggleEffortLevel(level, event.target.checked)} /></label>)}</div>{errors.effort && <small className="field-error" role="alert">{errors.effort}</small>}</fieldset>
             <div className="field effort-default-field"><span>{t("model.editor.effort.defaultLegend")}</span><Select value={caps.effort.default ?? ""} label={t("model.editor.effort.defaultLabel")} disabled={busy}
               onValueChange={form.setDefaultEffort}

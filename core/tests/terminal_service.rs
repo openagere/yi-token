@@ -35,6 +35,7 @@ async fn fixture(upstreams: &[&str], enabled: bool) -> (TempDir, Arc<Services>, 
             route_id: String::new(),
             name: (*name).into(),
             standard_model_id: None,
+            protocol: None,
             capabilities: None,
             non_standard: false,
         })
@@ -252,6 +253,7 @@ async fn switching_proxy_engine_keeps_the_terminal_connected() {
                 route_id: model.route_id.clone(),
                 name: model.name.clone(),
                 standard_model_id: None,
+                protocol: None,
                 capabilities: Some(capabilities),
                 non_standard: false,
             }

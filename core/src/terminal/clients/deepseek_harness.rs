@@ -270,7 +270,7 @@ fn proxy_models(resolved: &[super::ResolvedModel<'_>], protocol: Protocol) -> Ve
                 &resolved.selection.model,
                 resolved.capabilities,
                 protocol,
-                resolved.provider.provider_type,
+                resolved.upstream(),
             )
         })
         .collect()

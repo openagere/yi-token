@@ -11,7 +11,7 @@ use wiremock::{Mock, ResponseTemplate};
 use yi_core::AppPaths;
 use yi_core::backup;
 use yi_core::domain::{
-    Client, LogLevel, Protocol, Provider, SessionListInput, Thinking, TrajectorySettings,
+    Client, Company, LogLevel, Protocol, Provider, SessionListInput, Thinking, TrajectorySettings,
     UsageEvent,
 };
 use yi_core::error::ErrorCode;
@@ -43,6 +43,7 @@ fn model(upstream: &str) -> ModelInput {
         route_id: String::new(),
         name: upstream.into(),
         standard_model_id: None,
+        protocol: None,
         capabilities: None,
         non_standard: false,
     }
@@ -373,6 +374,7 @@ async fn dto_field_names_match_frontend() {
             "route_id",
             "name",
             "standard_model_id",
+            "protocol",
             "capabilities",
             "non_standard",
         ])
@@ -443,7 +445,7 @@ async fn catalog_edit_refreshes_route_capabilities() {
     let catalog = home.path().join("catalog.json");
     let catalog_with = |window: u32| {
         format!(
-            r#"{{"version":1,"models":[{{"name":"alpha","protocol":"responses","capabilities":{{"context_window":{window}}}}}]}}"#
+            r#"{{"version":2,"models":[{{"name":"alpha","company":"openai","capabilities":{{"context_window":{window}}}}}]}}"#
         )
     };
     std::fs::write(&catalog, catalog_with(1000)).unwrap();
@@ -464,6 +466,7 @@ async fn catalog_edit_refreshes_route_capabilities() {
         provider_input,
         vec![ModelInput {
             standard_model_id: Some(standard.id.clone()),
+            protocol: None,
             ..model("up")
         }],
     )
@@ -718,3 +721,50 @@ async fn clear_all_during_traffic_never_fails_requests() {
         REQUESTS
     );
 }
+
+/// Standard models belong to a company; a model's effective protocol must belong to it too.
+#[tokio::test]
+async fn model_protocol_override_must_match_the_standard_company() {
+    let home = tempfile::tempdir().unwrap();
+    let svc = Services::for_test(home.path());
+    let standards = svc.list_standard_models().await.unwrap();
+    let claude = standards
+        .iter()
+        .find(|m| m.company == Company::Anthropic)
+        .unwrap()
+        .id
+        .clone();
+
+    let mut input = provider("mix");
+    input.provider_type = Protocol::Responses;
+    let saved = svc
+        .save_provider(
+            input.clone(),
+            vec![ModelInput {
+                standard_model_id: Some(claude.clone()),
+                protocol: Some(Protocol::Anthropic),
+                ..model("claude-x")
+            }],
+        )
+        .await
+        .unwrap();
+    assert_eq!(saved.models[0].protocol, Some(Protocol::Anthropic));
+
+    let err = svc
+        .save_provider(
+            ProviderInput {
+                id: String::new(),
+                name: "Provider mix2".into(),
+                ..input
+            },
+            vec![ModelInput {
+                standard_model_id: Some(claude),
+                protocol: Some(Protocol::OpenaiChat),
+                ..model("claude-y")
+            }],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), ErrorCode::Validation);
+}
+

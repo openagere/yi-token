@@ -1,16 +1,16 @@
 //! Catalog file format and loading.
 
-use crate::domain::{Capabilities, Protocol, StandardModel};
+use crate::domain::{Capabilities, Company, StandardModel};
 use crate::error::{CoreError, CoreResult};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
 
-const SUPPORTED_VERSION: u32 = 1;
+const SUPPORTED_VERSION: u32 = 2;
 const BUILTIN: &str = include_str!("../../../models/catalog.json");
 
 /// A parsed catalog. Entry ids come from the file and are not authoritative:
-/// `sync::apply` keeps the stored id for known `(name, protocol)` pairs.
+/// `sync::apply` keeps the stored id for known `(name, company)` pairs.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CatalogFile {
     pub version: String,
@@ -29,7 +29,7 @@ struct RawEntry {
     #[serde(default)]
     id: String,
     name: String,
-    protocol: Protocol,
+    company: Company,
     #[serde(default)]
     brand: String,
     #[serde(default)]
@@ -53,17 +53,17 @@ fn parse(text: &str) -> CoreResult<CatalogFile> {
             return Err(CoreError::Validation("标准模型名称不能为空".into()));
         }
         m.capabilities
-            .validate(m.protocol)
+            .validate(m.company.protocol())
             .map_err(|e| CoreError::Validation(format!("模型 {name}：{e}")))?;
-        if !seen.insert((name.clone(), m.protocol)) {
+        if !seen.insert((name.clone(), m.company)) {
             return Err(CoreError::Validation(format!(
-                "同一协议下的标准模型名称重复：{name}"
+                "同一公司下的标准模型名称重复：{name}"
             )));
         }
         entries.push(StandardModel {
             id: m.id,
             name,
-            protocol: m.protocol,
+            company: m.company,
             brand: m.brand,
             capabilities: m.capabilities,
         });

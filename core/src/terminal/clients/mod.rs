@@ -41,6 +41,13 @@ pub struct ResolvedModel<'a> {
     pub capabilities: &'a Capabilities,
 }
 
+impl ResolvedModel<'_> {
+    /// The wire protocol the selected model is called with upstream.
+    pub fn upstream(&self) -> Protocol {
+        self.model.upstream_protocol(self.provider)
+    }
+}
+
 /// Resolves every selected model to its provider and model record, in profile order.
 pub fn resolved_models<'a>(
     profile: &'a crate::domain::ProxyProfile,
@@ -109,15 +116,23 @@ pub fn proxy_model_caps(ctx: &ClientCtx, client_protocol: Protocol) -> (Capabili
         .providers
         .iter()
         .find(|provider| provider.id == model.provider_id)
-        .map(|provider| provider.provider_type)
+        .map(|provider| model.upstream_protocol(provider))
         .unwrap_or(client_protocol);
     (model.capabilities.clone(), upstream)
 }
 
+/// Models a direct connection can reach: direct access talks to the provider's
+/// native protocol, so models overriding it are left out.
 pub fn provider_models<'a>(provider_id: &str, ctx: &'a ClientCtx) -> Vec<&'a Model> {
+    let native = ctx
+        .providers
+        .iter()
+        .find(|provider| provider.id == provider_id)
+        .map(|provider| provider.provider_type);
     ctx.models
         .iter()
         .filter(|model| model.provider_id == provider_id)
+        .filter(|model| model.protocol.is_none() || model.protocol == native)
         .collect()
 }
 

@@ -1,5 +1,5 @@
 use crate::domain::{
-    Client, DirectProfile, LogLevel, Model, Provider, ProxyProfile, StandardModel,
+    Client, Company, DirectProfile, LogLevel, Model, Provider, ProxyProfile, StandardModel,
 };
 use crate::error::{CoreError, CoreResult};
 use crate::storage::{self, Db};
@@ -106,15 +106,15 @@ impl Payload {
             if model.name.trim().is_empty() {
                 return Err(CoreError::Validation("标准模型名称不能为空".into()));
             }
-            if !names.insert((model.name.trim(), model.protocol)) {
+            if !names.insert((model.name.trim(), model.company)) {
                 return Err(CoreError::Validation(format!(
-                    "同一协议下的标准模型名称重复：{}",
+                    "同一公司下的标准模型名称重复：{}",
                     model.name.trim()
                 )));
             }
             model
                 .capabilities
-                .validate(model.protocol)
+                .validate(model.company.protocol())
                 .map_err(|error| {
                     CoreError::Validation(format!("标准模型「{}」：{error}", model.name.trim()))
                 })?;
@@ -185,13 +185,22 @@ impl Payload {
                         provider.name.trim()
                     )));
                 }
+                if let Some(protocol) = model.protocol
+                    && !provider.protocols.contains(&protocol)
+                {
+                    return Err(CoreError::Validation(format!(
+                        "模型「{upstream}」的协议不是 Provider「{}」支持的协议",
+                        provider.name.trim()
+                    )));
+                }
+                let upstream_protocol = model.upstream_protocol(provider);
                 match &model.standard_model_id {
                     Some(id) => {
                         if let Some(standard) = self.standard_models.iter().find(|s| &s.id == id)
-                            && standard.protocol != provider.provider_type
+                            && standard.company != Company::of(upstream_protocol)
                         {
                             return Err(CoreError::Validation(format!(
-                                "标准模型「{}」与 Provider「{}」的上游协议不一致",
+                                "标准模型「{}」与 Provider「{}」的模型「{upstream}」协议不一致",
                                 standard.name.trim(),
                                 provider.name.trim()
                             )));
@@ -199,7 +208,7 @@ impl Payload {
                     }
                     None => model
                         .capabilities
-                        .validate(provider.provider_type)
+                        .validate(upstream_protocol)
                         .map_err(|error| {
                             CoreError::Validation(format!(
                                 "Provider「{}」的模型「{upstream}」：{error}",

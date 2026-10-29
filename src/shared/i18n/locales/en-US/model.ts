@@ -108,16 +108,16 @@ const model: DeepString<typeof zh> = {
       },
       errors: {
         nameRequired: "Enter a standard model name",
-        nameDuplicate: "Model names must be unique within a protocol",
-        protocolConflict: "This model is used by {count} Provider references. Unlink them from their providers before switching protocols.",
+        nameDuplicate: "Model names must be unique within a company",
+        companyConflict: "This model is used by {count} Provider references. Unlink them from their providers before switching companies.",
       },
       info: {
         title: "Model details",
         references: "{count} Provider references",
         name: "Standard model name",
         namePlaceholder: "e.g. GPT-4.1",
-        protocol: "Model protocol",
-        protocolLabel: "Standard model protocol",
+        company: "Model company",
+        companyLabel: "Standard model company",
       },
       brand: {
         label: "Provider icon",

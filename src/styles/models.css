@@ -11,7 +11,7 @@
 .standard-model-identity > button { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
 .standard-model-identity > button > span:last-child { min-width: 0; }
 .standard-model-identity > button:hover { color: var(--accent); }
-.standard-model-protocol { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
+.standard-model-company { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
 .standard-model-limits, .standard-model-effort { display: grid; gap: 5px; min-width: 0; font-size: 12px; }
 .standard-model-limits { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .standard-model-limits small, .standard-model-effort small { color: var(--text-muted); font-size: 12px; overflow-wrap: anywhere; }
@@ -21,10 +21,10 @@
 .standard-model-actions .icon-button:not(.action-danger):hover:not(:disabled) { color: var(--text-primary); background: var(--btn-ghost-hover); }
 .standard-model-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .standard-model-identity-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; }
-.standard-model-protocol-field { grid-column: 1 / -1; max-width: 510px; }
-.standard-model-protocol-field .upstream-selector { height: 43px; }
-.standard-model-protocol-field .upstream-choice { height: 35px; }
-.standard-model-protocol-field .upstream-choice strong { font-size: 12px; }
+.standard-model-company-field { grid-column: 1 / -1; max-width: 510px; }
+.standard-model-company-field .upstream-selector { height: 43px; }
+.standard-model-company-field .upstream-choice { height: 35px; }
+.standard-model-company-field .upstream-choice strong { font-size: 12px; }
 .standard-model-reference-count { margin-left: auto; color: var(--text-muted); font-size: 12px; }
 .standard-model-modalities { display: grid; gap: 20px; }
 .modality-fieldset, .effort-level-fieldset { position: relative; min-width: 0; padding: 0; margin: 0; border: 0; }
@@ -119,8 +119,8 @@
 .standard-model-editor .connection-section-title { margin-bottom: 10px; }
 .standard-model-editor .field { gap: 5px; }
 .standard-model-editor .standard-model-identity-grid { gap: 12px; grid-template-columns: minmax(0, 1fr) 160px; }
-.standard-model-editor .standard-model-protocol-field .upstream-selector { height: 34px; }
-.standard-model-editor .standard-model-protocol-field .upstream-choice { height: 28px; }
+.standard-model-editor .standard-model-company-field .upstream-selector { height: 34px; }
+.standard-model-editor .standard-model-company-field .upstream-choice { height: 28px; }
 .standard-model-editor .modality-options { gap: 5px; }
 .standard-model-editor .modality-option { min-height: 34px; padding: 0 6px; gap: 5px; }
 .standard-model-editor .standard-model-modalities { gap: 13px; }
@@ -138,7 +138,7 @@
 
 .standard-model-description { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .standard-model-identity > button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.standard-model-description .standard-model-protocol { white-space: nowrap; }
+.standard-model-description .standard-model-company { white-space: nowrap; }
 
 /* Option grids wrap by width instead of squeezing labels to one character per line. */
 .modality-options { container-type: inline-size; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); }

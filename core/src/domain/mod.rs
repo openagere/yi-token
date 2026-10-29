@@ -2,6 +2,7 @@
 
 pub mod capabilities;
 pub mod client;
+pub mod company;
 pub mod discovered;
 pub mod model;
 pub mod names;
@@ -16,6 +17,7 @@ pub mod usage;
 
 pub use capabilities::{Capabilities, Effort, Modality, Support};
 pub use client::Client;
+pub use company::Company;
 pub use discovered::DiscoveredModel;
 pub use model::Model;
 pub use names::{exposed_name, provider_slug};

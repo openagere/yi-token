@@ -251,8 +251,11 @@ struct Plan {
 /// Builds the upstream request body. `raw` is the client's body as sent.
 fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
     let provider = &r.provider;
-    let (upstream, passthrough) =
-        choose_upstream(inbound, &provider.protocols, provider.provider_type);
+    let native = r
+        .model
+        .as_ref()
+        .map_or(provider.provider_type, |m| m.upstream_protocol(provider));
+    let (upstream, passthrough) = choose_upstream(inbound, &provider.protocols, native);
     let capabilities = r
         .model
         .as_ref()

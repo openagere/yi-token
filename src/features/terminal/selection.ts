@@ -97,9 +97,12 @@ export function directCompatibleProviders(
   providers: readonly ProviderView[],
   client: TerminalClient,
 ): ProviderView[] {
-  return providers.filter(
-    (provider) => provider.enabled && DIRECT_PROTOCOLS[client].includes(provider.provider_type),
-  );
+  return providers
+    .filter((provider) => provider.enabled && DIRECT_PROTOCOLS[client].includes(provider.provider_type))
+    .map((provider) => ({
+      ...provider,
+      models: provider.models.filter((model) => !model.protocol || model.protocol === provider.provider_type),
+    }));
 }
 
 export function emptyDirectProfile(client: TerminalClient, providerId = ""): TerminalDirectProfile {
@@ -120,7 +123,7 @@ export function compatibleProviders(
     .map((provider) => ({
       ...provider,
       models: provider.models.filter((model) =>
-        supportsTerminal(model.capabilities, protocol, provider.provider_type),
+        supportsTerminal(model.capabilities, protocol, model.protocol ?? provider.provider_type),
       ),
     }))
     .filter((provider) => provider.models.length);

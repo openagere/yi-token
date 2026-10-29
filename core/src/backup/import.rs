@@ -1,5 +1,5 @@
 use super::payload::{Payload, ProviderBackup};
-use crate::domain::{Model, Provider, exposed_name, provider_slug};
+use crate::domain::{Company, Model, Provider, exposed_name, provider_slug};
 use crate::error::{CoreError, CoreResult};
 use crate::storage::{engines, enum_str, map_sqlite, models, providers, standard_models, terminal};
 use rusqlite::{OptionalExtension, Transaction, params};
@@ -56,8 +56,8 @@ fn remap_standard_models(
     for standard in &payload.standard_models {
         let existing: Option<String> = tx
             .query_row(
-                "SELECT id FROM standard_models WHERE name = ?1 AND protocol = ?2",
-                params![standard.name.trim(), enum_str(&standard.protocol)?],
+                "SELECT id FROM standard_models WHERE name = ?1 AND company = ?2",
+                params![standard.name.trim(), enum_str(&standard.company)?],
                 |row| row.get(0),
             )
             .optional()?;
@@ -169,14 +169,15 @@ fn upsert_models(tx: &Transaction, entries: &[ProviderBackup]) -> CoreResult<usi
             check_exposed_name(tx, &model)?;
             tx.execute(
                 "INSERT INTO models (id, provider_id, standard_model_id, upstream_model, \
-                   exposed_name, capabilities, non_standard) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) \
+                   exposed_name, capabilities, non_standard, protocol) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) \
                  ON CONFLICT(id) DO UPDATE SET provider_id = excluded.provider_id, \
                    standard_model_id = excluded.standard_model_id, \
                    upstream_model = excluded.upstream_model, \
                    exposed_name = excluded.exposed_name, \
                    capabilities = excluded.capabilities, \
-                   non_standard = excluded.non_standard",
+                   non_standard = excluded.non_standard, \
+                   protocol = excluded.protocol",
                 params![
                     model.id,
                     model.provider_id,
@@ -185,6 +186,7 @@ fn upsert_models(tx: &Transaction, entries: &[ProviderBackup]) -> CoreResult<usi
                     model.exposed_name,
                     serde_json::to_string(&model.capabilities)?,
                     model.non_standard,
+                    model.protocol.as_ref().map(enum_str).transpose()?,
                 ],
             )
             .map_err(map_sqlite)?;
@@ -211,7 +213,7 @@ fn prepare_model(tx: &Transaction, provider: &Provider, model: &Model) -> CoreRe
                     model.upstream_model
                 ))
             })?;
-            if standard.protocol != provider.provider_type {
+            if standard.company != Company::of(model.upstream_protocol(provider)) {
                 return Err(CoreError::Validation(format!(
                     "服务商「{}」的模型「{}」与标准模型「{}」的协议不一致",
                     provider.name.trim(),
@@ -222,7 +224,7 @@ fn prepare_model(tx: &Transaction, provider: &Provider, model: &Model) -> CoreRe
         }
         None => model
             .capabilities
-            .validate(provider.provider_type)
+            .validate(model.upstream_protocol(provider))
             .map_err(|error| {
                 CoreError::Validation(format!(
                     "服务商「{}」的模型「{}」：{error}",

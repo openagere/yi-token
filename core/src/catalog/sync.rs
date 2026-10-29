@@ -6,17 +6,17 @@ use crate::error::CoreResult;
 use crate::storage::{enum_str, standard_models};
 use rusqlite::{OptionalExtension, Transaction};
 
-/// Inserts or updates catalog entries keyed by `(name, protocol)`.
+/// Inserts or updates catalog entries keyed by `(name, company)`.
 ///
 /// Existing rows keep their id; new rows get a fresh UUID v4. Rows not in the
 /// catalog (user-created) are never touched, so applying twice is a no-op.
 pub fn apply(tx: &Transaction, file: &CatalogFile) -> CoreResult<()> {
     for entry in &file.entries {
-        let protocol = enum_str(&entry.protocol)?;
+        let company = enum_str(&entry.company)?;
         let existing: Option<String> = tx
             .query_row(
-                "SELECT id FROM standard_models WHERE name = ?1 AND protocol = ?2",
-                [entry.name.as_str(), protocol.as_str()],
+                "SELECT id FROM standard_models WHERE name = ?1 AND company = ?2",
+                [entry.name.as_str(), company.as_str()],
                 |r| r.get(0),
             )
             .optional()?;

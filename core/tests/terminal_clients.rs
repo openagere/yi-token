@@ -50,6 +50,7 @@ fn model(id: &str, provider_id: &str, upstream: &str, exposed: &str) -> Model {
         id: id.into(),
         provider_id: provider_id.into(),
         standard_model_id: None,
+        protocol: None,
         upstream_model: upstream.into(),
         exposed_name: exposed.into(),
         capabilities: caps(),

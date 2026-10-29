@@ -204,8 +204,56 @@ pub fn v5() -> M<'static> {
     M::up("ALTER TABLE settings ADD COLUMN trajectory_disabled_global INTEGER NOT NULL DEFAULT 0;")
 }
 
+/// Standard models move from wire protocols to vendors: Chat and Responses share
+/// OpenAI's catalog, so rows that only differ by that protocol are merged (the
+/// Responses row wins) and provider models are re-pointed at the survivor. Provider
+/// models gain an optional protocol override, `NULL` meaning "follow the provider".
+///
+/// The table is rebuilt because SQLite cannot alter the protocol CHECK constraint.
+/// Model links are parked in a temp table first so that the RESTRICT foreign key
+/// does not block the drop.
+pub fn v6() -> M<'static> {
+    M::up(
+        "CREATE TABLE standard_models_v6 (
+             id           TEXT PRIMARY KEY,
+             name         TEXT NOT NULL,
+             company      TEXT NOT NULL CHECK (company IN ('openai', 'anthropic')),
+             brand        TEXT NOT NULL DEFAULT '',
+             capabilities TEXT NOT NULL DEFAULT '{}',
+             UNIQUE (name, company)
+         );
+         INSERT INTO standard_models_v6 (id, name, company, brand, capabilities)
+           SELECT id, name, company, brand, capabilities FROM (
+             SELECT id, name, brand, capabilities,
+               CASE protocol WHEN 'anthropic' THEN 'anthropic' ELSE 'openai' END AS company,
+               ROW_NUMBER() OVER (
+                 PARTITION BY name, CASE protocol WHEN 'anthropic' THEN 'anthropic' ELSE 'openai' END
+                 ORDER BY CASE protocol WHEN 'responses' THEN 0 ELSE 1 END, rowid
+               ) AS rn
+             FROM standard_models
+           ) WHERE rn = 1;
+         CREATE TEMP TABLE standard_remap AS
+           SELECT s.id AS old_id, v.id AS new_id FROM standard_models s
+           JOIN standard_models_v6 v ON v.name = s.name
+             AND v.company = CASE s.protocol WHEN 'anthropic' THEN 'anthropic' ELSE 'openai' END;
+         CREATE TEMP TABLE model_standard AS
+           SELECT m.id AS model_id, r.new_id AS standard_id FROM models m
+           JOIN standard_remap r ON r.old_id = m.standard_model_id;
+         UPDATE models SET standard_model_id = NULL WHERE standard_model_id IS NOT NULL;
+         DROP TABLE standard_models;
+         ALTER TABLE standard_models_v6 RENAME TO standard_models;
+         UPDATE models SET standard_model_id = (
+           SELECT standard_id FROM model_standard WHERE model_id = models.id
+         ) WHERE id IN (SELECT model_id FROM model_standard);
+         DROP TABLE model_standard;
+         DROP TABLE standard_remap;
+         ALTER TABLE models ADD COLUMN protocol TEXT
+           CHECK (protocol IS NULL OR protocol IN ('anthropic', 'openai_chat', 'responses'));",
+    )
+}
+
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![v1(), v2(), v3(), v4(), v5()])
+    Migrations::new(vec![v1(), v2(), v3(), v4(), v5(), v6()])
 }
 
 pub fn run(conn: &mut Connection) -> CoreResult<()> {

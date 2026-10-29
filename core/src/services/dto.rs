@@ -3,7 +3,7 @@
 //! the only intended change is that `ModelMapping.id` and `UsageRecord.id` are strings.
 
 use crate::domain::{
-    Capabilities, Client, DirectProfile, LogLevel, ProfileModel, Protocol, RouteMode,
+    Capabilities, Client, Company, DirectProfile, LogLevel, ProfileModel, Protocol, RouteMode,
     StandardModel, Thinking, UsageGroupBy, UsageGroupRow, UsageReport, UsageTotals,
 };
 use crate::proxy::ProxyPhase;
@@ -91,6 +91,9 @@ pub struct ModelMapping {
     pub name: String,
     #[serde(default)]
     pub standard_model_id: Option<String>,
+    /// Upstream protocol override; `null` follows the provider's type.
+    #[serde(default)]
+    pub protocol: Option<Protocol>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub capabilities: Option<Capabilities>,
@@ -129,7 +132,7 @@ pub struct ProviderView {
 pub struct StandardModelView {
     pub id: String,
     pub name: String,
-    pub protocol: Protocol,
+    pub company: Company,
     #[serde(default)]
     pub brand: String,
     #[serde(default)]
@@ -143,7 +146,7 @@ impl StandardModelView {
         Self {
             id: model.id,
             name: model.name,
-            protocol: model.protocol,
+            company: model.company,
             brand: model.brand,
             capabilities: model.capabilities,
             provider_count,
@@ -154,7 +157,7 @@ impl StandardModelView {
         StandardModel {
             id: self.id,
             name: self.name,
-            protocol: self.protocol,
+            company: self.company,
             brand: self.brand,
             capabilities: self.capabilities,
         }

@@ -13,6 +13,7 @@ fn mapping(m: Model) -> ModelMapping {
         route_id: m.exposed_name,
         name: m.upstream_model,
         standard_model_id: m.standard_model_id,
+        protocol: m.protocol,
         capabilities: Some(m.capabilities),
         non_standard: m.non_standard,
     }
@@ -111,6 +112,7 @@ impl Services {
                         standard_model_id: m.standard_model_id,
                         upstream_model: m.name,
                         exposed_name: String::new(),
+                        protocol: m.protocol,
                         capabilities: m.capabilities.unwrap_or_default(),
                         non_standard: m.non_standard,
                     })

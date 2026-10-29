@@ -161,7 +161,7 @@ impl ClientSpec for Pi {
                     &resolved.selection.model,
                     resolved.capabilities,
                     profile.protocol,
-                    resolved.provider.provider_type,
+                    resolved.upstream(),
                 )
             }));
         }

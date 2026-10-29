@@ -1,8 +1,9 @@
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 use yi_core::domain::{
-    Capabilities, Client, DirectProfile, LogLevel, Model, ModelSource, ProfileModel, Protocol,
-    Provider, ProxyProfile, RouteMode, Settings, StandardModel, TrajectorySettings, UsageEvent,
+    Capabilities, Client, Company, DirectProfile, LogLevel, Model, ModelSource, ProfileModel,
+    Protocol, Provider, ProxyProfile, RouteMode, Settings, StandardModel, TrajectorySettings,
+    UsageEvent,
 };
 use yi_core::storage::usage::UsageQuery;
 use yi_core::storage::{Db, engines, migrations, models, providers, settings, standard_models};
@@ -30,6 +31,7 @@ fn model(id: &str, upstream: &str) -> Model {
         id: id.into(),
         provider_id: String::new(),
         standard_model_id: None,
+        protocol: None,
         upstream_model: upstream.into(),
         exposed_name: String::new(),
         capabilities: Capabilities::default(),
@@ -41,7 +43,7 @@ fn standard(id: &str, name: &str) -> StandardModel {
     StandardModel {
         id: id.into(),
         name: name.into(),
-        protocol: Protocol::OpenaiChat,
+        company: Company::Openai,
         brand: "brand".into(),
         capabilities: Capabilities::default(),
     }
@@ -65,7 +67,7 @@ fn count(db: &Db, table: &str) -> i64 {
 fn migration_sets_user_version_4() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 5);
+        assert_eq!(user_version(c), 6);
         let fk: i64 = c.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
         assert_eq!(fk, 1);
         for index in ["idx_usage_requested_at", "idx_usage_client"] {
@@ -115,7 +117,7 @@ fn file_database_uses_wal_and_foreign_keys() {
     drop(db);
     let db = Db::open(&dir.path().join("nested").join("t.db")).unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 5);
+        assert_eq!(user_version(c), 6);
         Ok(())
     })
     .unwrap();
@@ -347,13 +349,13 @@ fn bound_model_reads_standard_capabilities() {
 }
 
 #[test]
-fn standard_model_name_unique_per_protocol() {
+fn standard_model_name_unique_per_company() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
         standard_models::upsert(c, &standard("s1", "GPT"))?;
-        let mut other_protocol = standard("s2", "GPT");
-        other_protocol.protocol = Protocol::Responses;
-        standard_models::upsert(c, &other_protocol)?;
+        let mut other_company = standard("s2", "GPT");
+        other_company.company = Company::Anthropic;
+        standard_models::upsert(c, &other_company)?;
         let err = standard_models::upsert(c, &standard("s3", "GPT")).unwrap_err();
         assert_eq!(err.code(), ErrorCode::Conflict);
         assert_eq!(standard_models::list(c)?.len(), 2);
@@ -606,7 +608,7 @@ fn v4_adds_usage_columns_and_keeps_old_rows() {
     )
     .unwrap();
     migrations::migrations().to_latest(&mut conn).unwrap();
-    assert_eq!(user_version(&conn), 5);
+    assert_eq!(user_version(&conn), 6);
 
     let r = usage::query(
         &conn,
@@ -858,3 +860,71 @@ fn main_and_trajectory_migrations_are_independent() {
         })
         .unwrap();
 }
+
+fn migrations_through_v5() -> Migrations<'static> {
+    Migrations::new(vec![
+        migrations::v1(),
+        migrations::v2(),
+        migrations::v3(),
+        migrations::v4(),
+        migrations::v5(),
+    ])
+}
+
+/// Chat and Responses rows with the same name fold into one OpenAI row (Responses wins),
+/// and models follow their survivor. Anthropic rows keep their own company.
+#[test]
+fn v6_merges_protocol_standards_into_companies() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations_through_v5().to_latest(&mut conn).unwrap();
+    conn.execute_batch(
+        "INSERT INTO standard_models (id, name, protocol, brand, capabilities) VALUES
+           ('gpt-chat', 'gpt-x', 'openai_chat', '', '{}'),
+           ('gpt-resp', 'gpt-x', 'responses', 'openai', '{}'),
+           ('claude', 'claude-y', 'anthropic', '', '{}');
+         INSERT INTO providers (id, type, name, short_code, base_url) VALUES
+           ('p1', 'responses', 'Alpha', 'p1', 'https://a.test');
+         INSERT INTO models (id, provider_id, standard_model_id, upstream_model, exposed_name) VALUES
+           ('m-chat', 'p1', 'gpt-chat', 'gpt-x', 'Alpha/gpt-x'),
+           ('m-resp', 'p1', 'gpt-resp', 'gpt-x-2', 'Alpha/gpt-x-2'),
+           ('m-claude', 'p1', 'claude', 'claude-y', 'Alpha/claude-y');",
+    )
+    .unwrap();
+    migrations::migrations().to_latest(&mut conn).unwrap();
+    assert_eq!(user_version(&conn), 6);
+
+    let rows: Vec<(String, String, String)> = conn
+        .prepare("SELECT id, name, company FROM standard_models ORDER BY id")
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    assert_eq!(
+        rows,
+        vec![
+            ("claude".into(), "claude-y".into(), "anthropic".into()),
+            ("gpt-resp".into(), "gpt-x".into(), "openai".into()),
+        ]
+    );
+    let linked: Vec<(String, Option<String>)> = conn
+        .prepare("SELECT id, standard_model_id FROM models ORDER BY id")
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    assert_eq!(
+        linked,
+        vec![
+            ("m-chat".into(), Some("gpt-resp".into())),
+            ("m-claude".into(), Some("claude".into())),
+            ("m-resp".into(), Some("gpt-resp".into())),
+        ]
+    );
+    let overrides: i64 = conn
+        .query_row("SELECT COUNT(*) FROM models WHERE protocol IS NOT NULL", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(overrides, 0);
+}
+

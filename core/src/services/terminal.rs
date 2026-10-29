@@ -416,10 +416,9 @@ fn validate_proxy(profile: &ProxyProfile, ctx: &ClientCtx) -> CoreResult<()> {
                 ))
             })?;
         let capabilities = &model.capabilities;
-        if !input_for(capabilities, profile.protocol, provider.provider_type)
-            .contains(&Modality::Text)
-            || !output_for(capabilities, profile.protocol, provider.provider_type)
-                .contains(&Modality::Text)
+        let upstream = model.upstream_protocol(provider);
+        if !input_for(capabilities, profile.protocol, upstream).contains(&Modality::Text)
+            || !output_for(capabilities, profile.protocol, upstream).contains(&Modality::Text)
         {
             return Err(CoreError::Validation(format!(
                 "终端模型 {} 必须支持文字输入和输出",
@@ -462,10 +461,10 @@ fn validate_direct<'a>(profile: &DirectProfile, ctx: &'a ClientCtx) -> CoreResul
             }
         }
         ModelSource::Provider => {
-            let has_models = ctx
-                .models
-                .iter()
-                .any(|model| model.provider_id == provider.id);
+            let has_models = ctx.models.iter().any(|model| {
+                model.provider_id == provider.id
+                    && model.protocol.is_none_or(|p| p == provider.provider_type)
+            });
             let has_explicit = profile
                 .model
                 .as_deref()

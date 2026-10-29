@@ -1122,3 +1122,35 @@ async fn capture_overhead_is_small() {
         "p50 delta {delta_p50:?}"
     );
 }
+
+/// A model may speak a protocol other than its provider's type: the request goes to the
+/// model's own upstream endpoint instead of the provider's native one.
+#[tokio::test]
+async fn model_protocol_override_selects_its_upstream_endpoint() {
+    let env = TestEnv::start().await;
+    Mock::given(method("POST"))
+        .and(path(upstream_path(Protocol::Anthropic)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(upstream_response(Protocol::Anthropic)))
+        .mount(&env.mock)
+        .await;
+    let mut upstream = provider("mix", "mx", Protocol::Responses, &env.mock.uri());
+    upstream.protocols = Protocol::all().to_vec();
+    let mut overridden = model("mm", "claude-up");
+    overridden.protocol = Some(Protocol::Anthropic);
+    env.install(upstream, overridden);
+    let exposed = yi_core::domain::exposed_name("name-mix", "claude-up");
+    let route = env.route(Protocol::Anthropic, "mix", &exposed);
+    let resp = env
+        .http
+        .post(env.url(&route))
+        .header("anthropic-version", "2023-06-01")
+        .json(&request_body(Protocol::Anthropic, &exposed))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let reqs = env.upstream_requests().await;
+    assert_eq!(reqs.len(), 1);
+    assert_eq!(reqs[0].0, upstream_path(Protocol::Anthropic));
+}
+

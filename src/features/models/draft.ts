@@ -1,5 +1,6 @@
 import type { Translate } from "@/shared/i18n";
 import { capabilityErrors, defaultCapabilities, parseTokenCapacity, tokenInput } from "./capabilities";
+import { companyProtocol } from "@/shared/lib";
 import type { ModelCapabilities, StandardModel } from "./types";
 
 export type CapacityField = "context_window" | "max_output_tokens";
@@ -16,7 +17,7 @@ export const TOKEN_PRESETS: Record<CapacityField, readonly string[]> = {
 
 export function emptyModel(): StandardModel {
   return {
-    id: crypto.randomUUID(), name: "", protocol: "responses", brand: "", provider_count: 0,
+    id: crypto.randomUUID(), name: "", company: "openai", brand: "", provider_count: 0,
     capabilities: { ...defaultCapabilities(), input_modalities: ["text"], output_modalities: ["text"] },
   };
 }
@@ -39,21 +40,21 @@ export function isModelDirty(draft: StandardModel, tokenDrafts: TokenDrafts, ini
     || tokenDrafts.max_output_tokens !== initialTokens.max_output_tokens;
 }
 
-export function protocolConflictMessage(draft: StandardModel, initial: StandardModel, t: Translate): string {
-  return draft.provider_count > 0 && draft.protocol !== initial.protocol
-    ? t("model.editor.errors.protocolConflict", { count: draft.provider_count }) : "";
+export function companyConflictMessage(draft: StandardModel, initial: StandardModel, t: Translate): string {
+  return draft.provider_count > 0 && draft.company !== initial.company
+    ? t("model.editor.errors.companyConflict", { count: draft.provider_count }) : "";
 }
 
-export function validateModel(draft: StandardModel, tokenDrafts: TokenDrafts, models: StandardModel[], protocolConflict: string, t: Translate) {
+export function validateModel(draft: StandardModel, tokenDrafts: TokenDrafts, models: StandardModel[], companyConflict: string, t: Translate) {
   const context = parseTokenCapacity(tokenDrafts.context_window);
   const output = parseTokenCapacity(tokenDrafts.max_output_tokens);
   const capabilities: ModelCapabilities = { ...draft.capabilities, context_window: context.value, max_output_tokens: output.value };
-  const errors = capabilityErrors(capabilities, draft.protocol);
+  const errors = capabilityErrors(capabilities, companyProtocol(draft.company));
   if (context.error) errors.context_window = context.error;
   if (output.error) errors.max_output_tokens = output.error;
-  if (protocolConflict) errors.protocol = protocolConflict;
+  if (companyConflict) errors.company = companyConflict;
   const name = draft.name.trim();
   if (!name) errors.name = t("model.editor.errors.nameRequired");
-  else if (models.some((item) => item.id !== draft.id && item.name === name && item.protocol === draft.protocol)) errors.name = t("model.editor.errors.nameDuplicate");
+  else if (models.some((item) => item.id !== draft.id && item.name === name && item.company === draft.company)) errors.name = t("model.editor.errors.nameDuplicate");
   return { capabilities, errors };
 }

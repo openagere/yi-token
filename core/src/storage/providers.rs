@@ -1,7 +1,7 @@
 //! Providers, their supported protocols and their model sets.
 
 use super::{enum_str, map_sqlite, models, parse_enum, parse_json, query_as, standard_models};
-use crate::domain::{Model, Protocol, Provider, exposed_name, provider_slug};
+use crate::domain::{Company, Model, Protocol, Provider, exposed_name, provider_slug};
 use crate::error::{CoreError, CoreResult};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::Deserialize;
@@ -191,19 +191,27 @@ fn plan_models(tx: &Transaction, provider: &Provider, input: &[Model]) -> CoreRe
                 "模型名称 {exposed} 已被服务商 {name} 使用"
             )));
         }
+        if let Some(protocol) = m.protocol
+            && !provider.protocols.contains(&protocol)
+        {
+            return Err(CoreError::Validation(format!(
+                "模型 {exposed} 的协议不是服务商支持的协议"
+            )));
+        }
+        let upstream_protocol = m.protocol.unwrap_or(provider.provider_type);
         match &m.standard_model_id {
             Some(id) => {
                 let standard = standard_models::get(tx, id)?
                     .ok_or_else(|| CoreError::Validation("关联的标准模型不存在".into()))?;
-                if standard.protocol != provider.provider_type {
+                if standard.company != Company::of(upstream_protocol) {
                     return Err(CoreError::Validation(
-                        "标准模型与服务商上游协议不匹配".into(),
+                        "标准模型与模型的上游协议不匹配".into(),
                     ));
                 }
             }
             None => m
                 .capabilities
-                .validate(provider.provider_type)
+                .validate(upstream_protocol)
                 .map_err(|e| CoreError::Validation(format!("模型 {exposed}：{e}")))?,
         }
         let (id, existing) = match kept.get(&upstream) {
@@ -243,14 +251,22 @@ fn write_models(tx: &Transaction, provider: &Provider, planned: Vec<Planned>) ->
         if p.existing {
             tx.execute(
                 "UPDATE models SET standard_model_id = ?2, exposed_name = ?3, capabilities = ?4, \
-                   non_standard = ?5 WHERE id = ?1",
-                params![m.id, m.standard_model_id, p.exposed, caps, m.non_standard],
+                   non_standard = ?5, protocol = ?6 WHERE id = ?1",
+                params![
+                    m.id,
+                    m.standard_model_id,
+                    p.exposed,
+                    caps,
+                    m.non_standard,
+                    protocol_str(m.protocol)?
+                ],
             )
             .map_err(map_sqlite)?;
         } else {
             tx.execute(
                 "INSERT INTO models (id, provider_id, standard_model_id, upstream_model, \
-                   exposed_name, capabilities, non_standard) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                   exposed_name, capabilities, non_standard, protocol) \
+                   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
                     m.id,
                     m.provider_id,
@@ -258,13 +274,18 @@ fn write_models(tx: &Transaction, provider: &Provider, planned: Vec<Planned>) ->
                     m.upstream_model,
                     p.exposed,
                     caps,
-                    m.non_standard
+                    m.non_standard,
+                    protocol_str(m.protocol)?
                 ],
             )
             .map_err(map_sqlite)?;
         }
     }
     Ok(())
+}
+
+fn protocol_str(protocol: Option<Protocol>) -> CoreResult<Option<String>> {
+    protocol.as_ref().map(enum_str).transpose()
 }
 
 /// Deletes a provider; models, protocols and its direct profile cascade.

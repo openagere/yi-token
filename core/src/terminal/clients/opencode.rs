@@ -165,7 +165,7 @@ impl ClientSpec for OpenCode {
                         &resolved.selection.model,
                         resolved.capabilities,
                         profile.protocol,
-                        resolved.provider.provider_type,
+                        resolved.upstream(),
                     ),
                 );
             }

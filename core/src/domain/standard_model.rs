@@ -1,5 +1,5 @@
 use crate::domain::capabilities::Capabilities;
-use crate::domain::protocol::Protocol;
+use crate::domain::company::Company;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct StandardModel {
     pub id: String,
     pub name: String,
-    pub protocol: Protocol,
+    pub company: Company,
     pub brand: String,
     pub capabilities: Capabilities,
 }

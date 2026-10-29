@@ -8,13 +8,14 @@ import {
   FlaskConical,
   LoaderCircle,
   Plus,
+  Route,
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { describeError } from "@/shared/api";
 import { useStandardModels, ModelCapabilitySummary, tokenLabel, type StandardModel } from "@/features/models";
 import { useI18n, type Translate } from "@/shared/i18n";
-import { type ProviderType } from "@/shared/lib";
+import { companyOf, PROTOCOLS, PROTOCOLS_BY_ID, type ProviderType } from "@/shared/lib";
 import { useEditorGuard, useNavigation } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
 import {
@@ -30,7 +31,7 @@ import { providerApi } from "../api";
 import { useProviders, useSaveProvider } from "../hooks";
 import { ProviderModelCatalog, providerModelsUrl, type CatalogPick } from "./ProviderModelCatalog";
 import { useProviderSelection } from "../selection";
-import { ALL_PROTOCOLS, type ProviderView } from "../types";
+import { ALL_PROTOCOLS, type ModelMapping, type ProviderView } from "../types";
 
 const TYPE_URLS: Record<ProviderType, string> = {
   anthropic: "https://api.anthropic.com",
@@ -103,14 +104,26 @@ function ProviderEditorForm({
       base_url: current.base_url === TYPE_URLS[current.provider_type] ? TYPE_URLS[type] : current.base_url,
       models: current.models.map((model) => ({
         ...model,
-        standard_model_id:
-          standardModels.find((standard) => standard.id === model.standard_model_id)?.protocol === type
-            ? model.standard_model_id
-            : null,
+        standard_model_id: companyMatches(model.standard_model_id, model.protocol ?? type) ? model.standard_model_id : null,
       })),
     }));
   }
-  const matchingStandards = standardModels.filter((model) => model.protocol === draft.provider_type);
+  /** 模型的上游协议：自身覆盖的协议，否则跟随服务商类型。 */
+  const upstreamOf = (model: ModelMapping): ProviderType => model.protocol ?? draft.provider_type;
+  /** 协议所属公司的标准模型：Chat 与 Responses 共用 OpenAI 的标准模型。 */
+  const standardsFor = (protocol: ProviderType) => standardModels.filter((model) => model.company === companyOf(protocol));
+  const matchingStandards = standardsFor(draft.provider_type);
+  function companyMatches(standardId: string | null, protocol: ProviderType) {
+    const standard = standardModels.find((item) => item.id === standardId);
+    return !standard || standard.company === companyOf(protocol);
+  }
+  function chooseModelProtocol(index: number, protocol: ProviderType | null) {
+    update("models", draft.models.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const keep = companyMatches(item.standard_model_id, protocol ?? draft.provider_type);
+      return { ...item, protocol, standard_model_id: keep ? item.standard_model_id : null };
+    }));
+  }
   function parsedExtra() {
     const extra: unknown = JSON.parse(extraText.trim() || "{}");
     if (!extra || Array.isArray(extra) || typeof extra !== "object")
@@ -177,7 +190,7 @@ function ProviderEditorForm({
         draft.models.some(
           (model) =>
             !model.name.trim() ||
-            !matchingStandards.some((standard) => standard.id === model.standard_model_id),
+            !standardsFor(upstreamOf(model)).some((standard) => standard.id === model.standard_model_id),
         )
       )
         errors.models = t("provider.editor.errors.modelsIncomplete");
@@ -263,6 +276,7 @@ function ProviderEditorForm({
           route_id: "",
           name: trimmed,
           standard_model_id: standard?.id ?? null,
+          protocol: null,
           non_standard: false,
         },
       ];
@@ -537,6 +551,7 @@ function ProviderEditorForm({
                         route_id: "",
                         name: "",
                         standard_model_id: null,
+                        protocol: null,
                         non_standard: false,
                       },
                     ])
@@ -555,13 +570,15 @@ function ProviderEditorForm({
               {draft.models.length > 0 && (
                 <div className="connection-model-head">
                   <span>{t("provider.editor.models.name")}</span>
+                  <span>{t("provider.editor.models.protocol")}</span>
                   <span>{t("provider.editor.models.standard")}</span>
                   <span>{t("provider.editor.models.nonStandard")}</span>
                   <span />
                 </div>
               )}
               {draft.models.map((model, index) => {
-                const standard = matchingStandards.find((item) => item.id === model.standard_model_id);
+                const modelStandards = standardsFor(upstreamOf(model));
+                const standard = modelStandards.find((item) => item.id === model.standard_model_id);
                 return (
                   <div className="provider-model-binding" key={`${model.id}-${index}`}>
                     <div className="connection-model-row">
@@ -582,12 +599,34 @@ function ProviderEditorForm({
                         />
                       </label>
                       <Select
+                        label={t("provider.editor.models.protocolLabel", { index: index + 1 })}
+                        value={model.protocol ?? ""}
+                        icon={Route}
+                        className="provider-model-protocol-select"
+                        menuClassName="standard-model-select-menu"
+                        disabled={Boolean(busy)}
+                        onValueChange={(value) => chooseModelProtocol(index, (value || null) as ProviderType | null)}
+                        options={[
+                          {
+                            value: "",
+                            label: t("provider.editor.models.protocolInherit", { protocol: PROTOCOLS_BY_ID[draft.provider_type].shortName }),
+                            leading: <ProviderIcon brand={PROTOCOLS_BY_ID[draft.provider_type].brand} size={18} />,
+                          },
+                          ...PROTOCOLS.map((item) => ({
+                            value: item.id,
+                            label: item.shortName,
+                            leading: <ProviderIcon brand={item.brand} size={18} />,
+                            description: item.name,
+                          })),
+                        ]}
+                      />
+                      <Select
                         label={t("provider.editor.models.standardLabel", { index: index + 1 })}
                         value={standard?.id ?? ""}
                         icon={Cpu}
                         className="provider-standard-model-select"
                         menuClassName="standard-model-select-menu"
-                        disabled={Boolean(busy) || !matchingStandards.length}
+                        disabled={Boolean(busy) || !modelStandards.length}
                         onValueChange={(value) =>
                           update(
                             "models",
@@ -599,11 +638,11 @@ function ProviderEditorForm({
                         options={[
                           {
                             value: "",
-                            label: matchingStandards.length
+                            label: modelStandards.length
                               ? t("provider.editor.models.choose")
                               : t("provider.editor.models.noneForProtocol"),
                           },
-                          ...matchingStandards.map((item) => ({
+                          ...modelStandards.map((item) => ({
                             value: item.id,
                             label: item.name,
                             leading: <ProviderIcon brand={item.brand || modelBrand(item.name)} size={20} />,

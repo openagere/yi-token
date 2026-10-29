@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
-import type { ProviderType } from "@/shared/lib";
+import { type Company, companyProtocol } from "@/shared/lib";
 import { useEditorGuard, useNavigation } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
 import { effortLevels, MODALITIES, parseTokenCapacity, tokenInput } from "./capabilities";
-import { emptyModel, isModelDirty, protocolConflictMessage, tokenDraftsOf, validateModel, type CapacityField, type ModalityField } from "./draft";
+import { companyConflictMessage, emptyModel, isModelDirty, tokenDraftsOf, validateModel, type CapacityField, type ModalityField } from "./draft";
 import { useSaveStandardModel } from "./hooks";
 import type { EffortSupport, Modality, ModelCapabilities, StandardModel } from "./types";
 
@@ -34,7 +34,7 @@ export function useModelForm(model: StandardModel | null, models: StandardModel[
   const dirty = isModelDirty(draft, tokenDrafts, initial);
   const existing = models.some((item) => item.id === draft.id);
   const caps = draft.capabilities;
-  const protocolConflict = protocolConflictMessage(draft, initial, t);
+  const companyConflict = companyConflictMessage(draft, initial, t);
   useEditorGuard(dirty, busy);
 
   function updateCaps<K extends keyof ModelCapabilities>(field: K, value: ModelCapabilities[K]) {
@@ -48,11 +48,11 @@ export function useModelForm(model: StandardModel | null, models: StandardModel[
   function setBrand(brand: string) {
     setDraft((current) => ({ ...current, brand }));
   }
-  function changeProtocol(protocol: ProviderType) {
+  function changeCompany(company: Company) {
     setDraft((current) => {
       const { effort } = current.capabilities;
-      const levels = effort.levels.filter((level) => effortLevels(protocol).includes(level));
-      return { ...current, protocol, capabilities: { ...current.capabilities, effort: { ...effort, levels, default: keepValidDefault(levels, effort.default) } } };
+      const levels = effort.levels.filter((level) => effortLevels(companyProtocol(company)).includes(level));
+      return { ...current, company, capabilities: { ...current.capabilities, effort: { ...effort, levels, default: keepValidDefault(levels, effort.default) } } };
     });
     setErrors({});
   }
@@ -81,14 +81,14 @@ export function useModelForm(model: StandardModel | null, models: StandardModel[
   function changeEffortSupport(support: EffortSupport) {
     if (caps.effort.support === "supported") effortMemory.current = structuredClone(caps.effort);
     const remembered = effortMemory.current;
-    const levels = remembered.levels.filter((level) => effortLevels(draft.protocol).includes(level));
+    const levels = remembered.levels.filter((level) => effortLevels(companyProtocol(draft.company)).includes(level));
     updateCaps("effort", support === "supported"
       ? { support, levels, default: keepValidDefault(levels, remembered.default) }
       : { support, levels: [], default: null });
   }
   function toggleEffortLevel(level: string, checked: boolean) {
     const levels = checked
-      ? effortLevels(draft.protocol).filter((value) => value === level || caps.effort.levels.includes(value))
+      ? effortLevels(companyProtocol(draft.company)).filter((value) => value === level || caps.effort.levels.includes(value))
       : caps.effort.levels.filter((value) => value !== level);
     updateCaps("effort", { ...caps.effort, levels, default: keepValidDefault(levels, caps.effort.default) });
   }
@@ -97,7 +97,7 @@ export function useModelForm(model: StandardModel | null, models: StandardModel[
   }
   function submit() {
     if (busy) return;
-    const { capabilities, errors: invalid } = validateModel(draft, tokenDrafts, models, protocolConflict, t);
+    const { capabilities, errors: invalid } = validateModel(draft, tokenDrafts, models, companyConflict, t);
     setErrors(invalid);
     if (Object.keys(invalid).length) {
       notify(Object.values(invalid)[0], "error");
@@ -119,8 +119,8 @@ export function useModelForm(model: StandardModel | null, models: StandardModel[
   }
 
   return {
-    initial, draft, tokenDrafts, errors, busy, dirty, existing, protocolConflict,
-    setName, setBrand, changeProtocol, changeCapacity, blurCapacity, declareModalities, toggleModality,
+    initial, draft, tokenDrafts, errors, busy, dirty, existing, companyConflict,
+    setName, setBrand, changeCompany, changeCapacity, blurCapacity, declareModalities, toggleModality,
     changeEffortSupport, toggleEffortLevel, setDefaultEffort, submit,
   };
 }

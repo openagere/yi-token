@@ -3,7 +3,7 @@
 //! Writes go through [`super::providers::upsert`], which owns the model set of
 //! a provider.
 
-use super::{parse_json, query_as};
+use super::{enum_str, parse_enum, parse_json, query_as};
 use crate::domain::Model;
 use crate::error::CoreResult;
 use rusqlite::Connection;
@@ -11,8 +11,8 @@ use serde::Deserialize;
 
 /// A model bound to a standard model reads that standard model's capabilities.
 const SELECT: &str = "SELECT m.id, m.provider_id, m.standard_model_id, m.upstream_model, \
-     m.exposed_name, COALESCE(s.capabilities, m.capabilities) AS capabilities, m.non_standard \
-     FROM models m LEFT JOIN standard_models s ON s.id = m.standard_model_id";
+     m.exposed_name, m.protocol, COALESCE(s.capabilities, m.capabilities) AS capabilities, \
+     m.non_standard FROM models m LEFT JOIN standard_models s ON s.id = m.standard_model_id";
 
 #[derive(Deserialize)]
 struct ModelRow {
@@ -21,6 +21,7 @@ struct ModelRow {
     standard_model_id: Option<String>,
     upstream_model: String,
     exposed_name: String,
+    protocol: Option<String>,
     capabilities: String,
     non_standard: bool,
 }
@@ -29,6 +30,7 @@ impl ModelRow {
     fn into_model(self) -> CoreResult<Model> {
         Ok(Model {
             capabilities: parse_json(&self.capabilities, "模型能力")?,
+            protocol: self.protocol.as_deref().map(parse_enum).transpose()?,
             id: self.id,
             provider_id: self.provider_id,
             standard_model_id: self.standard_model_id,
@@ -87,18 +89,20 @@ pub fn ensure(
         standard_model_id: None,
         upstream_model: upstream.to_owned(),
         exposed_name: exposed,
+        protocol: None,
         capabilities: crate::domain::Capabilities::default(),
         non_standard: false,
     };
     conn.execute(
         "INSERT INTO models (id, provider_id, standard_model_id, upstream_model, exposed_name, \
-           capabilities, non_standard) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+           protocol, capabilities, non_standard) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![
             model.id,
             model.provider_id,
             model.standard_model_id,
             model.upstream_model,
             model.exposed_name,
+            model.protocol.as_ref().map(enum_str).transpose()?,
             serde_json::to_string(&model.capabilities)?,
             model.non_standard
         ],

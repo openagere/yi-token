@@ -4,6 +4,7 @@ export type { Capabilities } from "./Capabilities";
 export type { CatalogInfo } from "./CatalogInfo";
 export type { DiscoveredModel } from "./DiscoveredModel";
 export type { Client } from "./Client";
+export type { Company } from "./Company";
 export type { DirectProfile } from "./DirectProfile";
 export type { Effort } from "./Effort";
 export type { ErrorCode } from "./ErrorCode";
