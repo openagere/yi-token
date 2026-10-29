@@ -495,13 +495,24 @@ fn write_job(conn: &Connection, tails: &mut TailIndex, job: &Job) -> Option<Done
 
 /// A side request, such as a client's title generator: no client session key, no
 /// tools, and one user message with no history. Such a record is not stored at all.
+/// Instructions sent as leading `system` / `developer` messages (Chat Completions
+/// clients such as DeepSeek Harness put them in the message list) do not count as history.
 fn is_side_only(rec: &CaptureRecord, prep: &Prepared) -> bool {
+    let is_message = |item: &NormalizedItem, roles: &[&str]| {
+        item.kind == ItemKind::Message
+            && item
+                .role
+                .as_deref()
+                .is_some_and(|role| roles.contains(&role))
+    };
+    let conversation = prep
+        .input
+        .iter()
+        .skip_while(|item| is_message(item, &["system", "developer"]))
+        .collect::<Vec<_>>();
     rec.keys.session_key.is_none()
         && prep.tools.is_none()
-        && matches!(
-            prep.input.as_slice(),
-            [only] if only.kind == ItemKind::Message && only.role.as_deref() == Some("user")
-        )
+        && matches!(conversation.as_slice(), [only] if is_message(only, &["user"]))
 }
 
 /// Links one record and writes its session, thread, step, blobs and items.

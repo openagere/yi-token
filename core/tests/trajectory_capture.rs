@@ -600,6 +600,46 @@ async fn side_only_title_request_is_not_recorded() {
     cap.writer.shutdown();
 }
 
+/// A title request whose instructions come as a leading system message (the Chat
+/// Completions shape DeepSeek Harness sends) is still a side request and is not recorded.
+#[tokio::test]
+async fn side_only_request_with_system_message_is_not_recorded() {
+    let cap = start(None).await;
+    mount_json(&cap.env, Protocol::OpenaiChat).await;
+    let route = cap.env.route_to(Protocol::OpenaiChat, Protocol::OpenaiChat);
+    let body = json!({"model": CHAT_MODEL, "messages": [
+        {"role": "system", "content": "You write short session titles."},
+        {"role": "user", "content": "Generate the session title from this JSON array of human messages: [{\"seq\":8,\"text\":\"fix the parser\"}]"}
+    ]});
+
+    assert_eq!(cap.env.post(&route, &body).await.status(), 200);
+    cap.env.wait_idle(Duration::from_secs(10)).await;
+    cap.writer.flush_for_test();
+
+    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM sessions"), 0);
+    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM steps"), 0);
+    cap.writer.shutdown();
+}
+
+/// A system message followed by a real exchange is history, so the request is recorded.
+#[tokio::test]
+async fn system_message_with_history_is_still_recorded() {
+    let cap = start(None).await;
+    mount_json(&cap.env, Protocol::OpenaiChat).await;
+    let route = cap.env.route_to(Protocol::OpenaiChat, Protocol::OpenaiChat);
+    let body = json!({"model": CHAT_MODEL, "messages": [
+        {"role": "system", "content": "You are helpful."},
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "hello"},
+        {"role": "user", "content": "fix the parser"}
+    ]});
+
+    assert_eq!(cap.env.post(&route, &body).await.status(), 200);
+    cap.settle_steps(1).await;
+    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM steps"), 1);
+    cap.writer.shutdown();
+}
+
 /// One user message is recorded when the request also defines tools.
 #[tokio::test]
 async fn request_with_tools_is_still_recorded() {
