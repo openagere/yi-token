@@ -41,7 +41,9 @@ export interface SessionTarget {
 /** 设置页的分区；从其他页面跳来时可直接打开对应分区。 */
 export type SettingsSection = "general" | "listen" | "trajectory";
 
-const COMPACT_QUERY = "(max-width: 760px)";
+/** Below this width the sidebar folds to its icon rail; expanding it opens an overlay (keep in sync with workspace.css). */
+export const COMPACT_SIDEBAR_QUERY = "(max-width: 1100px)";
+const COMPACT_QUERY = COMPACT_SIDEBAR_QUERY;
 const isCompact = () => window.matchMedia(COMPACT_QUERY).matches;
 
 interface NavigationState {

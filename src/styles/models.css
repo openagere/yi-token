@@ -139,3 +139,10 @@
 .standard-model-description { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .standard-model-identity > button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .standard-model-description .standard-model-protocol { white-space: nowrap; }
+
+/* Option grids wrap by width instead of squeezing labels to one character per line. */
+.modality-options { container-type: inline-size; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); }
+.modality-option { gap: 6px; padding: 0 8px; }
+@container (max-width: 460px) { .modality-option > svg { display: none; } }
+.modality-option > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.effort-levels { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }

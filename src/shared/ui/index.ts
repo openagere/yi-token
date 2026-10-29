@@ -2,6 +2,7 @@ export { AppLogo } from "./AppLogo";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { LIST_PAGE_SIZE, ListPagination } from "./ListPagination";
 export { PageHeader } from "./PageHeader";
+export { useFitRows } from "./useFitRows";
 export { PageTabs, tabId, tabPanelId, type PageTab } from "./PageTabs";
 export { BRAND_ICONS, modelBrand, ProviderIcon, providerBrand } from "./ProviderIcon";
 export { ProtocolSelector } from "./ProtocolSelector";

@@ -174,7 +174,8 @@ test("narrow-screen sidebar expands as a drawer without shrinking the content", 
   await page.setViewportSize({ width: 390, height: 844 });
   await installBackend(page, "light");
   await page.goto("/");
-  await expect(page.locator(".connection-row")).toHaveCount(4);
+  // Small windows page the list by height, so the total comes from the pager summary.
+  await expect(page.locator(".connection-list-summary")).toContainText("/ 4");
   await expect(page.locator(".app-shell")).toHaveClass(/sidebar-collapsed/);
   await page.getByRole("button", { name: "展开或收起侧栏" }).click();
   await expect(page.getByRole("searchbox", { name: "搜索页面" })).toBeVisible();
@@ -209,7 +210,8 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await installBackend(page, "dark", false, false, { native: true, fullPage: true });
     await page.goto("/");
-    await expect(page.locator(".connection-row")).toHaveCount(6);
+    // Small windows page the list by height, so the total comes from the pager summary.
+    await expect(page.locator(".connection-list-summary")).toContainText("/ 6");
     for (const [name, ready] of [
       ["连接", ".connection-row"],
       ["模型管理", ".standard-model-row"],

@@ -13,13 +13,15 @@ interface Props {
   disabled?: boolean;
   onPage: (page: number) => void;
   children?: ReactNode;
+  /** Rows per page; list pages pass what fits on screen (see useFitRows). */
+  pageSize?: number;
 }
 
-export function ListPagination({ page, count, totalCount, unit, label, disabled = false, onPage, children }: Props) {
+export function ListPagination({ page, count, totalCount, unit, label, disabled = false, onPage, children, pageSize = LIST_PAGE_SIZE }: Props) {
   const { t } = useI18n();
-  const pages = Math.max(1, Math.ceil(count / LIST_PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(count / pageSize));
   const current = Math.min(page, pages);
-  const range = count ? `${(current - 1) * LIST_PAGE_SIZE + 1} - ${Math.min(current * LIST_PAGE_SIZE, count)} / ${count}` : "0";
+  const range = count ? `${(current - 1) * pageSize + 1} - ${Math.min(current * pageSize, count)} / ${count}` : "0";
 
   return <div className="connection-list-summary">
     <span role="status" aria-live="polite" aria-atomic="true">{range} {unit}{count !== totalCount && t("ui.pagination.total", { total: totalCount, unit })}</span>

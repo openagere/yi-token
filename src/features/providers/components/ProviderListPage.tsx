@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Cable, LoaderCircle, Pencil, Search, Star, Trash2, X } from "lucide-react";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
 import { PROTOCOLS_BY_ID } from "@/shared/lib";
 import { useNavigation } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
-import { ConfirmDialog, LIST_PAGE_SIZE, ListPagination, PageHeader, ProviderIcon } from "@/shared/ui";
+import { ConfirmDialog, ListPagination, PageHeader, ProviderIcon, useFitRows } from "@/shared/ui";
 import { useDeleteProvider, useProviders, useSaveProvider } from "../hooks";
 import { useProviderSelection } from "../selection";
 import type { ProviderView } from "../types";
@@ -46,9 +46,11 @@ export function ProviderListPage() {
           .includes(query),
     );
   }, [providers, search, filter]);
-  const pageCount = Math.max(1, Math.ceil(visible.length / LIST_PAGE_SIZE));
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const pageSize = useFitRows(rowsRef, { itemSelector: ".connection-row", fallbackHeight: 64, revision: visible.length });
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const pageItems = visible.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE);
+  const pageItems = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function edit(id: string | null) {
     openEditor("provider-editor", () => select(id));
@@ -82,7 +84,7 @@ export function ProviderListPage() {
   }
 
   return (
-    <section className="provider-list-page">
+    <section className="provider-list-page fit-page">
       <PageHeader
         eyebrow={t("provider.list.eyebrow")}
         title="Providers"
@@ -170,14 +172,14 @@ export function ProviderListPage() {
         </div>
       ) : (
         <>
-          <div className="connection-table" aria-busy={loading}>
+          <div className="connection-table fit-fill" aria-busy={loading}>
             <div className="connection-table-heading">
               <span>{t("provider.list.columns.connection")}</span>
               <span>{t("provider.list.columns.protocols")}</span>
               <span>{t("provider.list.columns.enabled")}</span>
               <span>{t("provider.list.columns.actions")}</span>
             </div>
-            <div role="list" aria-label={t("provider.list.listLabel")}>
+            <div ref={rowsRef} className="connection-rows" role="list" aria-label={t("provider.list.listLabel")}>
               {pageItems.map((provider) => {
                 const busy = loading || pendingId === provider.id;
                 return (
@@ -318,6 +320,7 @@ export function ProviderListPage() {
             label={t("provider.list.paginationLabel")}
             onPage={setPage}
             disabled={loading || pending}
+            pageSize={pageSize}
           >
             <span>
               <span className="proxy-status-dot running" aria-hidden="true" />

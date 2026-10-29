@@ -3,10 +3,10 @@ import { installBackend } from "./mock-backend";
 
 test("proxy keeps yi-token fixed and switches a saved model without a config preview", async ({ page }) => {
   // Narrow enough for two card columns, so the first card's detail can reach the next row.
-  await page.setViewportSize({ width: 900, height: 760 });
+  await page.setViewportSize({ width: 720, height: 760 });
   await installBackend(page, "light");
   await page.goto("/");
-  await expect(page.locator(".connection-row")).toHaveCount(4);
+  await expect(page.locator(".connection-list-summary")).toContainText("/ 4");
   await page.locator(".sidebar").getByRole("button", { name: "终端管理", exact: true }).click();
   await page.locator(".sidebar").getByRole("button", { name: "Codex CLI", exact: true }).click();
 

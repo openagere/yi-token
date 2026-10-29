@@ -100,6 +100,11 @@ html[data-platform="macos"] .workspace-toolbar { padding-left: 78px; }
 .app-shell .fit-page > .fit-fill { display: flex; flex: 1 1 0; flex-direction: column; min-height: 220px; }
 .fit-fill > .page-tab-panel:not([hidden]) { flex: 1 1 0; min-height: 0; }
 .proxy-page-host { display: flex; flex-direction: column; height: 100%; min-height: 100%; }
+/* List pages fill one screen: the rows area takes the free height and the page shows as many
+   rows as fit (useFitRows), paging through the rest instead of scrolling. */
+.connection-table.fit-fill, .standard-model-table.fit-fill { display: flex; flex-direction: column; min-height: 0; }
+.connection-table.fit-fill > .connection-table-heading, .standard-model-table.fit-fill > .standard-model-head { flex: none; }
+.connection-rows, .standard-model-rows { flex: 1 1 0; min-height: 0; overflow: hidden; }
 .proxy-page-host > .proxy-page { flex: 1; }
 .global-error { width: calc(100% - 2 * var(--page-gutter)); margin: 20px auto 0; }
 .sidebar-collapsed { --sidebar-width: 66px; }
@@ -187,8 +192,9 @@ h1 { font-weight: 500; }
   :root { --sidebar-width: 184px; --page-gutter: 22px; }
   .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) { padding-top: 20px; }
 }
-@media (max-width: 760px) {
-  .app-shell { --sidebar-width: 66px; --page-gutter: 24px; }
+/* Compact windows (COMPACT_SIDEBAR_QUERY): the sidebar is an icon rail, and opening it lays it over the page. */
+@media (max-width: 1100px) {
+  .app-shell { --sidebar-width: 66px; }
   .sidebar-resizer { display: none; }
   .app-shell:not(.sidebar-collapsed) .sidebar { position: fixed; z-index: 30; top: var(--toolbar-height); bottom: 0; left: 0; width: 244px; height: auto; padding: 14px 12px; border-right: 1px solid var(--border); box-shadow: var(--shadow-popover); }
   .sidebar-backdrop { position: fixed; z-index: 20; inset: var(--toolbar-height) 0 0; display: block; width: 100%; padding: 0; border: 0; background: var(--backdrop); cursor: default; }

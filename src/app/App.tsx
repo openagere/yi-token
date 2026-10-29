@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "@/shared/i18n";
-import { useNavigationStore } from "@/shared/navigation";
+import { COMPACT_SIDEBAR_QUERY, useNavigationStore } from "@/shared/navigation";
 import { ConfirmDialog, Toast } from "@/shared/ui";
 import { Sidebar } from "./layout/Sidebar";
 import { SidebarResizer } from "./layout/SidebarResizer";
@@ -10,7 +10,7 @@ import { PageOutlet } from "./routes";
 function useCompactSidebar() {
   const setSidebarCollapsed = useNavigationStore((state) => state.setSidebarCollapsed);
   useEffect(() => {
-    const compact = window.matchMedia("(max-width: 760px)");
+    const compact = window.matchMedia(COMPACT_SIDEBAR_QUERY);
     const onChange = (event: MediaQueryListEvent) => setSidebarCollapsed(event.matches);
     compact.addEventListener("change", onChange);
     return () => compact.removeEventListener("change", onChange);
