@@ -524,14 +524,32 @@ export async function installBackend(
                 }
                 return null;
               }
-              case "discover_provider_models":
+              case "discover_provider_models": {
+                const discovered = (id: string, extra: Record<string, unknown> = {}) => ({
+                  id,
+                  name: null,
+                  display_name: null,
+                  status: null,
+                  domain: "LLM",
+                  task_types: ["text_generation"],
+                  context_window: null,
+                  max_output_tokens: null,
+                  input_modalities: ["text"],
+                  output_modalities: ["text"],
+                  tools: null,
+                  created: null,
+                  ...extra,
+                });
                 return [
-                  "gpt",
-                  "o3",
-                  "gpt-3.5-turbo",
-                  "gpt-4o-2024-08-06",
-                  ...Array.from({ length: 22 }, (_, index) => `remote-${index + 1}`),
+                  discovered("gpt"),
+                  discovered("o3"),
+                  discovered("gpt-3.5-turbo"),
+                  discovered("gpt-4o-2024-08-06"),
+                  discovered("gpt-4.1-retired", { status: "Shutdown" }),
+                  discovered("text-embedding-3", { domain: "Embedding", task_types: ["embedding"] }),
+                  ...Array.from({ length: 22 }, (_, index) => discovered(`remote-${index + 1}`)),
                 ];
+              }
               case "preview_terminal_config":
                 return {
                   config_path: profiles[0].config_path,

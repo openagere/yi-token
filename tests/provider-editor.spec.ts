@@ -50,31 +50,27 @@ test("non-standard switch sits after the standard model and persists per mapping
   await page.screenshot({ path: testInfo.outputPath("provider-non-standard-1120.png") });
 });
 
-test("fetching provider models adds the chosen names", async ({ page }) => {
+test("fetched models that match nothing can be given a standard model by hand, then added", async ({ page }) => {
   await installBackend(page, "light");
   await page.goto("/");
   await page.getByRole("button", { name: "OpenAI" }).first().click();
-  await page.getByRole("button", { name: "获取并添加" }).click();
+  await page.locator("#provider-tab-models").click();
+  await page.getByRole("button", { name: "获取模型" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "从接口获取模型" })).toBeVisible();
   await expect(dialog.locator("code")).toHaveText("https://api.openai.com/v1/models");
-  await expect(dialog.getByRole("checkbox", { name: "gpt" })).toBeDisabled();
-  await expect(dialog.getByRole("checkbox", { name: "gpt-3.5-turbo" })).toHaveCount(0);
-  await dialog.getByRole("button", { name: /显示历史模型/ }).click();
-  await expect(dialog.getByRole("checkbox", { name: "gpt-3.5-turbo" })).toBeVisible();
-  await dialog.getByRole("button", { name: "收起历史模型" }).click();
-  const catalog = dialog.locator(".provider-model-catalog");
-  const scrolling = await catalog.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { overflow: style.overflowY, scrolls: element.scrollHeight > element.clientHeight };
-  });
-  expect(scrolling.overflow).toBe("auto");
-  expect(scrolling.scrolls).toBe(true);
-  await dialog.getByRole("searchbox", { name: "搜索模型" }).fill("o3");
-  await dialog.getByRole("checkbox", { name: "o3", exact: true }).check();
+  // Already-saved model stays visible but cannot be added twice.
+  await expect(dialog.getByRole("checkbox", { name: /^gpt 已添加/ })).toBeDisabled();
+  // Retired and non-chat models are hidden from the lists but counted in the footer.
+  await expect(dialog.getByRole("checkbox", { name: "gpt-4.1-retired" })).toHaveCount(0);
+  await expect(dialog.getByText("1 个非对话模型")).toBeVisible();
+  // Unmatched models cannot be ticked until a standard model is chosen.
+  await expect(dialog.getByRole("checkbox", { name: "remote-1", exact: true })).toBeDisabled();
+  await dialog.getByRole("combobox", { name: "为 remote-1 选择标准模型" }).selectOption({ label: "GPT-5" });
+  await expect(dialog.getByRole("checkbox", { name: "remote-1", exact: true })).toBeChecked();
   await dialog.getByRole("button", { name: "添加所选 · 1" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("textbox", { name: "模型名 2" })).toHaveValue("o3");
+  await expect(page.getByRole("textbox", { name: "模型名 2" })).toHaveValue("remote-1");
 });
 
 test("provider models page through long lists and new models land on the last page", async ({ page }) => {

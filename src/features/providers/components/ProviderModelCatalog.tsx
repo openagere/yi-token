@@ -2,16 +2,17 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
 import type { DiscoveredModel } from "@/generated";
-import { tokenLabel } from "@/features/models";
+import { tokenLabel, type StandardModel } from "@/features/models";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
+import { modelBrand, ProviderIcon } from "@/shared/ui";
 import { classifyDiscovered } from "../modelMatch";
 import type { ProviderType } from "../types";
 
 export interface CatalogPick {
   /** 上游模型 id，即调用时使用的名称。 */
   name: string;
-  /** 匹配到的标准模型名。 */
+  /** 对应的标准模型名。 */
   standard: string;
 }
 
@@ -19,24 +20,20 @@ interface Props {
   disabled: boolean;
   endpoint: string;
   existing: readonly string[];
-  /** 当前上游协议下已保存的标准模型。 */
-  standards: readonly { name: string }[];
+  /** 当前上游协议所属公司下已保存的标准模型。 */
+  standards: readonly StandardModel[];
   onDiscover: () => Promise<DiscoveredModel[] | null>;
   onAdd: (picks: CatalogPick[]) => void;
 }
 
-interface Row {
+interface MatchedRow {
   model: DiscoveredModel;
-  standard: string;
+  standard: StandardModel;
   score: number;
   retiring: boolean;
 }
 
-interface Filtered {
-  retired: number;
-  nonChat: number;
-  unmatched: number;
-}
+type Tab = "all" | "matched" | "unmatched";
 
 /** Same path the backend appends to the provider Base URL. */
 export function providerModelsUrl(providerType: ProviderType, baseUrl: string): string {
@@ -46,10 +43,10 @@ export function providerModelsUrl(providerType: ProviderType, baseUrl: string): 
 }
 
 /** 每个标准模型默认只勾一个：最相似、非下线中、发布最新的那条。 */
-function preferred(rows: readonly Row[]): Set<string> {
-  const best = new Map<string, Row>();
+function preferred(rows: readonly MatchedRow[]): Set<string> {
+  const best = new Map<string, MatchedRow>();
   for (const row of rows) {
-    const current = best.get(row.standard);
+    const current = best.get(row.standard.id);
     const better =
       !current ||
       row.score > current.score ||
@@ -57,12 +54,15 @@ function preferred(rows: readonly Row[]): Set<string> {
         (Number(current.retiring) - Number(row.retiring) ||
           (row.model.created ?? 0) - (current.model.created ?? 0) ||
           row.model.id.localeCompare(current.model.id)) > 0);
-    if (better) best.set(row.standard, row);
+    if (better) best.set(row.standard.id, row);
   }
   return new Set([...best.values()].map((row) => row.model.id));
 }
 
-/** Fetches the provider's model catalog, keeps chat models similar to saved standard models, and adds the chosen ones. */
+/**
+ * Fetches the provider's model catalog. Models similar to a saved standard model are matched
+ * automatically; the rest are listed separately, where the user picks the standard model by hand.
+ */
 export function ProviderModelCatalog({ disabled, endpoint, existing, standards, onDiscover, onAdd }: Props) {
   const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -70,17 +70,28 @@ export function ProviderModelCatalog({ disabled, endpoint, existing, standards, 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [rows, setRows] = useState<Row[]>([]);
-  const [filtered, setFiltered] = useState<Filtered>({ retired: 0, nonChat: 0, unmatched: 0 });
+  const [matched, setMatched] = useState<MatchedRow[]>([]);
+  const [unmatched, setUnmatched] = useState<DiscoveredModel[]>([]);
+  const [hidden, setHidden] = useState({ retired: 0, nonChat: 0 });
   const [picked, setPicked] = useState<string[]>([]);
+  /** 未匹配模型手动选择的标准模型：模型 id → 标准模型 id。 */
+  const [chosen, setChosen] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const owned = useMemo(() => new Set(existing), [existing]);
   const query = search.trim().toLowerCase();
-  const visible = rows.filter(
-    (row) => !query || `${row.model.id} ${row.standard}`.toLowerCase().includes(query),
+  const standardById = useMemo(() => new Map(standards.map((item) => [item.id, item])), [standards]);
+
+  const standardOf = (modelId: string): StandardModel | undefined => {
+    const row = matched.find((item) => item.model.id === modelId);
+    return row ? row.standard : standardById.get(chosen[modelId] ?? "");
+  };
+  const visibleMatched = matched.filter(
+    (row) => !query || `${row.model.id} ${row.standard.name}`.toLowerCase().includes(query),
   );
-  const selectable = rows.filter((row) => picked.includes(row.model.id) && !owned.has(row.model.id));
-  const filteredTotal = filtered.retired + filtered.nonChat + filtered.unmatched;
+  const visibleUnmatched = unmatched.filter((model) => !query || model.id.toLowerCase().includes(query));
+  const selectable = picked.filter((id) => !owned.has(id) && standardOf(id));
+  const hiddenTotal = hidden.retired + hidden.nonChat;
 
   useEffect(() => {
     const element = dialog.current;
@@ -95,30 +106,33 @@ export function ProviderModelCatalog({ disabled, endpoint, existing, standards, 
     try {
       const found = await onDiscover();
       if (!found) return;
-      const next: Row[] = [];
-      const skipped: Filtered = { retired: 0, nonChat: 0, unmatched: 0 };
+      const nextMatched: MatchedRow[] = [];
+      const nextUnmatched: DiscoveredModel[] = [];
+      const skipped = { retired: 0, nonChat: 0 };
       for (const model of found) {
         const verdict = classifyDiscovered(model, standards);
-        if (verdict.kind === "match")
-          next.push({
-            model,
-            standard: verdict.standard.name,
-            score: verdict.score,
-            retiring: verdict.retiring,
-          });
-        else skipped[verdict.kind] += 1;
+        if (verdict.kind === "match") {
+          nextMatched.push({ model, standard: verdict.standard, score: verdict.score, retiring: verdict.retiring });
+        } else if (verdict.kind === "unmatched") {
+          nextUnmatched.push(model);
+        } else {
+          skipped[verdict.kind] += 1;
+        }
       }
-      next.sort(
+      nextMatched.sort(
         (left, right) =>
-          left.standard.localeCompare(right.standard) ||
+          left.standard.name.localeCompare(right.standard.name) ||
           right.score - left.score ||
           (right.model.created ?? 0) - (left.model.created ?? 0),
       );
-      const defaults = preferred(next.filter((row) => !owned.has(row.model.id)));
-      setRows(next);
-      setFiltered(skipped);
-      setPicked(next.filter((row) => defaults.has(row.model.id)).map((row) => row.model.id));
+      const defaults = preferred(nextMatched.filter((row) => !owned.has(row.model.id)));
+      setMatched(nextMatched);
+      setUnmatched(nextUnmatched);
+      setHidden(skipped);
+      setChosen({});
+      setPicked(nextMatched.filter((row) => defaults.has(row.model.id)).map((row) => row.model.id));
       setSearch("");
+      setTab("all");
       setOpen(true);
     } catch (reason) {
       setError(describeError(reason));
@@ -128,10 +142,33 @@ export function ProviderModelCatalog({ disabled, endpoint, existing, standards, 
     }
   }
 
+  /** 为未匹配的模型选择标准模型；选中即勾选，清空则取消勾选。 */
+  function chooseStandard(modelId: string, standardId: string) {
+    setChosen((current) => ({ ...current, [modelId]: standardId }));
+    setPicked((current) => {
+      const without = current.filter((id) => id !== modelId);
+      return standardId ? [...without, modelId] : without;
+    });
+  }
+
+  function togglePick(modelId: string, checked: boolean) {
+    setPicked((current) => (checked ? [...current, modelId] : current.filter((id) => id !== modelId)));
+  }
+
   function add() {
-    onAdd(selectable.map((row) => ({ name: row.model.id, standard: row.standard })));
+    onAdd(
+      selectable.map((id) => ({ name: id, standard: standardOf(id)?.name ?? "" })),
+    );
     setOpen(false);
   }
+
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: "all", label: t("provider.editor.models.fetchTabAll"), count: matched.length + unmatched.length },
+    { id: "matched", label: t("provider.editor.models.fetchTabMatched"), count: matched.length },
+    { id: "unmatched", label: t("provider.editor.models.fetchTabUnmatched"), count: unmatched.length },
+  ];
+  const showMatched = tab !== "unmatched" && visibleMatched.length > 0;
+  const showUnmatched = tab !== "matched" && visibleUnmatched.length > 0;
 
   return (
     <>
@@ -157,14 +194,17 @@ export function ProviderModelCatalog({ disabled, endpoint, existing, standards, 
             if (event.target === event.currentTarget && !loading) setOpen(false);
           }}
         >
-          <div className="app-dialog-body">
-            <h2 id={titleId}>{t("provider.editor.models.fetchTitle")}</h2>
-            <p>{t("provider.editor.models.fetchDescription")}</p>
-            <div className="provider-model-endpoint">
-              <span>{t("provider.editor.models.fetchEndpoint")}</span>
-              <code>{endpoint}</code>
-            </div>
-            <div className="provider-model-catalog-tools">
+          <div className="app-dialog-body provider-model-catalog-body">
+            <header className="provider-model-catalog-head">
+              <h2 id={titleId}>{t("provider.editor.models.fetchTitle")}</h2>
+              <p>{t("provider.editor.models.fetchDescription")}</p>
+              <div className="provider-model-endpoint">
+                <span>{t("provider.editor.models.fetchEndpoint")}</span>
+                <code>{endpoint}</code>
+              </div>
+            </header>
+
+            <div className="provider-model-catalog-toolbar">
               <div className="provider-model-catalog-search">
                 <Search size={15} aria-hidden="true" />
                 <input
@@ -184,96 +224,128 @@ export function ProviderModelCatalog({ disabled, endpoint, existing, standards, 
                   </button>
                 )}
               </div>
-              <span className="provider-model-catalog-count">
-                {t("provider.editor.models.fetchCount", { shown: rows.length })}
-                {filteredTotal > 0 && (
-                  <small
-                    title={t("provider.editor.models.fetchFilteredDetail", {
-                      retired: filtered.retired,
-                      nonChat: filtered.nonChat,
-                      unmatched: filtered.unmatched,
-                    })}
+              <div className="provider-model-catalog-tabs" role="tablist" aria-label={t("provider.editor.models.fetchTitle")}>
+                {tabs.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === item.id}
+                    className={tab === item.id ? "selected" : ""}
+                    onClick={() => setTab(item.id)}
                   >
-                    {t("provider.editor.models.fetchFiltered", { count: filteredTotal })}
-                  </small>
-                )}
-              </span>
-            </div>
-            {filteredTotal > 0 && (
-              <div className="provider-model-catalog-filters">
-                {filtered.unmatched > 0 && (
-                  <span>{t("provider.editor.models.fetchUnmatched", { count: filtered.unmatched })}</span>
-                )}
-                {filtered.nonChat > 0 && (
-                  <span>{t("provider.editor.models.fetchNonChat", { count: filtered.nonChat })}</span>
-                )}
-                {filtered.retired > 0 && (
-                  <span>{t("provider.editor.models.fetchRetired", { count: filtered.retired })}</span>
-                )}
+                    {item.label}
+                    <span>{item.count}</span>
+                  </button>
+                ))}
               </div>
-            )}
-            <div
-              className="provider-model-catalog"
-              role="list"
-              aria-label={t("provider.editor.models.fetchTitle")}
-            >
-              {visible.map((row, index) => {
-                const { model } = row;
-                const added = owned.has(model.id);
-                const checked = added || picked.includes(model.id);
-                const firstOfGroup = index === 0 || visible[index - 1].standard !== row.standard;
-                return (
-                  <div key={model.id} role="listitem" className="provider-model-catalog-item">
-                    {firstOfGroup && (
-                      <div className="provider-model-catalog-group">
-                        <span>{t("provider.editor.models.fetchMatched")}</span>
-                        <strong>{row.standard}</strong>
+            </div>
+
+            <div className="provider-model-catalog" role="list" aria-label={t("provider.editor.models.fetchTitle")}>
+              {showMatched && (
+                <section className="provider-model-catalog-section">
+                  <h3>{t("provider.editor.models.fetchMatchedGroup")}</h3>
+                  {visibleMatched.map(({ model, standard, retiring }) => {
+                    const added = owned.has(model.id);
+                    const checked = added || picked.includes(model.id);
+                    return (
+                      <div key={model.id} role="listitem">
+                        <label className={`provider-model-catalog-row ${checked ? "checked" : ""} ${added ? "added" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={added}
+                            onChange={(event) => togglePick(model.id, event.target.checked)}
+                          />
+                          <span className="provider-model-catalog-check" aria-hidden="true">
+                            <Check size={12} strokeWidth={2.4} />
+                          </span>
+                          <span className="provider-model-catalog-name">{model.id}</span>
+                          <span className="provider-model-catalog-standard">
+                            <ProviderIcon brand={standard.brand || modelBrand(standard.name)} size={14} />
+                            {standard.name}
+                          </span>
+                          <span className="provider-model-catalog-meta">
+                            {model.context_window != null && <span>{tokenLabel(model.context_window)}</span>}
+                            {retiring && <em className="retiring">{t("provider.editor.models.fetchRetiringTag")}</em>}
+                            {added && <em>{t("provider.editor.models.fetchAdded")}</em>}
+                          </span>
+                        </label>
                       </div>
-                    )}
-                    <label
-                      className={`provider-model-catalog-row ${checked ? "checked" : ""} ${added ? "added" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={added}
-                        onChange={(event) =>
-                          setPicked((current) =>
-                            event.target.checked
-                              ? [...current, model.id]
-                              : current.filter((item) => item !== model.id),
-                          )
-                        }
-                      />
-                      <span className="provider-model-catalog-check" aria-hidden="true">
-                        <Check size={12} strokeWidth={2.4} />
-                      </span>
-                      <span className="provider-model-catalog-name">{model.id}</span>
-                      <span className="provider-model-catalog-meta">
-                        {model.context_window != null && <span>{tokenLabel(model.context_window)}</span>}
-                        {row.retiring && (
-                          <em className="retiring">{t("provider.editor.models.fetchRetiringTag")}</em>
-                        )}
-                        {added && <em>{t("provider.editor.models.fetchAdded")}</em>}
-                      </span>
-                    </label>
-                  </div>
-                );
-              })}
-              {!loading && !visible.length && (
+                    );
+                  })}
+                </section>
+              )}
+
+              {showUnmatched && (
+                <section className="provider-model-catalog-section">
+                  <h3>{t("provider.editor.models.fetchUnmatchedGroup")}</h3>
+                  {visibleUnmatched.map((model) => {
+                    const added = owned.has(model.id);
+                    const standardId = chosen[model.id] ?? "";
+                    const checked = added || (picked.includes(model.id) && Boolean(standardId));
+                    return (
+                      <div key={model.id} role="listitem" className={`provider-model-catalog-row unmatched ${checked ? "checked" : ""} ${added ? "added" : ""}`}>
+                        <label className="provider-model-catalog-pick">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={added || !standardId}
+                            onChange={(event) => togglePick(model.id, event.target.checked)}
+                          />
+                          <span className="provider-model-catalog-check" aria-hidden="true">
+                            <Check size={12} strokeWidth={2.4} />
+                          </span>
+                          <span className="provider-model-catalog-name">{model.id}</span>
+                          {added && <em>{t("provider.editor.models.fetchAdded")}</em>}
+                        </label>
+                        {/* Native select: a portaled menu would render beneath the modal dialog. */}
+                        <select
+                          className="provider-model-catalog-select"
+                          aria-label={t("provider.editor.models.fetchPickLabel", { name: model.id })}
+                          value={standardId}
+                          disabled={added}
+                          onChange={(event) => chooseStandard(model.id, event.target.value)}
+                        >
+                          <option value="">{t("provider.editor.models.fetchPickStandard")}</option>
+                          {standards.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
+
+              {!loading && !showMatched && !showUnmatched && (
                 <div className="provider-model-catalog-empty">
                   {error ||
-                    (rows.length
+                    (matched.length || unmatched.length
                       ? t("provider.editor.models.fetchNoMatch")
                       : t("provider.editor.models.fetchEmpty"))}
                 </div>
               )}
             </div>
-            {error && visible.length > 0 && (
+
+            <div className="provider-model-catalog-foot">
+              <span>{t("provider.editor.models.fetchCount", { shown: matched.length + unmatched.length })}</span>
+              {hiddenTotal > 0 && (
+                <small>
+                  {[
+                    hidden.nonChat > 0 && t("provider.editor.models.fetchNonChat", { count: hidden.nonChat }),
+                    hidden.retired > 0 && t("provider.editor.models.fetchRetired", { count: hidden.retired }),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </small>
+              )}
+            </div>
+            {error && (matched.length || unmatched.length) ? (
               <p className="app-dialog-error" role="alert">
                 {error}
               </p>
-            )}
+            ) : null}
             <div className="app-dialog-actions">
               <button type="button" className="secondary-button" onClick={() => setOpen(false)}>
                 {t("ui.dialog.cancel")}
