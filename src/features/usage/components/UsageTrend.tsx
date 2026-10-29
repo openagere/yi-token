@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from "recharts";
 import { useI18n } from "@/shared/i18n";
 import { ProviderIcon } from "@/shared/ui";
-import { compactNumber, dateRange, localDay, rangeDays, shortDay } from "../format";
+import { axisTickFormatter, compactNumber, dateRange, localDay, rangeDays, shortDay } from "../format";
 import { usageTokenMetrics } from "../metrics";
 import type { UsageModelBrandResolver, UsageModelFormatter } from "../modelNames";
 import type { TrendMode, UsageDateRange, UsageSnapshot } from "../types";
@@ -46,7 +46,11 @@ export function UsageTrend({ snapshot, range, mode, formatModel, resolveBrand }:
     });
     return { points, series };
   }, [snapshot, days, range.startDate, mode, formatModel, t]);
-  const formatTick = (value: number) => compactNumber(value, language);
+  const peak = useMemo(
+    () => Math.max(0, ...points.map((point) => series.reduce((sum, item) => sum + Number(point[item.key] ?? 0), 0))),
+    [points, series],
+  );
+  const formatTick = useMemo(() => axisTickFormatter(peak, language), [peak, language]);
 
   return <section className="analytics-trend-section" aria-label={t("usage.overview.trendTitle")}>
     <div className="analytics-chart" role="img" aria-label={t(mode === "tokens" ? "usage.trend.chartTokens" : "usage.trend.chartModels", { range: dateRange(range) })}>

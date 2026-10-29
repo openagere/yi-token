@@ -12,6 +12,19 @@ export function compactNumber(value: number, locale = currentLanguage()): string
   return unit ? `${numberFormat(locale).format(value / unit.value)}${unit.label}` : integerFormat(locale).format(value);
 }
 
+/**
+ * 纵轴刻度格式：整张图只用一个单位（由峰值决定），例如 0 / 0.3m / 0.6m / 0.9m / 1.2m，
+ * 避免 300k 与 1.2m 混在同一条轴上。
+ */
+export function axisTickFormatter(peak: number, locale = currentLanguage()): (value: number) => string {
+  const scale = units.find((item) => peak >= item.value);
+  const fraction = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  return (value) => {
+    if (!scale || value === 0) return integerFormat(locale).format(value);
+    return `${fraction.format(value / scale.value)}${scale.label}`;
+  };
+}
+
 /** 比率（0–1）格式化为百分比；无分母时为 null，显示为破折号。 */
 export function ratePercent(rate: number | null): string {
   return rate === null ? "—" : `${numberFormat().format(rate * 100)}%`;
