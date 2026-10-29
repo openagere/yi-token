@@ -76,3 +76,22 @@ test("fetching provider models adds the chosen names", async ({ page }) => {
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("textbox", { name: "模型名 2" })).toHaveValue("o3");
 });
+
+test("provider models page through long lists and new models land on the last page", async ({ page }) => {
+  await installBackend(page, "dark");
+  await page.goto("/");
+  await page.getByRole("button", { name: "OpenAI" }).first().click();
+  const rows = page.locator(".connection-model-row");
+  const pager = page.getByRole("navigation", { name: "模型分页" });
+  const add = page.getByRole("button", { name: "添加模型" });
+  await page.locator("#provider-tab-models").click();
+  // The mock OpenAI provider starts with one model; six more make seven, i.e. two pages.
+  await expect(rows).toHaveCount(1);
+  for (let i = 0; i < 6; i++) await add.click();
+  await expect(pager).toBeVisible();
+  await expect(pager).toContainText("2 / 2");
+  await expect(rows).toHaveCount(2);
+  await pager.getByRole("button", { name: "上一页" }).click();
+  await expect(rows).toHaveCount(5);
+  await expect(pager).toContainText("1 / 2");
+});

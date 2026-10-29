@@ -122,6 +122,8 @@ const provider: DeepString<typeof zh> = {
         protocol: "Protocol",
         protocolLabel: "Protocol for model {index}",
         protocolInherit: "Default",
+        paginationUnit: "models",
+        paginationLabel: "Model pages",
         remove: "Remove model",
         removeLabel: "Remove model {index}",
         fetch: "Fetch models",

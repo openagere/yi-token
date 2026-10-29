@@ -112,6 +112,8 @@ const provider = {
         protocol: "协议",
         protocolLabel: "模型 {index} 的协议",
         protocolInherit: "默认",
+        paginationUnit: "个模型",
+        paginationLabel: "模型分页",
         remove: "移除模型",
         removeLabel: "移除模型 {index}",
         fetch: "获取模型",

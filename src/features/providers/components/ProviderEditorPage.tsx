@@ -25,6 +25,7 @@ import {
   ProviderIcon,
   providerSlug,
   routeName,
+  ListPagination,
   Select,
 } from "@/shared/ui";
 import { providerApi } from "../api";
@@ -32,6 +33,9 @@ import { useProviders, useSaveProvider } from "../hooks";
 import { ProviderModelCatalog, providerModelsUrl, type CatalogPick } from "./ProviderModelCatalog";
 import { useProviderSelection } from "../selection";
 import { ALL_PROTOCOLS, type ModelMapping, type ProviderView } from "../types";
+
+/** 模型表每页行数：每行带能力摘要，行数过多会把编辑区撑得很长。 */
+const MODEL_PAGE_SIZE = 5;
 
 const TYPE_URLS: Record<ProviderType, string> = {
   anthropic: "https://api.anthropic.com",
@@ -78,6 +82,14 @@ function ProviderEditorForm({
   const [busy, setBusy] = useState<"save" | "test" | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<"connection" | "models">("connection");
+  const [modelPage, setModelPage] = useState(1);
+  const modelPages = Math.max(1, Math.ceil(draft.models.length / MODEL_PAGE_SIZE));
+  const currentModelPage = Math.min(modelPage, modelPages);
+  const modelStart = (currentModelPage - 1) * MODEL_PAGE_SIZE;
+  /** 新增的模型落在最后一页，便于马上编辑。 */
+  function showLastModelPage(count: number) {
+    setModelPage(Math.max(1, Math.ceil(count / MODEL_PAGE_SIZE)));
+  }
   const form = useRef<HTMLFormElement>(null);
   const dirty = useMemo(
     () =>
@@ -276,7 +288,10 @@ function ProviderEditorForm({
         },
       ];
     });
-    if (rows.length) update("models", [...draft.models, ...rows]);
+    if (rows.length) {
+      update("models", [...draft.models, ...rows]);
+      showLastModelPage(draft.models.length + rows.length);
+    }
   }
   const footer =
     busy === "test"
@@ -537,7 +552,7 @@ function ProviderEditorForm({
                 <button
                   type="button"
                   className="text-button"
-                  onClick={() =>
+                  onClick={() => {
                     update("models", [
                       ...draft.models,
                       {
@@ -549,8 +564,9 @@ function ProviderEditorForm({
                         protocol: null,
                         non_standard: false,
                       },
-                    ])
-                  }
+                    ]);
+                    showLastModelPage(draft.models.length + 1);
+                  }}
                 >
                   <Plus size={15} />
                   {t("provider.editor.models.add")}
@@ -571,7 +587,8 @@ function ProviderEditorForm({
                   <span />
                 </div>
               )}
-              {draft.models.map((model, index) => {
+              {draft.models.slice(modelStart, modelStart + MODEL_PAGE_SIZE).map((model, offset) => {
+                const index = modelStart + offset;
                 const modelStandards = standardsFor(upstreamOf(model));
                 const standard = modelStandards.find((item) => item.id === model.standard_model_id);
                 return (
@@ -684,6 +701,18 @@ function ProviderEditorForm({
               )}
               {fieldErrors.models && <small className="field-error">{fieldErrors.models}</small>}
             </div>
+            {draft.models.length > MODEL_PAGE_SIZE && (
+              <ListPagination
+                page={currentModelPage}
+                count={draft.models.length}
+                totalCount={draft.models.length}
+                unit={t("provider.editor.models.paginationUnit")}
+                label={t("provider.editor.models.paginationLabel")}
+                onPage={setModelPage}
+                disabled={Boolean(busy)}
+                pageSize={MODEL_PAGE_SIZE}
+              />
+            )}
           </div>
         </fieldset>
         <footer className="connection-editor-footer">
