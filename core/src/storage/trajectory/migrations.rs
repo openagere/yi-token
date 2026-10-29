@@ -107,8 +107,16 @@ INSERT INTO meta (key, value) VALUES ('last_seq', COALESCE((SELECT MAX(seq) FROM
 ";
 
 /// Migrations for the trajectory database, in order.
+/// Titles taken from injected context (for example Codex's `<environment_context>`) are
+/// cleared. The writer fills an empty title again from the next request, which carries the
+/// conversation, so the correct title comes back without rewriting anything else.
+const V3_SQL: &str = "
+UPDATE sessions SET title = ''
+WHERE title LIKE '<%' OR title LIKE '# AGENTS.md%' OR title LIKE '# CLAUDE.md%';
+";
+
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(V1_SQL), M::up(V2_SQL)])
+    Migrations::new(vec![M::up(V1_SQL), M::up(V2_SQL), M::up(V3_SQL)])
 }
 
 /// Applies every pending trajectory migration. The first statement of v1 sets `auto_vacuum`
@@ -124,4 +132,35 @@ pub fn run(conn: &mut Connection) -> CoreResult<()> {
     migrations()
         .to_latest(conn)
         .map_err(|e| CoreError::Database(format!("轨迹库迁移失败：{e}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn v3_clears_titles_taken_from_injected_context() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        Migrations::new(vec![M::up(V1_SQL), M::up(V2_SQL)])
+            .to_latest(&mut conn)
+            .unwrap();
+        conn.execute_batch(
+            "INSERT INTO sessions (id, client, key_source, title, started_at, last_at) VALUES
+               ('bad', 'codex', 'new', '<environment_context>', 1, 1),
+               ('good', 'codex', 'new', '修复登录', 1, 1);",
+        )
+        .unwrap();
+        migrations().to_latest(&mut conn).unwrap();
+        let titles: Vec<(String, String)> = conn
+            .prepare("SELECT id, title FROM sessions ORDER BY id")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(
+            titles,
+            [("bad".into(), String::new()), ("good".into(), "修复登录".into())]
+        );
+    }
 }

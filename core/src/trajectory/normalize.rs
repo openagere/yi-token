@@ -133,18 +133,45 @@ pub fn rolling_fp(prev: &[u8; 32], next: &[u8; 32]) -> [u8; 32] {
     h.finalize().into()
 }
 
-/// Text of the first user message that has any text, cut to 80 characters.
+/// Context clients inject as user messages (environment, instructions, reminders). It is not
+/// what the user typed, so it must not become a session title.
+const INJECTED_PREFIXES: &[&str] = &[
+    "<environment_context>",
+    "<user_instructions>",
+    "<user_shell_command>",
+    "<system-reminder>",
+    "<command-name>",
+    "<command-message>",
+    "<command-args>",
+    "<local-command-",
+    "<turn_aborted>",
+    "<INSTRUCTIONS>",
+    "# AGENTS.md instructions",
+    "# CLAUDE.md",
+];
+
+fn is_injected(text: &str) -> bool {
+    let trimmed = text.trim_start();
+    INJECTED_PREFIXES
+        .iter()
+        .any(|prefix| trimmed.starts_with(prefix))
+}
+
+/// Text the user typed in the first user message that has any, cut to 80 characters.
+/// Injected context parts are skipped, so a message holding only them yields nothing.
 pub fn first_user_text(items: &[NormalizedItem]) -> Option<String> {
     items
         .iter()
         .filter(|i| i.kind == ItemKind::Message && i.role.as_deref() == Some("user"))
         .find_map(|i| {
             let body: Value = serde_json::from_slice(&i.body).ok()?;
-            let text = match &body["content"] {
-                Value::String(s) => s.clone(),
+            let text: String = match &body["content"] {
+                Value::String(s) if !is_injected(s) => s.clone(),
+                Value::String(_) => String::new(),
                 Value::Array(parts) => parts
                     .iter()
                     .filter_map(|p| p.get("text").and_then(Value::as_str))
+                    .filter(|t| !is_injected(t))
                     .collect(),
                 _ => return None,
             };
@@ -548,6 +575,27 @@ mod tests {
         let got = first_user_text(&items).unwrap();
         assert_eq!(got.chars().count(), 80);
         assert_eq!(got, "汉".repeat(80));
+    }
+
+    #[test]
+    fn first_user_text_skips_injected_context() {
+        let items = vec![
+            normalized(json!({"role": "user", "content": [
+                {"type": "input_text", "text": "<environment_context>\n  <cwd>D:\\tmp</cwd>\n</environment_context>"},
+                {"type": "input_text", "text": "# AGENTS.md instructions for D:\\tmp"},
+            ]})),
+            normalized(json!({"role": "user", "content": "帮我看下这个报错"})),
+        ];
+        assert_eq!(first_user_text(&items).as_deref(), Some("帮我看下这个报错"));
+    }
+
+    #[test]
+    fn first_user_text_keeps_the_typed_part_of_a_mixed_message() {
+        let items = vec![normalized(json!({"role": "user", "content": [
+            {"type": "input_text", "text": "<system-reminder>context</system-reminder>"},
+            {"type": "input_text", "text": "真正的问题"},
+        ]}))];
+        assert_eq!(first_user_text(&items).as_deref(), Some("真正的问题"));
     }
 
     #[test]

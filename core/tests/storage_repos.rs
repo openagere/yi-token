@@ -833,8 +833,8 @@ fn trajectory_db_creates_schema_with_incremental_vacuum() {
         for table in ["sessions", "threads", "steps", "step_items", "blobs"] {
             assert!(table_exists(c, table), "missing table {table}");
         }
-        // v2 is the change-cursor meta migration (`meta.last_seq`).
-        assert_eq!(user_version(c), 2);
+        // v2 is the change-cursor meta migration (`meta.last_seq`); v3 clears injected titles.
+        assert_eq!(user_version(c), 3);
         let auto_vacuum: i64 = c.query_row("PRAGMA auto_vacuum", [], |r| r.get(0))?;
         assert_eq!(auto_vacuum, 2);
         Ok(())
