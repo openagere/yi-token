@@ -13,8 +13,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { describeError } from "@/shared/api";
-import { useStandardModels, ModelCapabilitySummary, tokenLabel, type StandardModel } from "@/features/models";
-import { useI18n, type Translate } from "@/shared/i18n";
+import { useStandardModels, ModelCapabilitySummary, type StandardModel } from "@/features/models";
+import { useI18n } from "@/shared/i18n";
 import { companyOf, PROTOCOLS, PROTOCOLS_BY_ID, type ProviderType } from "@/shared/lib";
 import { useEditorGuard, useNavigation } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
@@ -54,11 +54,6 @@ function blankProvider(isDefault: boolean): ProviderView {
     models: [],
     protocol_support: { ...ALL_PROTOCOLS },
   };
-}
-
-function modelDescription(model: StandardModel, t: Translate) {
-  const contextWindow = model.capabilities.context_window;
-  return contextWindow ? `Context ${tokenLabel(contextWindow)}` : t("provider.editor.models.undeclared");
 }
 
 function ProviderEditorForm({
@@ -646,7 +641,6 @@ function ProviderEditorForm({
                             value: item.id,
                             label: item.name,
                             leading: <ProviderIcon brand={item.brand || modelBrand(item.name)} size={20} />,
-                            description: modelDescription(item, t),
                           })),
                         ]}
                       />

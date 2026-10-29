@@ -121,7 +121,7 @@ const provider: DeepString<typeof zh> = {
         noneForProtocol: "No standard models for this company",
         protocol: "Protocol",
         protocolLabel: "Protocol for model {index}",
-        protocolInherit: "Follow provider · {protocol}",
+        protocolInherit: "Default",
         remove: "Remove model",
         removeLabel: "Remove model {index}",
         fetch: "Fetch models",

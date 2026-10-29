@@ -111,7 +111,7 @@ const provider = {
         noneForProtocol: "该公司暂无标准模型",
         protocol: "协议",
         protocolLabel: "模型 {index} 的协议",
-        protocolInherit: "跟随服务商 · {protocol}",
+        protocolInherit: "默认",
         remove: "移除模型",
         removeLabel: "移除模型 {index}",
         fetch: "获取模型",
