@@ -1,3 +1,4 @@
+import { History } from "lucide-react";
 import type { TrajectoryStatus } from "@/generated";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
@@ -21,7 +22,14 @@ export function SessionDetailPane({ status, sessionId, stepId, threadId, onThrea
   const unavailable = status !== undefined && !status.available;
   const detail = useSessionDetail(unavailable ? null : sessionId);
   if (status && !status.available) return <TrajectoryUnavailable error={status.error} />;
-  if (!sessionId) return <p className="sessions-empty-detail">{t("session.placeholder.select")}</p>;
+  if (!sessionId)
+    return (
+      <div className="sessions-empty-detail sessions-placeholder">
+        <History size={28} strokeWidth={1.5} aria-hidden="true" />
+        <strong>{t("session.placeholder.select")}</strong>
+        <span>{t("session.placeholder.hint")}</span>
+      </div>
+    );
   if (detail.isError)
     return (
       <p className="sessions-empty-detail" role="alert">

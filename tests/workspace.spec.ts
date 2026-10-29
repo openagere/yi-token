@@ -194,7 +194,7 @@ test("run page keeps status, live requests and logs on one page while runtime ac
   await expect(page.locator(".proxy-monitor-facts")).toBeVisible();
   await expect(page.locator("#proxy-listen-settings")).toHaveCount(0);
   await expect(page.locator(".run-live-table")).toBeVisible();
-  await expect(page.locator(".run-log-drawer")).toBeVisible();
+  await expect(page.getByRole("tab", { name: /日志/ })).toBeVisible();
   await page.getByRole("button", { name: "停止代理", exact: true }).click();
   await expect(page.getByRole("button", { name: "启动代理", exact: true })).toBeVisible();
 });

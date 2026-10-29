@@ -82,7 +82,12 @@ html[data-platform="macos"] .workspace-toolbar { padding-left: 78px; }
 .app-shell :is(.provider-list-page, .editor-page, .proxy-page, .settings-page, .usage-page, .terminal-page) > :is(.connection-list-summary, .analytics-page-footer, .page-footer) { margin-top: auto; }
 .app-shell .editor-page > form { display: flex; flex: 1; flex-direction: column; }
 .app-shell .editor-page > form > :is(.connection-editor-footer, .editor-footer) { margin-top: auto; }
-.proxy-page-host { display: flex; flex-direction: column; min-height: 100%; }
+/* Fit pages fill exactly one screen: header and summary rows keep their size, the `.fit-fill`
+   region takes the rest and scrolls inside itself. Below the minimum height the panel scrolls instead. */
+.app-shell .fit-page { width: min(100%, 1320px); height: 100%; min-height: 540px; }
+.app-shell .fit-page > .fit-fill { display: flex; flex: 1 1 0; flex-direction: column; min-height: 220px; }
+.fit-fill > .page-tab-panel:not([hidden]) { flex: 1 1 0; min-height: 0; }
+.proxy-page-host { display: flex; flex-direction: column; height: 100%; min-height: 100%; }
 .proxy-page-host > .proxy-page { flex: 1; }
 .global-error { width: calc(100% - 2 * var(--page-gutter)); margin: 20px auto 0; }
 .sidebar-collapsed { --sidebar-width: 66px; }

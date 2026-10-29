@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS: ServerSettings = { host: "127.0.0.1", port: 11435, log_l
 
 /**
  * 代理监听设置（监听地址 / 端口 / 日志级别）。
- * 位于设置页的"代理监听"分组，运行页的"去设置"跳转到此锚点；通过 Tauri 命令读写，与本地偏好设置相互独立。
+ * 位于设置页的"代理监听"分区，运行页的"去设置"直接打开该分区；通过 Tauri 命令读写，与本地偏好设置相互独立。
  */
 export function ListenSettings() {
   const { t } = useI18n();
@@ -50,7 +50,7 @@ export function ListenSettings() {
         </div>
       </div>
       <div className="settings-group-body">
-        <div className="proxy-address">{proxyBaseUrl(settings.host, settings.port)}</div>
+        <div className="settings-endpoint"><span>{t("proxy.listen.endpoint")}</span><code>{proxyBaseUrl(settings.host, settings.port)}</code></div>
         <fieldset disabled={busy || saved === null} className="connection-form-fields form-grid settings-grid">
           <label className="field"><span>{t("proxy.listen.host")}</span><input value={settings.host} onChange={(event) => update({ host: event.target.value })} placeholder="127.0.0.1" /></label>
           <label className="field"><span>{t("proxy.listen.port")}</span><input type="number" min={1} max={65535} value={settings.port} onChange={(event) => update({ port: Number(event.target.value) })} /></label>

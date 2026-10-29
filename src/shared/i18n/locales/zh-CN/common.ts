@@ -48,7 +48,7 @@ const common = {
     proxy: "管理本地代理服务，查看连接、请求和运行日志。",
     usage: "查看模型调用、Token 用量和请求记录。",
     terminal: "管理命令行客户端的代理与 Provider 直连配置。",
-    settings: "管理外观、字体和界面语言。",
+    settings: "管理界面外观、代理监听与会话轨迹。",
   },
   common: {
     back: "返回上一页",

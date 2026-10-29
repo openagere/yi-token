@@ -14,6 +14,7 @@ const proxy = {
     listen: {
       heading: "监听设置",
       description: "配置本地代理的监听地址与日志级别。",
+      endpoint: "代理地址",
       host: "监听地址",
       port: "端口",
       logLevel: "日志级别",
@@ -117,8 +118,6 @@ const proxy = {
       refresh: "刷新日志",
       copy: "复制当前日志",
       export: "导出当前日志",
-      collapse: "收起日志视图",
-      expand: "展开日志视图",
       content: "日志内容",
       time: "时间",
       level: "级别",
@@ -133,6 +132,9 @@ const proxy = {
       follow: "跟随最新",
     },
     run: {
+      tabs: "运行视图",
+      inFlightBadge: "{count} 在途",
+      rateBadge: "{rate}/秒",
       goSettings: "去设置",
       facts: {
         connections: "连接数",
@@ -143,9 +145,12 @@ const proxy = {
       title: "流量",
       requests: "请求 / 秒",
       errors: "错误 / 秒",
-      summary: "{requests} 请求 / 秒 · {errors} 错误 / 秒",
-      expand: "展开流量",
-      collapse: "收起流量",
+      windowRequests: "窗口请求数",
+      windowErrors: "窗口错误数",
+      avgDuration: "平均耗时",
+      window: "最近 {minutes} 分钟",
+      byClient: "按终端",
+      errorCount: "{count} 错误",
       chartLabel: "请求与错误趋势",
     },
     live: {
@@ -176,8 +181,6 @@ const proxy = {
     drawer: {
       title: "日志",
       issues: "{warn} 警告 · {error} 错误",
-      expand: "展开日志",
-      collapse: "收起日志",
     },
   },
 } as const;

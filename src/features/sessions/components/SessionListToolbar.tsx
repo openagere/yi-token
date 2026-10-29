@@ -1,4 +1,4 @@
-import { Plug, X } from "lucide-react";
+import { Plug, Search, X } from "lucide-react";
 import { useI18n } from "@/shared/i18n";
 import { ProviderIcon, Select, type SelectOption } from "@/shared/ui";
 import { TERMINALS } from "@/features/terminal";
@@ -33,14 +33,21 @@ export function SessionListToolbar({ terminal, onTerminal, search, onSearch, mod
         options={options}
         onValueChange={(value) => onTerminal(value as TerminalFilter)}
       />
-      <input
-        type="search"
-        className="session-search"
-        value={search}
-        placeholder={t("session.list.search")}
-        aria-label={t("session.list.searchLabel")}
-        onChange={(event) => onSearch(event.target.value)}
-      />
+      <label className="session-search">
+        <Search size={14} aria-hidden="true" />
+        <input
+          type="search"
+          value={search}
+          placeholder={t("session.list.search")}
+          aria-label={t("session.list.searchLabel")}
+          onChange={(event) => onSearch(event.target.value)}
+        />
+        {search && (
+          <button type="button" title={t("session.list.clearSearch")} aria-label={t("session.list.clearSearch")} onClick={() => onSearch("")}>
+            <X size={12} aria-hidden="true" />
+          </button>
+        )}
+      </label>
       {model && (
         <span className="session-model-chip">
           {t("session.list.modelFilter", { model })}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, Check, CircleAlert, Copy, Download, FileText, Maximize2, Minimize2, Pause, Play, RefreshCw, Search, X } from "lucide-react";
+import { ArrowDownToLine, Check, CircleAlert, Copy, Download, FileText, Pause, Play, RefreshCw, Search, X } from "lucide-react";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
 import { notify } from "@/shared/notify";
@@ -12,7 +12,6 @@ export function ProxyLogs({ visible }: { visible: boolean }) {
   const { t, language } = useI18n();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [follow, setFollow] = useState(true);
-  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("all");
   const [copied, setCopied] = useState(false);
@@ -35,7 +34,7 @@ export function ProxyLogs({ visible }: { visible: boolean }) {
     { value: "DEBUG", label: "DEBUG" }, { value: "TRACE", label: "TRACE" },
   ];
 
-  useEffect(() => { if (follow && visible && output.current) output.current.scrollTop = output.current.scrollHeight; }, [filtered, follow, visible, expanded]);
+  useEffect(() => { if (follow && visible && output.current) output.current.scrollTop = output.current.scrollHeight; }, [filtered, follow, visible]);
 
   async function copy() {
     try {
@@ -55,17 +54,17 @@ export function ProxyLogs({ visible }: { visible: boolean }) {
   }
   const empty = !loaded && logsQuery.isFetching ? t("proxy.logs.loading") : error && !loaded ? t("proxy.logs.unavailable") : entries.length ? t("proxy.logs.noMatch") : t("proxy.logs.empty");
 
-  return <section className={`proxy-logs ${expanded ? "expanded" : ""}`} aria-label={t("proxy.logs.title")}>
-    <div className="proxy-log-heading"><div className="proxy-section-title"><FileText size={16} /><h2>{t("proxy.logs.title")}</h2><span>{entries.length}</span>{issues > 0 && <button type="button" className="proxy-issue-count" title={t("proxy.logs.filterIssues")} onClick={() => setLevel(level === "issues" ? "all" : "issues")}><CircleAlert size={12} />{issues}</button>}</div><span className={`proxy-log-mode ${autoRefresh ? "live" : ""}`}><span className={`proxy-status-dot ${autoRefresh ? "running" : "stopped"}`} />{autoRefresh ? t("proxy.logs.live") : t("proxy.logs.paused")}</span></div>
+  return <section className="proxy-logs" aria-label={t("proxy.logs.title")}>
     <div className="proxy-log-toolbar">
       <div className="proxy-log-search"><Search size={15} /><input aria-label={t("proxy.logs.searchLabel")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("proxy.logs.searchPlaceholder")} />{query && <button type="button" title={t("proxy.logs.clearSearch")} aria-label={t("proxy.logs.clearSearch")} onClick={() => setQuery("")}><X size={14} /></button>}</div>
       <Select value={level} onValueChange={setLevel} options={levels} label={t("proxy.logs.levelLabel")} className="proxy-log-level" />
+      {issues > 0 && <button type="button" className="proxy-issue-count" title={t("proxy.logs.filterIssues")} aria-pressed={level === "issues"} onClick={() => setLevel(level === "issues" ? "all" : "issues")}><CircleAlert size={12} />{issues}</button>}
+      <span className={`proxy-log-mode ${autoRefresh ? "live" : ""}`}><span className={`proxy-status-dot ${autoRefresh ? "running" : "stopped"}`} />{autoRefresh ? t("proxy.logs.live") : t("proxy.logs.paused")}</span>
       <div className="proxy-log-tools">
         <button type="button" className="icon-button" title={autoRefresh ? t("proxy.logs.pauseRefresh") : t("proxy.logs.resumeRefresh")} aria-label={autoRefresh ? t("proxy.logs.pauseRefresh") : t("proxy.logs.resumeRefresh")} onClick={() => setAutoRefresh((value) => !value)}>{autoRefresh ? <Pause size={15} /> : <Play size={15} />}</button>
         <button type="button" className="icon-button" title={t("proxy.logs.refresh")} aria-label={t("proxy.logs.refresh")} disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}><RefreshCw size={15} className={logsQuery.isFetching ? "proxy-spin" : ""} /></button>
         <button type="button" className="icon-button" title={t("proxy.logs.copy")} aria-label={t("proxy.logs.copy")} disabled={!filtered.length} onClick={() => void copy()}>{copied ? <Check size={15} /> : <Copy size={15} />}</button>
         <button type="button" className="icon-button" title={t("proxy.logs.export")} aria-label={t("proxy.logs.export")} disabled={!filtered.length} onClick={download}><Download size={15} /></button>
-        <button type="button" className="icon-button" title={expanded ? t("proxy.logs.collapse") : t("proxy.logs.expand")} aria-label={expanded ? t("proxy.logs.collapse") : t("proxy.logs.expand")} aria-pressed={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button>
       </div>
     </div>
     {error && <div className="proxy-log-error" role="alert"><CircleAlert size={15} /><span>{error}</span><button type="button" className="text-button" onClick={() => void logsQuery.refetch()}>{t("common.retry")}</button></div>}

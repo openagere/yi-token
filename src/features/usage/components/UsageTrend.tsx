@@ -10,6 +10,12 @@ import type { TrendMode, UsageDateRange, UsageSnapshot } from "../types";
 const modelColors = ["#339c76", "#4c8fbd", "#d69344", "#af758e", "#79a260", "#9ba5ac"];
 interface TrendSeries { key: string; label: string; color: string; kind: "line" | "bar"; model?: string }
 
+/** 趋势图口径切换（Token 构成 / 按模型）：放在用量页标签栏右侧。 */
+export function UsageTrendModeControl({ mode, onMode }: { mode: TrendMode; onMode: (mode: TrendMode) => void }) {
+  const { t } = useI18n();
+  return <div className="analytics-mode-control" role="group" aria-label={t("usage.overview.modeGroup")}>{(["tokens", "models"] as const).map((id) => <button type="button" key={id} aria-pressed={mode === id} className={mode === id ? "selected" : ""} onClick={() => onMode(id)}>{t(id === "tokens" ? "usage.overview.modeTokens" : "usage.overview.modeModels")}</button>)}</div>;
+}
+
 export function UsageTrend({ snapshot, range, mode, formatModel, resolveBrand }: { snapshot: UsageSnapshot; range: UsageDateRange; mode: TrendMode; formatModel: UsageModelFormatter; resolveBrand: UsageModelBrandResolver }) {
   const { t, language } = useI18n();
   const days = rangeDays(range);
@@ -42,7 +48,7 @@ export function UsageTrend({ snapshot, range, mode, formatModel, resolveBrand }:
   }, [snapshot, days, range.startDate, mode, formatModel, t]);
   const formatTick = (value: number) => compactNumber(value, language);
 
-  return <>
+  return <section className="analytics-trend-section" aria-label={t("usage.overview.trendTitle")}>
     <div className="analytics-chart" role="img" aria-label={t(mode === "tokens" ? "usage.trend.chartTokens" : "usage.trend.chartModels", { range: dateRange(range) })}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <ComposedChart data={points} margin={{ top: 16, right: 8, bottom: 0, left: 0 }} barCategoryGap={days > 30 ? "14%" : "32%"} accessibilityLayer>
@@ -55,7 +61,7 @@ export function UsageTrend({ snapshot, range, mode, formatModel, resolveBrand }:
       </ResponsiveContainer>
     </div>
     <div className="analytics-chart-legend" aria-label={t("usage.trend.legend")}>{series.map((item) => <span key={item.key} title={item.label}><i data-series-kind={item.kind} style={{ background: item.color }} />{item.model && <ProviderIcon brand={resolveBrand(item.model)} size={16} />}{item.label}</span>)}</div>
-  </>;
+  </section>;
 }
 
 function TrendTooltip({ active, payload, label, series, resolveBrand }: Pick<TooltipContentProps<number, string>, "active" | "payload" | "label"> & { series: TrendSeries[]; resolveBrand: UsageModelBrandResolver }) {

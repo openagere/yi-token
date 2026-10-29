@@ -2,7 +2,13 @@ const settings = {
   settings: {
     eyebrow: "偏好设置",
     title: "设置",
-    autoSaved: "更改会自动保存到本机，无需代理运行。",
+    autoSaved: "更改自动保存到本机",
+    tabs: {
+      label: "设置分区",
+      general: "通用",
+      listen: "代理监听",
+      trajectory: "会话轨迹",
+    },
     theme: {
       heading: "外观",
       description: "选择界面配色方案，可跟随系统外观自动切换。",
@@ -11,7 +17,7 @@ const settings = {
       dark: "深色",
       darkDesc: "低亮度，适合夜间使用",
       system: "跟随系统",
-      systemDesc: "随操作系统的明暗设置自动切换",
+      systemDesc: "随系统明暗自动切换",
     },
     font: {
       heading: "字体",
@@ -33,6 +39,11 @@ const settings = {
     trajectory: {
       heading: "会话轨迹",
       description: "采集、保留与清理经过代理的会话记录。",
+      captureHeading: "采集",
+      captureDescription: "决定哪些请求的对话正文写入本机轨迹库。",
+      limitsHeading: "保留与容量",
+      limitsDescription: "超过保留天数或容量上限的旧会话会被自动清理。",
+      clearDescription: "立即删除会话记录，不可恢复。",
       notice: "开启后，yi-token 会把经过代理的对话正文（提示词、模型输出、工具调用与结果）保存在本机 trajectory.db，不保存请求头和密钥。",
       enabled: "记录会话轨迹",
       terminals: "按终端开关",

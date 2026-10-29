@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import type { Client, TrajectorySettings as TrajectoryConfig } from "@/generated";
 import { describeError } from "@/shared/api";
@@ -62,7 +62,7 @@ function TrajectorySwitch({ checked, label, disabled = false, onToggle }: Switch
   );
 }
 
-/** 设置页"会话轨迹"分组：采集开关、按终端开关、保留与容量、占用、清空与重建。 */
+/** 设置页"会话轨迹"分区：采集（总开关与按终端开关）、保留与容量、清空记录三行，库损坏时顶部给出重建。 */
 export function TrajectorySettings() {
   const { t } = useI18n();
   const status = useTrajectoryStatus();
@@ -89,13 +89,15 @@ export function TrajectorySettings() {
   const config = data?.settings ?? null;
   if (!data || !config) {
     return (
-      <section id="settings-trajectory" className="editor-section" aria-label={t("settings.trajectory.heading")}>
-        {heading}
-        {status.isError ? (
-          <p className="settings-note" role="alert">{describeError(status.error)}</p>
-        ) : (
-          <p className="settings-note">{t("settings.trajectory.loading")}</p>
-        )}
+      <section id="settings-trajectory" className="settings-section" aria-label={t("settings.trajectory.heading")}>
+        <div className="editor-section">
+          {heading}
+          {status.isError ? (
+            <p className="settings-note" role="alert">{describeError(status.error)}</p>
+          ) : (
+            <p className="settings-note">{t("settings.trajectory.loading")}</p>
+          )}
+        </div>
       </section>
     );
   }
@@ -172,106 +174,125 @@ export function TrajectorySettings() {
         ? ""
         : t("settings.trajectory.clearOneDescription", { terminal: terminalName(pendingClear) });
 
+  const row = (title: string, description: string, content: ReactNode, className = "") => (
+    <section className={`editor-section ${className}`} aria-label={title}>
+      <div className="section-heading">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </div>
+      <div className="settings-group-body">{content}</div>
+    </section>
+  );
+
   return (
-    <section id="settings-trajectory" className="editor-section trajectory-settings" aria-label={t("settings.trajectory.heading")}>
-      {heading}
-      <div className="settings-group-body">
-        <p className="settings-note trajectory-notice">{t("settings.trajectory.notice")}</p>
-
-        {unavailable && (
-          <div className="trajectory-store-error" role="alert">
-            <strong>{t("settings.trajectory.unavailableTitle")}</strong>
-            {data.error && <p>{data.error}</p>}
-            <p className="settings-note">{t("settings.trajectory.rebuildNote")}</p>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={rebuild.isPending}
-              onClick={() => rebuild.mutate(undefined, { onSuccess: () => notify(t("settings.trajectory.rebuiltToast")) })}
-            >
-              {rebuild.isPending && <LoaderCircle size={15} className="spinning" />}
-              {t("settings.trajectory.rebuild")}
-            </button>
-          </div>
-        )}
-
-        <div className="trajectory-switch-list">
-          <TrajectorySwitch checked={config.enabled} label={t("settings.trajectory.enabled")} disabled={togglesBusy} onToggle={toggleEnabled} />
+    <section id="settings-trajectory" className="settings-section trajectory-settings" aria-label={t("settings.trajectory.heading")}>
+      {unavailable && (
+        <div className="trajectory-store-error" role="alert">
+          <strong>{t("settings.trajectory.unavailableTitle")}</strong>
+          {data.error && <p>{data.error}</p>}
+          <p className="settings-note">{t("settings.trajectory.rebuildNote")}</p>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={rebuild.isPending}
+            onClick={() => rebuild.mutate(undefined, { onSuccess: () => notify(t("settings.trajectory.rebuiltToast")) })}
+          >
+            {rebuild.isPending && <LoaderCircle size={15} className="spinning" />}
+            {t("settings.trajectory.rebuild")}
+          </button>
         </div>
+      )}
 
-        <div className="trajectory-switch-group" role="group" aria-label={t("settings.trajectory.terminals")}>
-          <span className="trajectory-group-label">{t("settings.trajectory.terminals")}</span>
+      {row(
+        t("settings.trajectory.captureHeading"),
+        t("settings.trajectory.captureDescription"),
+        <>
+          <p className="settings-note trajectory-privacy">{t("settings.trajectory.notice")}</p>
           <div className="trajectory-switch-list">
-            {TERMINALS.map((item) => (
-              <TrajectorySwitch
-                key={item.id}
-                checked={!config.disabled_clients.includes(item.id as Client)}
-                label={item.name}
-                disabled={togglesBusy}
-                onToggle={() => toggleClient(item.id as Client)}
-              />
-            ))}
-            <TrajectorySwitch checked={!config.disabled_global} label={API_ROUTE} disabled={togglesBusy} onToggle={toggleGlobal} />
+            <TrajectorySwitch checked={config.enabled} label={t("settings.trajectory.enabled")} disabled={togglesBusy} onToggle={toggleEnabled} />
           </div>
-          <p className="settings-note">{t("settings.trajectory.apiNote")}</p>
-        </div>
+          <div className="trajectory-switch-group" role="group" aria-label={t("settings.trajectory.terminals")}>
+            <span className="trajectory-group-label">{t("settings.trajectory.terminals")}</span>
+            <div className="trajectory-switch-list">
+              {TERMINALS.map((item) => (
+                <TrajectorySwitch
+                  key={item.id}
+                  checked={!config.disabled_clients.includes(item.id as Client)}
+                  label={item.name}
+                  disabled={togglesBusy || !config.enabled}
+                  onToggle={() => toggleClient(item.id as Client)}
+                />
+              ))}
+              <TrajectorySwitch checked={!config.disabled_global} label={API_ROUTE} disabled={togglesBusy || !config.enabled} onToggle={toggleGlobal} />
+            </div>
+            <p className="settings-note">{t("settings.trajectory.apiNote")}</p>
+          </div>
+        </>,
+      )}
 
-        <fieldset disabled={limitsBusy} className="form-grid settings-grid">
-          <label className="field">
-            <span>{t("settings.trajectory.retention")}</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={RETENTION_RANGE[0]}
-              max={RETENTION_RANGE[1]}
-              step={1}
-              value={draft.retention}
-              aria-invalid={retention === null}
-              onChange={(event) => setLimitDraft({ ...draft, retention: event.target.value })}
-            />
-          </label>
-          <div className="field">
-            <span>{t("settings.trajectory.capacity")}</span>
-            <Select
-              label={t("settings.trajectory.capacity")}
-              value={draft.choice}
-              options={capacityOptions}
-              onValueChange={(value) => setLimitDraft({ ...draft, choice: value })}
-            />
-          </div>
-          {draft.choice === CUSTOM && (
+      {row(
+        t("settings.trajectory.limitsHeading"),
+        t("settings.trajectory.limitsDescription"),
+        <>
+          <fieldset disabled={limitsBusy} className="form-grid settings-grid trajectory-limits">
             <label className="field">
-              <span>{t("settings.trajectory.customCapacity")}</span>
+              <span>{t("settings.trajectory.retention")}</span>
               <input
                 type="number"
                 inputMode="numeric"
-                min={CUSTOM_MIB_RANGE[0]}
-                max={CUSTOM_MIB_RANGE[1]}
+                min={RETENTION_RANGE[0]}
+                max={RETENTION_RANGE[1]}
                 step={1}
-                value={draft.customMiB}
-                aria-invalid={customMiB === null}
-                onChange={(event) => setLimitDraft({ ...draft, customMiB: event.target.value })}
+                value={draft.retention}
+                aria-invalid={retention === null}
+                onChange={(event) => setLimitDraft({ ...draft, retention: event.target.value })}
               />
             </label>
-          )}
-          <div className="field">
-            <span>{t("settings.trajectory.usage")}</span>
-            <strong className="trajectory-usage">
-              {t("settings.trajectory.usageValue", { bytes: formatBytes(data.bytes), sessions: data.sessions })}
-            </strong>
+            <div className="field">
+              <span>{t("settings.trajectory.capacity")}</span>
+              <Select
+                label={t("settings.trajectory.capacity")}
+                value={draft.choice}
+                options={capacityOptions}
+                onValueChange={(value) => setLimitDraft({ ...draft, choice: value })}
+              />
+            </div>
+            {draft.choice === CUSTOM && (
+              <label className="field">
+                <span>{t("settings.trajectory.customCapacity")}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={CUSTOM_MIB_RANGE[0]}
+                  max={CUSTOM_MIB_RANGE[1]}
+                  step={1}
+                  value={draft.customMiB}
+                  aria-invalid={customMiB === null}
+                  onChange={(event) => setLimitDraft({ ...draft, customMiB: event.target.value })}
+                />
+              </label>
+            )}
+          </fieldset>
+          {retention === null && <p className="trajectory-field-error">{t("settings.trajectory.retentionInvalid")}</p>}
+          {draft.choice === CUSTOM && customMiB === null && <p className="trajectory-field-error">{t("settings.trajectory.capacityInvalid")}</p>}
+          <div className="settings-actions">
+            <span className="trajectory-usage">
+              {t("settings.trajectory.usage")} · {t("settings.trajectory.usageValue", { bytes: formatBytes(data.bytes), sessions: data.sessions })}
+            </span>
+            <button type="button" className="secondary-button" disabled={!limitsDirty || !limitsValid || limitsBusy || unavailable} onClick={submitLimits}>
+              {limitsBusy && <LoaderCircle size={15} className="spinning" />}
+              {t("settings.trajectory.saveLimits")}
+            </button>
           </div>
-        </fieldset>
-        {retention === null && <p className="trajectory-field-error">{t("settings.trajectory.retentionInvalid")}</p>}
-        {draft.choice === CUSTOM && customMiB === null && <p className="trajectory-field-error">{t("settings.trajectory.capacityInvalid")}</p>}
-        <div className="settings-actions">
-          <button type="button" className="secondary-button" disabled={!limitsDirty || !limitsValid || limitsBusy || unavailable} onClick={submitLimits}>
-            {limitsBusy && <LoaderCircle size={15} className="spinning" />}
-            {t("settings.trajectory.saveLimits")}
-          </button>
-        </div>
+        </>,
+      )}
 
-        <div className="trajectory-clear">
-          <span className="trajectory-group-label">{t("settings.trajectory.clearHeading")}</span>
+      {row(
+        t("settings.trajectory.clearHeading"),
+        t("settings.trajectory.clearDescription"),
+        <>
           <div className="trajectory-clear-row">
             <Select
               label={t("settings.trajectory.clearTerminal")}
@@ -287,9 +308,10 @@ export function TrajectorySettings() {
               {t("settings.trajectory.clearAll")}
             </button>
           </div>
-          <p className="settings-note" role="status">{clearResult}</p>
-        </div>
-      </div>
+          {clearResult && <p className="settings-note" role="status">{clearResult}</p>}
+        </>,
+        "trajectory-clear",
+      )}
 
       {pendingClear !== null && (
         <ConfirmDialog

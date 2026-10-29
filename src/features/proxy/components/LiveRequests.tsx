@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CircleAlert, List, LoaderCircle, Plug } from "lucide-react";
+import { CircleAlert, LoaderCircle, Plug } from "lucide-react";
 import { useI18n } from "@/shared/i18n";
 import { useNavigationStore } from "@/shared/navigation";
 import { ProviderIcon } from "@/shared/ui";
@@ -94,13 +94,9 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
   return (
     <section className="run-section" aria-label={t("proxy.live.title")}>
       <div className="run-section-head">
-        <div className="proxy-section-title">
-          <List size={16} />
-          <h2>{t("proxy.live.title")}</h2>
-          <span>
-            {t("proxy.live.summary", { inFlight: live?.inFlight.length ?? 0, completed: live?.completed.length ?? 0 })}
-          </span>
-        </div>
+        <span className="run-live-summary">
+          {t("proxy.live.summary", { inFlight: live?.inFlight.length ?? 0, completed: live?.completed.length ?? 0 })}
+        </span>
         <div className="run-chips" role="group" aria-label={t("proxy.live.clientFilter")}>
           <button type="button" className="run-chip" aria-pressed={client === "all"} onClick={() => setClient("all")}>
             {t("proxy.live.all")}

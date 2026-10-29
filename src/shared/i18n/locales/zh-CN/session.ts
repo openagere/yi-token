@@ -13,6 +13,7 @@ const session = {
       api: "api",
       search: "搜索标题",
       searchLabel: "搜索会话标题",
+      clearSearch: "清除搜索",
       modelFilter: "模型：{model}",
       clearModelFilter: "清除模型筛选",
       untitled: "未命名会话",
@@ -68,6 +69,7 @@ const session = {
     },
     placeholder: {
       select: "选择一个会话查看轨迹。",
+      hint: "左侧列表按最近活动排序，可按终端或标题筛选。",
     },
     ledger: {
       label: "轨迹",

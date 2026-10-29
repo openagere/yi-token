@@ -17,6 +17,7 @@ const proxy: DeepString<typeof zh> = {
     listen: {
       heading: "Listen settings",
       description: "Configure the local proxy listen address and log level.",
+      endpoint: "Proxy endpoint",
       host: "Host",
       port: "Port",
       logLevel: "Log level",
@@ -120,8 +121,6 @@ const proxy: DeepString<typeof zh> = {
       refresh: "Refresh logs",
       copy: "Copy current logs",
       export: "Export current logs",
-      collapse: "Collapse log view",
-      expand: "Expand log view",
       content: "Log contents",
       time: "Time",
       level: "Level",
@@ -136,6 +135,9 @@ const proxy: DeepString<typeof zh> = {
       follow: "Follow latest",
     },
     run: {
+      tabs: "Run views",
+      inFlightBadge: "{count} in flight",
+      rateBadge: "{rate}/s",
       goSettings: "Open settings",
       facts: {
         connections: "Connections",
@@ -146,9 +148,12 @@ const proxy: DeepString<typeof zh> = {
       title: "Traffic",
       requests: "Requests / s",
       errors: "Errors / s",
-      summary: "{requests} requests/s · {errors} errors/s",
-      expand: "Expand traffic",
-      collapse: "Collapse traffic",
+      windowRequests: "Requests in window",
+      windowErrors: "Errors in window",
+      avgDuration: "Avg duration",
+      window: "Last {minutes} min",
+      byClient: "By client",
+      errorCount: "{count} err",
       chartLabel: "Request and error trend",
     },
     live: {
@@ -179,8 +184,6 @@ const proxy: DeepString<typeof zh> = {
     drawer: {
       title: "Logs",
       issues: "{warn} warnings · {error} errors",
-      expand: "Expand logs",
-      collapse: "Collapse logs",
     },
   },
 };

@@ -1,0 +1,106 @@
+/* Run page (spec 8.2): one status bar, then request stream / traffic / logs as tabs that fill the screen. */
+.run-page .workspace-header { margin-bottom: 10px; }
+.run-page .proxy-runtime { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; margin-bottom: 12px; padding: 10px 12px 10px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.run-page .proxy-runtime-main { display: contents; }
+.run-page .proxy-state-symbol { grid-column: 1; grid-row: 1; width: 34px; height: 34px; }
+.run-page .proxy-state-copy { grid-column: 2; grid-row: 1; padding-right: 14px; border-right: 1px solid var(--border); }
+.run-page .proxy-state-copy > strong { font-size: 14px; white-space: nowrap; }
+.run-page .proxy-runtime-actions { grid-column: 4; grid-row: 1; margin: 0; }
+.run-page .proxy-runtime-actions .primary-button, .run-page .proxy-runtime-actions .secondary-button { min-width: 92px; min-height: 32px; }
+.run-page .proxy-runtime-actions .icon-button { width: 32px; height: 32px; }
+.proxy-workspace .run-status-facts { grid-column: 3; grid-row: 1; display: grid; grid-template-columns: minmax(130px, 1.4fr) repeat(4, minmax(64px, 1fr)); gap: 14px; margin: 0; padding: 0; border: 0; }
+.proxy-workspace .run-status-facts > div { gap: 2px; padding: 0; border: 0; }
+.proxy-workspace .run-status-facts dt { font-size: 11px; white-space: nowrap; }
+.proxy-workspace .run-status-facts dd { font-size: 13px; line-height: 1.35; white-space: nowrap; }
+.proxy-workspace .run-status-facts dd code { font-size: 12px; overflow-wrap: normal; }
+.run-page .proxy-alert, .run-page .proxy-stopped-note { margin: 0 0 10px; }
+.run-tab-host { padding-top: 12px; }
+.run-tab-panel > * { flex: 1 1 0; min-height: 0; }
+
+/* Request stream: the filter row stays put, the table scrolls under a sticky header. */
+.run-section { display: flex; flex-direction: column; min-height: 0; }
+.run-section-head { display: flex; flex: none; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 10px; }
+.run-live-summary { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.run-chips { display: flex; flex: 1 1 320px; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.run-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); background: var(--surface); font-size: 12px; white-space: nowrap; }
+.run-chip:hover { background: var(--surface-hover); }
+.run-chip[aria-pressed="true"] { border-color: var(--border-strong); color: var(--text-primary); background: var(--surface-selected); }
+.run-chip small { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.run-errors-toggle { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); background: transparent; font-size: 12px; white-space: nowrap; }
+.run-errors-toggle[aria-pressed="true"] { border-color: var(--danger-border); color: var(--danger); background: var(--danger-soft); }
+.run-live-scroll { flex: 1 1 0; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); scrollbar-color: var(--border-strong) transparent; }
+.run-live-table { width: 100%; min-width: 820px; border-collapse: separate; border-spacing: 0; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.run-live-table th { position: sticky; top: 0; z-index: 1; padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text-muted); background: var(--surface-subtle); font-size: 12px; font-weight: 450; text-align: left; white-space: nowrap; }
+.run-live-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.run-live-table tbody tr:hover td { background: var(--surface-hover); }
+.run-live-table tr.in-flight td { background: var(--info-soft); }
+.run-live-table tr.error td:nth-child(4) { color: var(--danger); }
+.run-client { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.run-model small { display: block; color: var(--text-muted); font-size: 11px; }
+.run-phase { display: inline-flex; align-items: center; gap: 6px; }
+.run-phase.waiting { color: var(--warning); }
+.run-phase.streaming { color: var(--info); }
+.run-phase.done { color: var(--success); }
+.run-phase.error { color: var(--danger); }
+.run-pulse { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: run-pulse 1.2s ease-in-out infinite; }
+@keyframes run-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+.run-open-session { height: 26px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--accent); background: transparent; font-size: 12px; }
+.run-open-session:hover:not(:disabled) { background: var(--surface-hover); }
+.run-open-session:disabled { color: var(--text-subtle); cursor: default; }
+.run-live-empty { height: 96px; color: var(--text-muted); text-align: center; white-space: normal; }
+
+/* Traffic: window stats, a chart that takes the free height, and the per-client split beside it. */
+.run-traffic { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.run-traffic-stats { display: grid; flex: none; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; border: 1px solid var(--border); border-radius: 10px; }
+.run-traffic-stats > div { display: grid; gap: 4px; min-width: 0; padding: 10px 14px; border-left: 1px solid var(--border); }
+.run-traffic-stats > div:first-child { border-left: 0; }
+.run-traffic-stats dt { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.run-traffic-stats dd { margin: 0; color: var(--text-primary); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.run-traffic-stats .requests dd { color: var(--success); }
+.run-traffic-stats .errors dd { color: var(--danger); }
+.run-traffic-body { display: grid; flex: 1 1 0; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: 12px; min-height: 0; }
+.run-traffic-chart-card, .run-traffic-clients { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.run-traffic-chart-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; color: var(--text-muted); font-size: 12px; }
+.run-traffic-legend { display: flex; gap: 12px; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.run-traffic-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.run-traffic-legend span::before { width: 10px; height: 2px; border-radius: 2px; background: currentColor; content: ""; }
+.run-traffic-legend .requests { color: var(--success); }
+.run-traffic-legend .errors { color: var(--danger); }
+.run-traffic-chart { flex: 1 1 0; min-height: 140px; }
+.run-traffic-chart .proxy-loading { display: grid; height: 100%; min-height: 0; place-items: center; }
+.run-traffic-clients h3 { flex: none; margin: 0 0 10px; color: var(--text-primary); font-size: 12px; font-weight: 600; }
+.run-traffic-clients ul { display: grid; align-content: start; gap: 12px; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.run-traffic-clients li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; color: var(--text-secondary); font-size: 12px; }
+.run-traffic-count { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.run-traffic-count em { padding: 0 6px; border-radius: 999px; color: var(--danger); background: var(--danger-soft); font-size: 10px; font-style: normal; }
+.run-traffic-share { grid-column: 1 / -1; height: 4px; overflow: hidden; border-radius: 999px; background: var(--surface-subtle); }
+.run-traffic-share > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--accent); }
+.run-traffic-empty { margin: auto 0; color: var(--text-muted); font-size: 12px; text-align: center; }
+
+/* Logs: the console fills the panel instead of using a fixed height. */
+.run-tab-panel .proxy-logs { display: flex; flex-direction: column; min-height: 0; padding-top: 0; }
+.run-tab-panel .proxy-logs > * { flex: none; }
+.run-tab-panel .proxy-logs > .proxy-log-console { flex: 1 1 0; height: auto; min-height: 120px; }
+
+@media (max-width: 1080px) {
+  .run-page .proxy-runtime { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .run-page .proxy-state-copy { border-right: 0; }
+  .run-page .proxy-runtime-actions { grid-column: 3; }
+  .proxy-workspace .run-status-facts { grid-column: 1 / -1; grid-row: 2; padding-top: 10px; border-top: 1px solid var(--border); }
+}
+@media (max-width: 760px) {
+  .run-traffic-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .run-traffic-stats > div:nth-child(4) { border-left: 0; }
+  .run-traffic-stats > div:nth-child(n+4) { border-top: 1px solid var(--border); }
+  .run-traffic-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) auto; }
+}
+@media (max-width: 680px) {
+  .proxy-workspace .run-status-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+  .run-traffic-legend { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .run-pulse { animation: none; }
+}
+.run-tab-panel .proxy-log-toolbar { margin-bottom: 10px; }
+.run-tab-panel .proxy-issue-count { height: 28px; padding: 0 8px; cursor: pointer; }
+.run-tab-panel .proxy-issue-count[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--warning); }

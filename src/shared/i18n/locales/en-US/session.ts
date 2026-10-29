@@ -15,6 +15,7 @@ const session: DeepString<typeof zh> = {
       api: "api",
       search: "Search titles",
       searchLabel: "Search session titles",
+      clearSearch: "Clear search",
       modelFilter: "Model: {model}",
       clearModelFilter: "Clear model filter",
       untitled: "Untitled session",
@@ -72,6 +73,7 @@ const session: DeepString<typeof zh> = {
     },
     placeholder: {
       select: "Select a session to view its trajectory.",
+      hint: "Sessions are listed by latest activity; filter by client or title.",
     },
     ledger: {
       label: "Trajectory",

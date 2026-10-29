@@ -38,6 +38,9 @@ export interface SessionTarget {
   model?: string;
 }
 
+/** 设置页的分区；从其他页面跳来时可直接打开对应分区。 */
+export type SettingsSection = "general" | "listen" | "trajectory";
+
 const COMPACT_QUERY = "(max-width: 760px)";
 const isCompact = () => window.matchMedia(COMPACT_QUERY).matches;
 
@@ -49,6 +52,8 @@ interface NavigationState {
   proxyVisited: boolean;
   /** 待会话页消费的跳转目标；无则为 null。 */
   sessionTarget: SessionTarget | null;
+  /** 待设置页消费的目标分区；无则为 null。 */
+  settingsSection: SettingsSection | null;
   dirty: boolean;
   busy: boolean;
   pendingDiscard: (() => void) | null;
@@ -61,6 +66,10 @@ interface NavigationState {
   openSessions: (target?: SessionTarget) => void;
   /** 读取并清空会话跳转目标。 */
   consumeSessionTarget: () => SessionTarget | null;
+  /** 进入设置页并打开指定分区。 */
+  openSettings: (section: SettingsSection) => void;
+  /** 读取并清空设置页目标分区。 */
+  consumeSettingsSection: () => SettingsSection | null;
   back: () => void;
   close: () => void;
   /** 进入编辑页；`prepare` 在确认离开后、切页前执行（如设置选中项）。 */
@@ -82,6 +91,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   sidebarCollapsed: typeof window !== "undefined" && isCompact(),
   proxyVisited: false,
   sessionTarget: null,
+  settingsSection: null,
   dirty: false,
   busy: false,
   pendingDiscard: null,
@@ -127,6 +137,20 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
     const target = get().sessionTarget;
     if (target) set({ sessionTarget: null });
     return target;
+  },
+
+  openSettings: (section) => {
+    get().guarded(() => {
+      set({ settingsSection: section });
+      if (get().page === "settings") return;
+      get().navigate("settings");
+    });
+  },
+
+  consumeSettingsSection: () => {
+    const section = get().settingsSection;
+    if (section) set({ settingsSection: null });
+    return section;
   },
 
   back: () => {

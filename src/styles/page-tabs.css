@@ -1,0 +1,17 @@
+/* In-page section tabs: one panel at a time, tools for the active panel on the right. */
+.page-tabs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; min-height: 40px; border-bottom: 1px solid var(--border); }
+.page-tabs-list { display: flex; align-items: stretch; gap: 22px; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.page-tabs-list::-webkit-scrollbar { display: none; }
+.page-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 2px; border: 0; color: var(--text-muted); background: transparent; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.page-tab > svg { flex: none; }
+.page-tab:hover { color: var(--text-primary); }
+.page-tab[aria-selected="true"] { color: var(--text-primary); font-weight: 600; }
+.page-tab[aria-selected="true"]::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--text-primary); content: ""; }
+.page-tab:focus-visible { outline-offset: -2px; border-radius: 6px; }
+.page-tab-badge { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 999px; color: var(--text-secondary); background: var(--surface-subtle); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.page-tab-badge.info { color: var(--info); background: var(--info-soft); }
+.page-tab-badge.warning { color: var(--warning); background: var(--warning-soft); }
+.page-tab-badge.danger { color: var(--danger); background: var(--danger-soft); }
+.page-tabs-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; padding: 4px 0; color: var(--text-muted); font-size: 12px; }
+.page-tab-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.page-tab-panel[hidden] { display: none; }

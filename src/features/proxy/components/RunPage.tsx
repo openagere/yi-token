@@ -1,30 +1,31 @@
-import { Activity, ArrowRight, CircleAlert, LoaderCircle, RefreshCw, RotateCw, Workflow } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Activity, ArrowRight, CircleAlert, FileText, Gauge, List, LoaderCircle, RefreshCw, RotateCw, Workflow } from "lucide-react";
 import "@/styles/proxy.css";
+import "@/styles/run.css";
 import { describeError } from "@/shared/api";
 import { useProviders } from "@/features/providers";
 import { useI18n } from "@/shared/i18n";
-import { useNavigation } from "@/shared/navigation";
-import { PageHeader } from "@/shared/ui";
+import { useNavigation, useNavigationStore } from "@/shared/navigation";
+import { PageHeader, PageTabs, tabId, tabPanelId, type PageTab } from "@/shared/ui";
 import { formatListenAddress, formatUptime } from "../format";
-import { useProxyControl, useProxyMonitor, useProxyRuntime } from "../hooks";
+import { useLiveRequests, useProxyControl, useProxyLogs, useProxyMonitor, useProxyRuntime } from "../hooks";
+import { parseLogs } from "../logs";
 import { LiveRequests } from "./LiveRequests";
-import { LogDrawer } from "./LogDrawer";
-import { TrafficStrip } from "./TrafficStrip";
+import { ProxyLogs } from "./ProxyLogs";
+import { TrafficPanel } from "./TrafficPanel";
 
 /** 流量与终端筛选的监控窗口；终端路由按代理启动以来累计，与此窗口无关。 */
 const MONITOR_MINUTES = 15;
 
-/** 监听分组可能晚于设置页挂载，因此短暂重试查找锚点。 */
-function scrollToListenGroup(attempt = 0) {
-  const target = document.getElementById("settings-listen");
-  if (target) target.scrollIntoView({ block: "start" });
-  else if (attempt < 20) window.setTimeout(() => scrollToListenGroup(attempt + 1), 50);
-}
+type RunTab = "requests" | "traffic" | "logs";
+const TAB_PREFIX = "run";
 
-/** 运行页（spec 8.2）：状态条、流量、请求流与底部日志抽屉。只有可见时才轮询。 */
+/** 运行页（spec 8.2）：一屏显示状态条，请求流、流量与日志分标签切换。只有可见时才轮询。 */
 export function RunPage({ active }: { active: boolean }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { back, navigate } = useNavigation();
+  const openSettings = useNavigationStore((state) => state.openSettings);
+  const [tab, setTab] = useState<RunTab>("requests");
   const runtimeQuery = useProxyRuntime();
   const { control, busy } = useProxyControl();
   const providersQuery = useProviders();
@@ -39,14 +40,39 @@ export function RunPage({ active }: { active: boolean }) {
   const statusLabel = phase ? t(`nav.phase.${phase}`) : error ? t("proxy.statusUnavailable") : t("proxy.statusConnecting");
   const refreshing = runtimeQuery.isFetching;
   const known = runtime && !error;
-
-  function openListenSettings() {
-    navigate("settings");
-    window.setTimeout(() => scrollToListenGroup(), 0);
-  }
+  // The tab badges share the request and log queries their panels poll, so no extra requests are made.
+  const inFlight = useLiveRequests(active).data?.inFlight.length ?? 0;
+  const logsQuery = useProxyLogs({ active });
+  const issues = useMemo(() => {
+    const entries = parseLogs(logsQuery.data ?? "", language);
+    return {
+      warn: entries.filter((entry) => entry.level === "WARN").length,
+      error: entries.filter((entry) => entry.level === "ERROR").length,
+    };
+  }, [logsQuery.data, language]);
+  const monitor = monitorQuery.data;
+  const rate = monitor && !monitorQuery.isError ? monitor.requests_per_second.toFixed(2) : "--";
+  const tabs: PageTab<RunTab>[] = [
+    { id: "requests", label: t("proxy.live.title"), icon: List, badge: inFlight > 0 ? t("proxy.run.inFlightBadge", { count: inFlight }) : undefined, badgeTone: "info" },
+    { id: "traffic", label: t("proxy.traffic.title"), icon: Gauge, badge: monitor && !monitorQuery.isError ? t("proxy.run.rateBadge", { rate }) : undefined },
+    {
+      id: "logs",
+      label: t("proxy.drawer.title"),
+      icon: FileText,
+      badge: issues.warn || issues.error ? t("proxy.drawer.issues", { warn: issues.warn, error: issues.error }) : undefined,
+      badgeTone: issues.error ? "danger" : "warning",
+    },
+  ];
+  const panel = (id: RunTab) => ({
+    id: tabPanelId(TAB_PREFIX, id),
+    role: "tabpanel",
+    "aria-labelledby": tabId(TAB_PREFIX, id),
+    className: "page-tab-panel run-tab-panel",
+    hidden: tab !== id,
+  });
 
   return (
-    <section className="proxy-page proxy-workspace run-page">
+    <section className="proxy-page proxy-workspace run-page fit-page">
       <PageHeader
         navigationInToolbar
         eyebrow={t("proxy.eyebrow")}
@@ -128,6 +154,10 @@ export function RunPage({ active }: { active: boolean }) {
             <dt>{t("proxy.run.facts.inFlight")}</dt>
             <dd>{known ? runtime.active_requests : "--"}</dd>
           </div>
+          <div>
+            <dt>{t("proxy.traffic.requests")}</dt>
+            <dd>{rate}</dd>
+          </div>
         </dl>
       </section>
       {(error || runtime?.last_error) && (
@@ -143,7 +173,7 @@ export function RunPage({ active }: { active: boolean }) {
               <ArrowRight size={14} />
             </button>
           ) : (
-            <button type="button" className="text-button" onClick={openListenSettings}>
+            <button type="button" className="text-button" onClick={() => openSettings("listen")}>
               {t("proxy.run.goSettings")}
               <ArrowRight size={14} />
             </button>
@@ -168,9 +198,18 @@ export function RunPage({ active }: { active: boolean }) {
           {t("proxy.alerts.stoppedNote")}
         </div>
       )}
-      <TrafficStrip snapshot={monitorQuery.data} stale={monitorQuery.isError} />
-      <LiveRequests active={active} monitor={monitorQuery.data} monitorStale={monitorQuery.isError} />
-      <LogDrawer active={active} />
+      <PageTabs idPrefix={TAB_PREFIX} label={t("proxy.run.tabs")} tabs={tabs} value={tab} onChange={setTab} />
+      <div className="fit-fill run-tab-host">
+        <div {...panel("requests")}>
+          <LiveRequests active={active} monitor={monitor} monitorStale={monitorQuery.isError} />
+        </div>
+        <div {...panel("traffic")}>
+          <TrafficPanel snapshot={monitor} stale={monitorQuery.isError} minutes={MONITOR_MINUTES} />
+        </div>
+        <div {...panel("logs")}>
+          <ProxyLogs visible={active && tab === "logs"} />
+        </div>
+      </div>
     </section>
   );
 }

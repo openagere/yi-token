@@ -54,15 +54,36 @@ test("errors-only toggle", async ({ page }) => {
   await expect(liveRows(page)).toHaveCount(3);
 });
 
-test("log drawer is collapsed by default and shows issue count", async ({ page }) => {
+test("request stream is the default tab; traffic and logs open as tabs", async ({ page }) => {
   await openRunPage(page);
-  const drawer = page.locator(".run-log-drawer");
-  await expect(drawer).toContainText("日志");
-  await expect(drawer).toContainText("1 警告");
-  await expect(drawer).toContainText("1 错误");
+  const tabs = page.getByRole("tablist", { name: "运行视图" });
+  await expect(tabs.getByRole("tab", { name: /请求流/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".run-live-table")).toBeVisible();
   await expect(page.locator(".proxy-logs")).not.toBeVisible();
-  await drawer.getByRole("button", { name: "展开日志", exact: true }).click();
+
+  await tabs.getByRole("tab", { name: /流量/ }).click();
+  await expect(page.getByRole("region", { name: "流量" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "按终端" })).toContainText("Codex CLI");
+  await expect(page.locator(".run-live-table")).not.toBeVisible();
+
+  // The logs tab counts warnings and errors before it is opened.
+  const logsTab = tabs.getByRole("tab", { name: /日志/ });
+  await expect(logsTab).toContainText("1 警告");
+  await expect(logsTab).toContainText("1 错误");
+  await logsTab.click();
   await expect(page.locator(".proxy-logs")).toBeVisible();
+  await logsTab.press("ArrowRight");
+  await expect(tabs.getByRole("tab", { name: /请求流/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("run page fits the window and scrolls only inside the active panel", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openRunPage(page);
+  for (const name of ["请求流", "流量", "日志"]) {
+    await page.getByRole("tab", { name: new RegExp(name) }).click();
+    const overflow = await page.locator(".main-panel").evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflow, name + " tab should not scroll the page").toBeLessThanOrEqual(1);
+  }
 });
 
 test("start failure offers settings link", async ({ page }) => {
@@ -70,5 +91,6 @@ test("start failure offers settings link", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("代理启动失败");
   await expect(page.getByRole("alert")).toContainText("端口 11435 已被占用");
   await page.getByRole("button", { name: "去设置", exact: true }).click();
-  await expect(page.locator(".preference-options").first()).toBeVisible();
+  await expect(page.getByRole("tab", { name: "代理监听" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#settings-listen")).toBeVisible();
 });

@@ -252,3 +252,34 @@
 .analytics-client-select { flex: 0 1 180px; }
 .analytics-refresh { width: var(--control-height); height: var(--control-height); }
 .analytics-breakdown-section { padding-top: 7px; }
+
+/* Fit layout: filters, KPIs and tabs keep their height; the active tab panel fills the rest of the screen. */
+.usage-page.fit-page .workspace-header { margin-bottom: 4px; }
+.usage-page .analytics-global-filters { padding: 6px 0 12px; }
+.usage-page .analytics-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin-bottom: 4px; padding: 0; border: 1px solid var(--border); border-radius: 10px; }
+.usage-page .analytics-kpi { align-content: start; padding: 11px 16px; border-left: 1px solid var(--border); }
+.usage-page .analytics-kpi:first-child { border-left: 0; }
+.usage-page .analytics-kpi-figure, .usage-page .analytics-kpi-value { font-size: 20px; }
+.analytics-tab-unit { color: var(--text-muted); font-size: 12px; }
+.analytics-tab-panel { padding-top: 12px; }
+.analytics-tab-panel > section { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; padding: 0; }
+.analytics-tab-panel .analytics-chart { flex: 1 1 0; height: auto; min-height: 160px; }
+.analytics-tab-panel .analytics-chart-legend { flex: none; margin-top: 8px; }
+.analytics-tab-panel .analytics-empty { flex: 1 1 0; min-height: 0; }
+.analytics-tab-panel .analytics-table-scroll { flex: 1 1 0; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+.analytics-breakdown-table { border-collapse: separate; border-spacing: 0; }
+.analytics-breakdown-table th { position: sticky; top: 0; z-index: 1; height: 38px; }
+.analytics-breakdown-table td { padding: 11px 10px; }
+.analytics-breakdown-table tbody tr:last-child td { border-bottom: 0; }
+.analytics-breakdown-table tbody tr:hover td { background: var(--surface-hover); }
+.analytics-breakdown-table th:first-child { width: 28%; }
+.analytics-breakdown-table th:last-child { width: 92px; }
+.analytics-table .analytics-row-action { width: auto; padding: 0 8px; border: 0; border-radius: 6px; color: var(--accent); white-space: nowrap; font-size: 12px; }
+.analytics-table .analytics-row-action:hover:not(:disabled) { background: var(--surface-hover); }
+.analytics-table .analytics-row-action:disabled { color: var(--text-subtle); }
+.usage-page .analytics-page-footer { margin-top: 10px; padding-top: 8px; }
+@container (max-width: 760px) {
+  .usage-page .analytics-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .usage-page .analytics-kpi:nth-child(4) { border-left: 0; }
+  .usage-page .analytics-kpi:nth-child(n+4) { border-top: 1px solid var(--border); }
+}

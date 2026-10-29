@@ -5,7 +5,13 @@ const settings: DeepString<typeof zh> = {
   settings: {
     eyebrow: "Preferences",
     title: "Settings",
-    autoSaved: "Changes are saved to this device automatically. No proxy connection required.",
+    autoSaved: "Changes save to this device automatically",
+    tabs: {
+      label: "Settings sections",
+      general: "General",
+      listen: "Proxy listener",
+      trajectory: "Session trajectory",
+    },
     theme: {
       heading: "Appearance",
       description: "Choose the color scheme, or follow the system appearance.",
@@ -36,6 +42,11 @@ const settings: DeepString<typeof zh> = {
     trajectory: {
       heading: "Session trajectories",
       description: "Record, retain and clear sessions that pass through the proxy.",
+      captureHeading: "Capture",
+      captureDescription: "Choose which requests have their conversation bodies stored in the local trajectory database.",
+      limitsHeading: "Retention and capacity",
+      limitsDescription: "Older sessions beyond the retention period or capacity limit are removed automatically.",
+      clearDescription: "Delete session records now. This cannot be undone.",
       notice: "When enabled, yi-token stores the conversation bodies that pass through the proxy (prompts, model output, tool calls and results) in trajectory.db on this device. Request headers and keys are not stored.",
       enabled: "Record session trajectories",
       terminals: "Per-terminal recording",

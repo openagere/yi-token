@@ -115,6 +115,8 @@ test("unavailable trajectory store shows settings link", async ({ page }) => {
   await expect(pane).toContainText("轨迹库不可用");
   await pane.getByRole("button", { name: "前往设置", exact: true }).click();
   await expect(page.locator(".sessions-page")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "会话轨迹" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#settings-trajectory")).toBeVisible();
 });
 
 test("unavailable store keeps the settings link reachable in the narrow layout", async ({ page }) => {

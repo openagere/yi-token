@@ -8,10 +8,22 @@ async function openUsage(page: Page) {
   await expect(page.locator(".usage-page")).toBeVisible();
 }
 
-test("single filter bar without tabs", async ({ page }) => {
+async function openBreakdown(page: Page) {
+  await page.getByRole("tab", { name: /明细/ }).click();
+}
+
+test("one filter bar, trend and breakdown as tabs", async ({ page }) => {
   await openUsage(page);
-  await expect(page.getByRole("tablist")).toHaveCount(0);
   await expect(page.locator(".analytics-global-filters")).toBeVisible();
+  const tabs = page.getByRole("tablist", { name: "模型用量视图" });
+  await expect(tabs.getByRole("tab", { name: /每日用量趋势/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".analytics-chart")).toBeVisible();
+  await expect(page.getByRole("table", { name: "用量明细表格", exact: true })).not.toBeVisible();
+  await tabs.getByRole("tab", { name: /明细/ }).click();
+  await expect(page.getByRole("table", { name: "用量明细表格", exact: true })).toBeVisible();
+  await expect(page.locator(".analytics-chart")).not.toBeVisible();
+  const overflow = await page.locator(".main-panel").evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(overflow).toBeLessThanOrEqual(1);
 });
 
 test("kpis include cache hit rate and ttft note", async ({ page }) => {
@@ -25,6 +37,7 @@ test("kpis include cache hit rate and ttft note", async ({ page }) => {
 
 test("group switch changes breakdown rows", async ({ page }) => {
   await openUsage(page);
+  await openBreakdown(page);
   const groups = page.getByRole("group", { name: "明细分组", exact: true });
   const table = page.getByRole("table", { name: "用量明细表格", exact: true });
 
@@ -40,6 +53,7 @@ test("group switch changes breakdown rows", async ({ page }) => {
 
 test("breakdown row links to filtered sessions", async ({ page }) => {
   await openUsage(page);
+  await openBreakdown(page);
   const groups = page.getByRole("group", { name: "明细分组", exact: true });
   await groups.getByRole("button", { name: "终端", exact: true }).click();
   const table = page.getByRole("table", { name: "用量明细表格", exact: true });

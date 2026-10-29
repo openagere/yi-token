@@ -14,17 +14,24 @@ const GROUP_OPTIONS: { value: UsageGroupBy; labelKey: MessageKey }[] = [
   { value: "provider", labelKey: "usage.breakdown.group.provider" },
 ];
 
+/** 明细分组切换：放在用量页标签栏右侧。 */
+export function UsageGroupControl({ groupBy, onGroupBy }: { groupBy: UsageGroupBy; onGroupBy: (groupBy: UsageGroupBy) => void }) {
+  const { t } = useI18n();
+  return <div className="analytics-mode-control" role="group" aria-label={t("usage.breakdown.groupLabel")}>
+    {GROUP_OPTIONS.map(({ value, labelKey }) => <button type="button" key={value} aria-pressed={groupBy === value} className={groupBy === value ? "selected" : ""} onClick={() => onGroupBy(value)}>{t(labelKey)}</button>)}
+  </div>;
+}
+
 interface UsageBreakdownProps {
   snapshot: UsageSnapshot;
   groupBy: UsageGroupBy;
-  onGroupBy: (groupBy: UsageGroupBy) => void;
   onOpenSessions: (target: SessionTarget) => void;
   formatModel: UsageModelFormatter;
   resolveBrand: UsageModelBrandResolver;
 }
 
-/** 明细表：按模型 / 终端 / 服务商分组（数据来自后端 `groups`），行内"→ 会话"带筛选跳转会话页。 */
-export function UsageBreakdown({ snapshot, groupBy, onGroupBy, onOpenSessions, formatModel, resolveBrand }: UsageBreakdownProps) {
+/** 明细表（表头固定、表体滚动）：按模型 / 终端 / 服务商分组（数据来自后端 `groups`），行内"→ 会话"带筛选跳转会话页。 */
+export function UsageBreakdown({ snapshot, groupBy, onOpenSessions, formatModel, resolveBrand }: UsageBreakdownProps) {
   const { t } = useI18n();
   const rows = snapshot.groups;
 
@@ -44,13 +51,7 @@ export function UsageBreakdown({ snapshot, groupBy, onGroupBy, onOpenSessions, f
     return null;
   }
 
-  return <section className="analytics-breakdown-section">
-    <div className="analytics-section-heading">
-      <div><h2>{t("usage.breakdown.title")}</h2></div>
-      <div className="analytics-mode-control" role="group" aria-label={t("usage.breakdown.groupLabel")}>
-        {GROUP_OPTIONS.map(({ value, labelKey }) => <button type="button" key={value} aria-pressed={groupBy === value} className={groupBy === value ? "selected" : ""} onClick={() => onGroupBy(value)}>{t(labelKey)}</button>)}
-      </div>
-    </div>
+  return <section className="analytics-breakdown-section" aria-label={t("usage.breakdown.title")}>
     {rows.length ? <div className="analytics-table-scroll" tabIndex={0}>
       <table className="analytics-table analytics-breakdown-table" aria-label={t("usage.breakdown.table")}>
         <thead><tr>
