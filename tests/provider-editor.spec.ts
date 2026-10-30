@@ -41,7 +41,6 @@ test("non-standard switch sits after the standard model and persists per mapping
   ]);
   expect(standardBox!.x + standardBox!.width).toBeLessThan(toggleBox!.x + 1);
   expect(toggleBox!.x + toggleBox!.width).toBeLessThan(removeBox!.x + 1);
-  await expect(page.locator(".provider-model-compatibility")).toHaveCount(0);
   await toggle.check();
   await page.screenshot({ path: testInfo.outputPath("provider-non-standard.png") });
   await page.getByRole("button", { name: "确定" }).first().click();

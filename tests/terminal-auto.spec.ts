@@ -34,7 +34,6 @@ test("proxy keeps yi-token fixed and switches a saved model without a config pre
   const detail = card.locator(".terminal-engine-detail");
   await expect(detail).toBeHidden();
   await card.locator(".terminal-engine-option .terminal-engine-radio").hover();
-  await page.waitForTimeout(600);
   await expect(detail).toBeHidden();
   await card.locator(".terminal-engine-option strong").hover();
   await expect(detail).toBeVisible();

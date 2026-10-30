@@ -38,7 +38,8 @@ yi-llm v0.1.8（`main` = `b61e613`，2026-10-22）的界面。基线图片位于
 $repo = (Get-Location).Path
 $ref = Join-Path $env:TEMP "yi-llm-visual-baseline"
 New-Item -ItemType Directory -Path $ref -Force | Out-Null
-git -C D:\Github\yi-llm archive --format=zip main -o "$ref.zip"
+# $env:YI_LLM_REPO 指向本机的 yi-llm 仓库，例如 D:\Github\yi-llm
+git -C $env:YI_LLM_REPO archive --format=zip main -o "$ref.zip"
 Expand-Archive "$ref.zip" $ref -Force
 New-Item -ItemType Junction -Path "$ref\node_modules" -Target "$repo\node_modules"
 Copy-Item tests\zz-visual.spec.ts "$ref\tests\zz-visual.spec.ts" -Force

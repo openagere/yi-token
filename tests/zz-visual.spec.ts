@@ -32,7 +32,7 @@ async function openTerminal(page: Page) {
 
 async function capture(page: Page, name: string, mask: Locator[] = []) {
   await expect(page.locator(".main-panel")).toBeVisible();
-  await page.waitForTimeout(250);
+  await page.evaluate(() => document.fonts.ready);
   await expect(page).toHaveScreenshot(name, {
     animations: "disabled",
     caret: "hide",

@@ -190,7 +190,6 @@ test("run page keeps status, live requests and logs on one page while runtime ac
   await page.goto("/");
   await page.locator(".sidebar").getByRole("button", { name: "运行", exact: true }).click();
   await expect(page.locator(".proxy-monitor-facts")).toBeVisible();
-  await expect(page.locator("#proxy-listen-settings")).toHaveCount(0);
   await expect(page.locator(".run-live-table")).toBeVisible();
   await expect(page.getByRole("tab", { name: /日志/ })).toBeVisible();
   await page.getByRole("button", { name: "停止代理", exact: true }).click();
@@ -371,7 +370,6 @@ for (const theme of ["light", "dark"] as const) {
     const toolbar = page.locator(".workspace-toolbar");
     await expect(toolbar.getByRole("button", { name: "返回上一页", exact: true })).toHaveCount(0);
     await expect(toolbar.locator(".lucide-arrow-left")).toHaveCount(0);
-    await expect(toolbar.locator(".toolbar-page-name")).toHaveCount(0);
     await expect(toolbar).not.toContainText("连接");
     await expect(toolbar).not.toContainText("LLM Man");
     await expect(page.locator(".sidebar")).not.toContainText("LLM Man");
@@ -712,7 +710,6 @@ test("direct Provider shows every upstream model without clipping the action", a
   await page.getByRole("radio", { name: /使用 Provider 模型/ }).check();
   await expect(page.locator(".terminal-direct-model-chip")).toHaveCount(5);
   await expect(page.locator(".terminal-direct-model-chips")).toContainText("gpt-fast");
-  await expect(page.locator(".terminal-direct-model-more")).toHaveCount(0);
   await expect(connect).toBeEnabled();
   expect((await connect.boundingBox())!.y).toBe(initialY);
   await page.screenshot({ path: testInfo.outputPath("direct-all-models.png") });

@@ -2,8 +2,11 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
+  pull_request:
 
 permissions:
   contents: read
@@ -46,8 +49,10 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # Screenshot baselines are recorded on Windows only (`*-win32.png`). The specs still run
+      # here, so layout and behaviour are checked; only pixel comparison is skipped.
       - name: Run Playwright UI tests
-        run: npm run test:ui
+        run: npm run test:ui -- --ignore-snapshots
 
   backend:
     name: Rust checks
