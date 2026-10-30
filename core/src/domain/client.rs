@@ -61,6 +61,17 @@ impl Client {
     pub fn default_protocol(&self) -> Protocol {
         self.protocols()[0]
     }
+
+    /// Whether this client is a coding agent: its conversations always send tool
+    /// definitions, so a request without tools is a side request such as a title
+    /// generator (spec 4.4).
+    pub fn is_agent(&self) -> bool {
+        match self {
+            Self::Codex | Self::ClaudeCode | Self::Opencode | Self::Pi | Self::DeepseekHarness => {
+                true
+            }
+        }
+    }
 }
 
 impl FromStr for Client {

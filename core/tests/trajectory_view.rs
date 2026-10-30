@@ -660,6 +660,22 @@ async fn side_only_session_is_hidden_until_continued() {
     assert!(listed.iter().any(|s| s.title == "q1" && s.step_count == 2));
 }
 
+/// A plain chat client on the global route sends no tools, so its single turn is a
+/// conversation and is listed with its title.
+#[tokio::test]
+async fn global_route_single_turn_without_tools_is_listed() {
+    let env = TestEnv::start_capturing().await;
+    mount_numbered_answers(&env).await;
+    let body = claude_body(history(1), Value::Null, None);
+    assert_eq!(env.post("/v1/messages", &body).await.status(), 200);
+    wait_steps(&env, 1).await;
+
+    let listed = all_sessions(&env).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].client, None);
+    assert_eq!(listed[0].title, "q1");
+}
+
 #[tokio::test]
 async fn list_sessions_keyset_pagination_and_filters() {
     let env = TestEnv::start_capturing().await;

@@ -235,8 +235,8 @@ pub fn link(store: &dyn LinkStore, step: &StepInput, now: i64) -> LinkResult {
 }
 
 /// Decides a new thread: a subagent when the first user message equals an
-/// open tool call's prompt, a side thread when the step has no tool definitions
-/// and no tool calls (spec 4.4), otherwise a pending thread. Side and pending
+/// open tool call's prompt, a side thread when an agent client's step has no tool
+/// definitions and no tool calls (spec 4.4), otherwise a pending thread. Side and pending
 /// threads are flagged as a reset when the client key matched a session that
 /// already has a main thread.
 fn new_thread(
@@ -260,7 +260,10 @@ fn new_thread(
         }
     }
     let reset = key_matched && session_id.is_some_and(|id| store.session_has_main(id));
-    let side = !step.has_tools
+    // Only an agent client's tool-less step is a side request; a plain chat client
+    // (the global route) never sends tools, so its single turn stays a conversation.
+    let side = step.client.is_some_and(|client| client.is_agent())
+        && !step.has_tools
         && !step
             .output
             .iter()
