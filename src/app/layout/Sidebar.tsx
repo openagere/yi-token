@@ -3,9 +3,7 @@ import { Activity, Boxes, ChartNoAxesColumnIncreasing, ChevronRight, History, Se
 import { useStandardModels } from "@/features/models";
 import { useProviders } from "@/features/providers";
 import { useLiveRequests, useProxyPhase } from "@/features/proxy";
-import { useTerminalProfiles } from "@/features/terminal/hooks";
-import { TERMINALS } from "@/features/terminal/selection";
-import { useTerminalPendingClients } from "@/features/terminal/useTerminalDrafts";
+import { TERMINALS, useTerminalPendingClients, useTerminalProfiles } from "@/features/terminal";
 import { useI18n } from "@/shared/i18n";
 import { TERMINAL_PAGE_CLIENTS, useNavigationStore, type TerminalPageId } from "@/shared/navigation";
 import { AppLogo, ProviderIcon } from "@/shared/ui";

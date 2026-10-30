@@ -25,13 +25,14 @@ import {
 } from "../selection";
 import type { TerminalClient } from "../types";
 import { useTerminalDirectDraft, useTerminalDrafts, useTerminalPendingClients } from "../useTerminalDrafts";
-import { DirectTerminalSection, useDirectTerminalController } from "./DirectTerminalSection";
+import { DirectTerminalSection } from "./DirectTerminalSection";
+import { useDirectTerminalController } from "../useDirectTerminalController";
 import { ProxyTerminalSection } from "./ProxyTerminalSection";
 
 const EMPTY_PROVIDERS: ProviderView[] = [];
 type AccessMode = "proxy" | "direct";
 const ACCESS_MODE_KEY = "yi-token:terminal-mode";
-const TERMINAL_CLIENTS = ["codex", "claude-code", "opencode", "pi", "deepseek-harness"] as const;
+const TERMINAL_CLIENTS = TERMINALS.map((terminal) => terminal.id);
 
 function loadAccessModes(): Partial<Record<TerminalClient, AccessMode>> {
   try {

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { formatMs } from "./inspectorFormat";
 import { useI18n, type MessageKey } from "@/shared/i18n";
 import type { LedgerRecord } from "./records";
 import {
@@ -60,10 +61,6 @@ function clock(timestamp: number, language: string): string {
     minute: "2-digit",
     second: "2-digit",
   });
-}
-
-function formatMs(milliseconds: number, language: string): string {
-  return `${new Intl.NumberFormat(language).format(Math.round(milliseconds))} ms`;
 }
 
 /** Record index under a pointer target, read from the span it sits on. */

@@ -15,6 +15,18 @@ export default tseslint.config(
     },
   },
   {
+    // The app shell is outside the features too: it reads them only through their index.ts.
+    files: ["src/app/**/*.{ts,tsx}", "src/shared/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["@/features/*/*", "@/features/*/*/**"],
+          message: "只能从功能的 index.ts 引用。",
+        }],
+      }],
+    },
+  },
+  {
     files: ["src/features/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": ["error", {

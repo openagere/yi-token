@@ -15,7 +15,8 @@ import {
 import { TrajectoryInspector, type InspectorTarget } from "./TrajectoryInspector";
 import { TrajectoryLedger } from "./TrajectoryLedger";
 import { TrajectoryTimeline } from "./TrajectoryTimeline";
-import { TrajectoryToolbar, useToolbarPrefs, type ToolbarPrefs } from "./TrajectoryToolbar";
+import { TrajectoryToolbar } from "./TrajectoryToolbar";
+import { useToolbarPrefs, type ToolbarPrefs } from "./toolbarPrefs";
 import { focusIndexes, type TimelineMode, type TimeRange } from "./timeline";
 
 /** Toolbar choices to timeline projection: equal or recorded width, idle gaps dropped or kept. */
