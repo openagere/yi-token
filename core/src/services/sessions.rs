@@ -513,14 +513,12 @@ fn parse_cursor(cursor: &str) -> CoreResult<(i64, String)> {
     Ok((at, id.to_owned()))
 }
 
-/// Thread kind as the detail shows it. A pending thread is a side thread when it is a
-/// single step without tools, otherwise it is shown as other (spec 4.4).
+/// Thread kind as the detail shows it: the stored kind, with pending shown as other (spec 4.4).
 fn thread_view(t: &ThreadRead) -> ThreadView {
     let kind = match t.kind.as_str() {
         "main" => ThreadKindView::Main,
         "subagent" => ThreadKindView::Subagent,
         "side" => ThreadKindView::Side,
-        _ if t.step_count == 1 && !t.has_tools => ThreadKindView::Side,
         _ => ThreadKindView::Other,
     };
     ThreadView {

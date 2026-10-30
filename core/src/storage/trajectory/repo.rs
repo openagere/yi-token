@@ -399,6 +399,15 @@ pub fn promote_to_main(conn: &Connection, thread_id: &str, session_id: &str) -> 
     Ok(())
 }
 
+/// Makes a side thread pending again once it gets a second step.
+pub fn unmark_side_thread(conn: &Connection, thread_id: &str) -> CoreResult<()> {
+    conn.execute(
+        "UPDATE threads SET kind = 'pending' WHERE id = ?1 AND kind = 'side'",
+        [thread_id],
+    )?;
+    Ok(())
+}
+
 /// One `steps` row. `seq` is assigned by the insert.
 pub struct StepRow<'a> {
     pub id: &'a str,
@@ -671,6 +680,7 @@ fn session_from_row(r: &rusqlite::Row) -> rusqlite::Result<SessionRow> {
 }
 
 /// Sessions matching `q`, newest first, at most `limit` rows. `live` is left false.
+/// Sessions made only of side threads (such as a client's title generator) are left out.
 pub fn list_sessions(
     conn: &Connection,
     q: &SessionQuery,
@@ -687,6 +697,7 @@ pub fn list_sessions(
          AND (?3 IS NULL OR EXISTS (SELECT 1 FROM steps st WHERE st.session_id = se.id AND st.model = ?3)) \
          AND (?4 IS NULL OR se.last_at >= ?4) AND (?5 IS NULL OR se.last_at < ?5) \
          AND (?6 IS NULL OR se.last_at < ?6 OR (se.last_at = ?6 AND se.id < ?7)) \
+         AND EXISTS (SELECT 1 FROM threads th WHERE th.session_id = se.id AND th.kind <> 'side') \
          ORDER BY se.last_at DESC, se.id DESC LIMIT ?8"
     );
     let mut stmt = conn.prepare(&sql)?;

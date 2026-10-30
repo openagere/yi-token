@@ -218,8 +218,8 @@ async fn mount_all_upstreams(env: &TestEnv) {
 
 /// A one-message request whose only user text is `title`, in the protocol's own shape.
 fn session_body(p: Protocol, title: &str) -> Value {
-    // Each body carries a tool: a keyless, tool-less single message is a side request
-    // and is not recorded.
+    // Each body carries a tool: a tool-less single step is a side thread, and a session
+    // made only of side threads is left out of the list.
     match p {
         Protocol::Anthropic => json!({"model": CLAUDE_MODEL, "max_tokens": 16,
             "messages": [{"role": "user", "content": title}],
@@ -621,6 +621,43 @@ async fn live_request_appears_as_placeholder_step() {
     env.state
         .live
         .finish("live-step-1", LivePhase::Done, None, Usage::default(), None);
+}
+
+/// A session made only of side threads (such as a title request sent with its own client
+/// key) is not listed; once its thread gets a second step it is listed and titled.
+#[tokio::test]
+async fn side_only_session_is_hidden_until_continued() {
+    let env = TestEnv::start_capturing().await;
+    mount_numbered_answers(&env).await;
+    let route = env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let side = claude_body(
+        history(1),
+        Value::Null,
+        Some("user_a_session_0b6e5f3a-1c2d-4e5f-8a9b-000000000001"),
+    );
+    assert_eq!(env.post(&route, &side).await.status(), 200);
+    let main = claude_body(
+        vec![user("main task")],
+        shell_tools("run a command"),
+        Some("user_a_session_0b6e5f3a-1c2d-4e5f-8a9b-000000000002"),
+    );
+    assert_eq!(env.post(&route, &main).await.status(), 200);
+    wait_steps(&env, 1).await;
+
+    let listed = all_sessions(&env).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].title, "main task");
+
+    let next = claude_body(
+        history(2),
+        Value::Null,
+        Some("user_a_session_0b6e5f3a-1c2d-4e5f-8a9b-000000000001"),
+    );
+    assert_eq!(env.post(&route, &next).await.status(), 200);
+    wait_steps(&env, 3).await;
+    let listed = all_sessions(&env).await;
+    assert_eq!(listed.len(), 2);
+    assert!(listed.iter().any(|s| s.title == "q1" && s.step_count == 2));
 }
 
 #[tokio::test]

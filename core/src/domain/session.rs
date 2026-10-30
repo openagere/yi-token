@@ -68,7 +68,7 @@ pub struct LiveSnapshot {
 
 // ------------------------------------------------------- persisted sessions
 
-/// Role of a thread in its session (spec 4.4). `Pending` threads are projected as `Side` or `Other`.
+/// Role of a thread in its session (spec 4.4). `Pending` threads are projected as `Other`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../src/generated/")]

@@ -573,11 +573,10 @@ async fn disabled_global_skips_global_route_only() {
     cap.writer.shutdown();
 }
 
-/// A side request (such as a title generator) has no client session key, no tools
-/// and a single user message. It is not recorded, but the proxy still answers and
-/// writes its usage row.
+/// A side request (such as a title generator) has no tools. It is recorded as a side
+/// thread that does not name its session, and the proxy still writes its usage row.
 #[tokio::test]
-async fn side_only_title_request_is_not_recorded() {
+async fn side_request_is_recorded_as_side_thread() {
     let cap = start(None).await;
     mount_json(&cap.env, Protocol::Anthropic).await;
     let route = cap.env.route_to(Protocol::Anthropic, Protocol::Anthropic);
@@ -587,11 +586,17 @@ async fn side_only_title_request_is_not_recorded() {
         .post(&route, &request_body(Protocol::Anthropic, CLAUDE_MODEL))
         .await;
     assert_eq!(resp.status(), 200);
-    cap.env.wait_idle(Duration::from_secs(10)).await;
-    cap.writer.flush_for_test();
+    cap.settle_steps(1).await;
 
-    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM sessions"), 0);
-    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM steps"), 0);
+    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM sessions"), 1);
+    assert_eq!(
+        cap.traj_count("SELECT COUNT(*) FROM threads WHERE kind = 'side'"),
+        1
+    );
+    assert_eq!(
+        cap.traj_count("SELECT COUNT(*) FROM sessions WHERE title = ''"),
+        1
+    );
     let deadline = Instant::now() + Duration::from_secs(5);
     while cap.main_count("SELECT COUNT(*) FROM usage") < 1 && Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -600,24 +605,26 @@ async fn side_only_title_request_is_not_recorded() {
     cap.writer.shutdown();
 }
 
-/// A title request whose instructions come as a leading system message (the Chat
-/// Completions shape DeepSeek Harness sends) is still a side request and is not recorded.
+/// A request with tools is not a side thread and names its session.
 #[tokio::test]
-async fn side_only_request_with_system_message_is_not_recorded() {
+async fn request_with_tools_is_not_side() {
     let cap = start(None).await;
-    mount_json(&cap.env, Protocol::OpenaiChat).await;
-    let route = cap.env.route_to(Protocol::OpenaiChat, Protocol::OpenaiChat);
-    let body = json!({"model": CHAT_MODEL, "messages": [
-        {"role": "system", "content": "You write short session titles."},
-        {"role": "user", "content": "Generate the session title from this JSON array of human messages: [{\"seq\":8,\"text\":\"fix the parser\"}]"}
-    ]});
+    mount_json(&cap.env, Protocol::Anthropic).await;
+    let route = cap.env.route_to(Protocol::Anthropic, Protocol::Anthropic);
+    let mut body = request_body(Protocol::Anthropic, CLAUDE_MODEL);
+    body["tools"] = shell_tools();
 
     assert_eq!(cap.env.post(&route, &body).await.status(), 200);
-    cap.env.wait_idle(Duration::from_secs(10)).await;
-    cap.writer.flush_for_test();
+    cap.settle_steps(1).await;
 
-    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM sessions"), 0);
-    assert_eq!(cap.traj_count("SELECT COUNT(*) FROM steps"), 0);
+    assert_eq!(
+        cap.traj_count("SELECT COUNT(*) FROM threads WHERE kind = 'side'"),
+        0
+    );
+    assert_eq!(
+        cap.traj_count("SELECT COUNT(*) FROM sessions WHERE title <> ''"),
+        1
+    );
     cap.writer.shutdown();
 }
 

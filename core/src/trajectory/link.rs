@@ -7,7 +7,7 @@
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-use super::normalize::{EMPTY_FP, NormalizedItem, first_user_text, rolling_fp};
+use super::normalize::{EMPTY_FP, ItemKind, NormalizedItem, first_user_text, rolling_fp};
 use super::record::ClientKeys;
 use crate::domain::{Client, KeySource};
 
@@ -235,8 +235,10 @@ pub fn link(store: &dyn LinkStore, step: &StepInput, now: i64) -> LinkResult {
 }
 
 /// Decides a new thread: a subagent when the first user message equals an
-/// open tool call's prompt, otherwise a pending thread (flagged as a reset when
-/// the client key matched a session that already has a main thread).
+/// open tool call's prompt, a side thread when the step has no tool definitions
+/// and no tool calls (spec 4.4), otherwise a pending thread. Side and pending
+/// threads are flagged as a reset when the client key matched a session that
+/// already has a main thread.
 fn new_thread(
     store: &dyn LinkStore,
     step: &StepInput,
@@ -258,8 +260,17 @@ fn new_thread(
         }
     }
     let reset = key_matched && session_id.is_some_and(|id| store.session_has_main(id));
+    let side = !step.has_tools
+        && !step
+            .output
+            .iter()
+            .any(|item| item.kind == ItemKind::ToolCall);
     ThreadDecision::New {
-        kind: ThreadKind::Pending,
+        kind: if side {
+            ThreadKind::Side
+        } else {
+            ThreadKind::Pending
+        },
         parent_thread_id: None,
         spawn_call_id: None,
         reset,

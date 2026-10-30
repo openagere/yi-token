@@ -28,7 +28,9 @@ use crate::storage::trajectory::repo::{
     self, SessionDelta, SqliteLinkStore, StepRow, TailIndex, ThreadRow,
 };
 use crate::storage::trajectory::retention;
-use crate::trajectory::link::{SessionDecision, StepInput, TailEntry, ThreadDecision, link};
+use crate::trajectory::link::{
+    SessionDecision, StepInput, TailEntry, ThreadDecision, ThreadKind, link,
+};
 use crate::trajectory::normalize::{
     ItemKind, NormalizedItem, first_user_text, normalize_item, normalize_system, normalize_tools,
 };
@@ -493,36 +495,10 @@ fn write_job(conn: &Connection, tails: &mut TailIndex, job: &Job) -> Option<Done
     }
 }
 
-/// A side request, such as a client's title generator: no client session key, no
-/// tools, and one user message with no history. Such a record is not stored at all.
-/// Instructions sent as leading `system` / `developer` messages (Chat Completions
-/// clients such as DeepSeek Harness put them in the message list) do not count as history.
-fn is_side_only(rec: &CaptureRecord, prep: &Prepared) -> bool {
-    let is_message = |item: &NormalizedItem, roles: &[&str]| {
-        item.kind == ItemKind::Message
-            && item
-                .role
-                .as_deref()
-                .is_some_and(|role| roles.contains(&role))
-    };
-    let conversation = prep
-        .input
-        .iter()
-        .skip_while(|item| is_message(item, &["system", "developer"]))
-        .collect::<Vec<_>>();
-    rec.keys.session_key.is_none()
-        && prep.tools.is_none()
-        && matches!(conversation.as_slice(), [only] if is_message(only, &["user"]))
-}
-
 /// Links one record and writes its session, thread, step, blobs and items.
-/// Returns `None` when the record is skipped (see `is_side_only`).
 fn write_record(conn: &Connection, tails: &TailIndex, job: &Job) -> CoreResult<Option<Done>> {
     let rec = &job.record;
     let prep = prepare(rec, job.metadata_only);
-    if is_side_only(rec, &prep) {
-        return Ok(None);
-    }
     let res = link(
         &SqliteLinkStore { conn, tails },
         &StepInput {
@@ -555,7 +531,15 @@ fn write_record(conn: &Connection, tails: &TailIndex, job: &Job) -> CoreResult<O
             id
         }
     };
-    if let Some(title) = first_user_text(&prep.input) {
+    // A side request (such as a title generator) does not name the session.
+    let side = matches!(
+        res.thread,
+        ThreadDecision::New {
+            kind: ThreadKind::Side,
+            ..
+        }
+    );
+    if !side && let Some(title) = first_user_text(&prep.input) {
         repo::fill_session_title(conn, &session_id, &title)?;
     }
 
@@ -564,11 +548,15 @@ fn write_record(conn: &Connection, tails: &TailIndex, job: &Job) -> CoreResult<O
             thread_id,
             parent_step_id,
             prefix_len,
-        } => (
-            thread_id.clone(),
-            Some(parent_step_id.as_str()),
-            *prefix_len,
-        ),
+        } => {
+            // A side thread holds one step only; a continued one is a conversation.
+            repo::unmark_side_thread(conn, thread_id)?;
+            (
+                thread_id.clone(),
+                Some(parent_step_id.as_str()),
+                *prefix_len,
+            )
+        }
         ThreadDecision::New {
             kind,
             parent_thread_id,
