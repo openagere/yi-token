@@ -1,6 +1,6 @@
 use super::{
     PROXY_PROVIDER_ID, direct_provider, direct_provider_id, direct_startup_model, input_modalities,
-    is_owned_direct, is_owned_direct_id, provider_models, proxy_model_caps, resolved_models,
+    is_owned_direct_id, provider_models, proxy_model_caps, resolved_models,
 };
 use crate::domain::{
     AUTO_MODEL, Capabilities, Client, DirectProfile, Protocol, ProxyProfile, RouteMode, Support,
@@ -89,13 +89,7 @@ fn set_reasoning(
 }
 
 fn remove_owned_direct(doc: &mut Doc) -> CoreResult<()> {
-    doc.retain_in(&["model_providers"], |id, value| {
-        let name = value
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        !is_owned_direct(id, name)
-    })
+    super::remove_owned_direct(doc, &["model_providers"])
 }
 
 impl ClientSpec for Codex {

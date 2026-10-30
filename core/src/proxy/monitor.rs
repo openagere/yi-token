@@ -7,7 +7,6 @@ use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
@@ -15,16 +14,14 @@ use tokio::net::{TcpListener, TcpStream};
 
 use crate::domain::Client;
 
+/// Milliseconds since the Unix epoch, as a `u64` for the monitor's buckets.
+pub fn now() -> u64 {
+    u64::try_from(crate::clock::now_ms()).unwrap_or(0)
+}
+
 pub const INTERVAL_MS: u64 = 5_000;
 pub const CAPACITY: usize = 721;
 const MAX_MINUTES: u32 = 60;
-
-pub fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Counters {
@@ -130,7 +127,7 @@ impl Monitor {
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+        crate::lock::lock_unpoisoned(&self.inner)
     }
 
     fn update(&self, action: impl FnOnce(&mut Inner)) {

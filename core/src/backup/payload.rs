@@ -66,7 +66,7 @@ impl Payload {
             })
             .collect::<CoreResult<Vec<_>>>()?;
         Ok(Self {
-            exported_at: unix_now(),
+            exported_at: crate::clock::now_secs(),
             app_version: env!("CARGO_PKG_VERSION").into(),
             standard_models: storage::standard_models::list(conn)?,
             providers,
@@ -250,10 +250,3 @@ impl Payload {
     }
 }
 
-fn unix_now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| {
-            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
-        })
-}

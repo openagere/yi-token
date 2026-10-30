@@ -26,6 +26,7 @@ struct RawFile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawEntry {
+    // Accepted for compatibility with files that carry an `id`; the sync assigns ids itself.
     #[serde(default)]
     id: String,
     name: String,

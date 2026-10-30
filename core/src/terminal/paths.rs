@@ -7,6 +7,20 @@
 use super::spec::ClientCtx;
 use std::path::PathBuf;
 
+/// Expands a leading `~` in an environment-provided path to the injected home directory.
+pub fn expand_home(ctx: &ClientCtx, path: PathBuf) -> PathBuf {
+    let text = path.to_string_lossy();
+    let Some(rest) = text.strip_prefix('~') else {
+        return path;
+    };
+    let rest = rest.trim_start_matches(['/', '\\']);
+    if rest.is_empty() {
+        ctx.home.clone()
+    } else {
+        ctx.home.join(rest)
+    }
+}
+
 /// The value of `name` in the injected environment, when non-empty.
 pub fn env_path(ctx: &ClientCtx, name: &str) -> Option<PathBuf> {
     ctx.env

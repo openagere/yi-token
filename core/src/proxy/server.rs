@@ -80,10 +80,7 @@ impl ProxyHandle {
     }
 
     pub fn snapshot(&self) -> ProxySnapshot {
-        self.snapshot
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+        crate::lock::lock_unpoisoned(&self.snapshot).clone()
     }
 
     pub fn status(&self) -> ProxyStatus {
@@ -99,7 +96,7 @@ impl ProxyHandle {
     }
 
     fn update_snapshot(&self, f: impl FnOnce(&mut ProxySnapshot)) {
-        let mut snap = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+        let mut snap = crate::lock::lock_unpoisoned(&self.snapshot);
         f(&mut snap);
     }
 

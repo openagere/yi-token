@@ -12,12 +12,17 @@ use crate::domain::{
     Support,
 };
 use crate::error::{CoreError, CoreResult};
+use crate::terminal::doc::Doc;
+use serde_json::Value;
 
 pub use self::claude_code::ClaudeCode;
 pub use self::codex::Codex;
 pub use self::deepseek_harness::DeepSeekHarness;
 pub use self::opencode::OpenCode;
 pub use self::pi::Pi;
+
+/// Reasoning-effort names the Pi and DeepSeek Harness clients accept, lowest first.
+pub(crate) const THINKING_LEVELS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
 
 pub const PROXY_PROVIDER_ID: &str = "yitoken";
 pub const DIRECT_PROVIDER_PREFIX: &str = "yitoken_direct_";
@@ -183,6 +188,14 @@ pub fn direct_name(provider_id: &str) -> String {
 
 pub fn is_owned_direct_id(id: &str) -> bool {
     id.starts_with(DIRECT_PROVIDER_PREFIX)
+}
+
+/// Drops the direct-access entries yi-token owns from the table at `table`, keeping the rest.
+pub(super) fn remove_owned_direct(doc: &mut Doc, table: &[&str]) -> CoreResult<()> {
+    doc.retain_in(table, |id, value| {
+        let name = value.get("name").and_then(Value::as_str).unwrap_or_default();
+        !is_owned_direct(id, name)
+    })
 }
 
 pub fn is_owned_direct(id: &str, name: &str) -> bool {

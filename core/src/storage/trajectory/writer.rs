@@ -20,7 +20,6 @@ use uuid::Uuid;
 use crate::domain::{Client, TrajectorySettings};
 use crate::error::{CoreError, CoreResult};
 use crate::protocol::{to_ir, translate_response_parsed};
-use crate::proxy::live::LiveRegistry;
 use crate::storage::Db;
 use crate::storage::trajectory::TrajectoryDb;
 use crate::storage::trajectory::blobs;
@@ -184,11 +183,17 @@ impl TrajectoryWriterHandle {
     }
 }
 
+/// Where the writer reports the session of a step that is still in flight, so the live
+/// view can show it. Implemented by the proxy's live registry.
+pub trait LiveSessions: Send + Sync {
+    fn attach_session(&self, step_id: &str, session_id: &str);
+}
+
 /// Starts the writer thread with the default in-flight budget.
 pub fn spawn_trajectory_writer(
     tdb: TrajectoryDb,
     main: Db,
-    live: LiveRegistry,
+    live: Arc<dyn LiveSessions>,
     settings: TrajectorySettings,
 ) -> (Arc<TrajectorySink>, TrajectoryWriterHandle) {
     spawn_trajectory_writer_with_limit(tdb, main, live, settings, INFLIGHT_LIMIT_BYTES)
@@ -199,7 +204,7 @@ pub fn spawn_trajectory_writer(
 pub fn spawn_trajectory_writer_with_limit(
     tdb: TrajectoryDb,
     main: Db,
-    live: LiveRegistry,
+    live: Arc<dyn LiveSessions>,
     settings: TrajectorySettings,
     inflight_limit: usize,
 ) -> (Arc<TrajectorySink>, TrajectoryWriterHandle) {
@@ -241,7 +246,7 @@ struct Backfill {
 struct Worker {
     db: Db,
     main: Db,
-    live: LiveRegistry,
+    live: Arc<dyn LiveSessions>,
     tails: TailIndex,
     backfill: VecDeque<Backfill>,
     inflight: Arc<AtomicUsize>,
@@ -254,7 +259,7 @@ struct Worker {
 
 impl Worker {
     fn run(mut self, rx: &Receiver<Msg>) {
-        self.apply_retention(now_millis());
+        self.apply_retention(crate::clock::now_ms());
         let mut batch: Vec<Job> = Vec::new();
         let mut deadline = Instant::now() + FLUSH_INTERVAL;
         loop {
@@ -324,7 +329,7 @@ impl Worker {
                     self.after_commit(d);
                 }
                 if self.steps_since_retention >= RETENTION_EVERY_STEPS {
-                    self.apply_retention(now_millis());
+                    self.apply_retention(crate::clock::now_ms());
                 }
             }
             Err(e) => {
@@ -432,7 +437,7 @@ impl Worker {
             Ok(_) => {}
             Err(e) => tracing::warn!("usage session backfill failed: {e}"),
         }
-        self.live.set_session(&done.step_id, &done.session_id);
+        self.live.attach_session(&done.step_id, &done.session_id);
     }
 
     fn retry_backfill(&mut self) {
@@ -784,15 +789,6 @@ fn collect_orphans_logged(conn: &Connection) {
     }
 }
 
-/// Wall-clock time in milliseconds, the unit of `requested_at` and `last_at`.
-fn now_millis() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()
-        .and_then(|d| i64::try_from(d.as_millis()).ok())
-        .unwrap_or(0)
-}
-
 fn len_of(body: &Option<Bytes>) -> usize {
     body.as_ref().map_or(0, Bytes::len)
 }
@@ -863,11 +859,16 @@ mod tests {
         }
     }
 
+    struct NoLive;
+    impl LiveSessions for NoLive {
+        fn attach_session(&self, _step_id: &str, _session_id: &str) {}
+    }
+
     fn worker() -> Worker {
         Worker {
             db: TrajectoryDb::open_in_memory().unwrap().0,
             main: Db::open_in_memory().unwrap(),
-            live: LiveRegistry::default(),
+            live: Arc::new(NoLive),
             tails: TailIndex::default(),
             backfill: VecDeque::new(),
             inflight: Arc::new(AtomicUsize::new(0)),
@@ -1087,7 +1088,7 @@ mod tests {
             upstream_model: "m".into(),
             route_mode: None,
             // Recent, so the retention pass this commit triggers keeps the session.
-            requested_at: now_millis(),
+            requested_at: crate::clock::now_ms(),
             first_token_at: None,
             finished_at: None,
             status: Some(200),

@@ -20,22 +20,12 @@ const AGENT_LOOP_ID: &str = "agent-loop";
 const CREDENTIALS_FILE: &str = ".credentials.yaml";
 const PROXY_KEY_REFERENCE: &str = "YI_TOKEN_PROXY";
 const DIRECT_KEY_REFERENCE_PREFIX: &str = "YI_TOKEN_DIRECT_";
-const DSH_EFFORT_LEVELS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
 
 fn home(ctx: &ClientCtx) -> PathBuf {
     let Some(path) = crate::terminal::paths::env_path(ctx, "DSH_HOME") else {
         return ctx.home.join(".dsh");
     };
-    let text = path.to_string_lossy();
-    let Some(rest) = text.strip_prefix('~') else {
-        return path;
-    };
-    let rest = rest.trim_start_matches(['/', '\\']);
-    if rest.is_empty() {
-        ctx.home.clone()
-    } else {
-        ctx.home.join(rest)
-    }
+    crate::terminal::paths::expand_home(ctx, path)
 }
 
 fn profiles(home: &Path) -> Vec<&'static str> {
@@ -158,7 +148,7 @@ fn model_entry(
     if !supported.is_empty() {
         let mut efforts = Map::new();
         efforts.insert("off".into(), Value::Null);
-        for level in DSH_EFFORT_LEVELS {
+        for level in super::THINKING_LEVELS {
             if supported.iter().any(|supported| supported == level) {
                 efforts.insert(level.into(), json!(level));
             }

@@ -9,10 +9,8 @@ pub mod outbound;
 pub mod stream;
 pub mod types;
 
-/// `InputItem::Unknown` type emitted by the Anthropic inbound for blocks it cannot model.
-pub(crate) const ANTHROPIC_UNKNOWN_BLOCK: &str = "anthropic.unknown_block";
-/// Prefix of `StreamEvent::Unknown.event` for Anthropic-only events.
-pub(crate) const ANTHROPIC_EVENT_PREFIX: &str = "anthropic.";
+/// Anthropic-only markers, shared with the Anthropic protocol module.
+pub(crate) use super::anthropic::{EVENT_PREFIX as ANTHROPIC_EVENT_PREFIX, UNKNOWN_BLOCK as ANTHROPIC_UNKNOWN_BLOCK};
 
 /// Key under which the `reasoning_content` vendor extension rides on IR reasoning items.
 pub(crate) const REASONING_CONTENT: &str = "reasoning_content";

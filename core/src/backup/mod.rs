@@ -57,13 +57,18 @@ struct Header<'a> {
 
 impl Envelope {
     pub(crate) fn aad(&self) -> CoreResult<Vec<u8>> {
-        Ok(serde_json::to_vec(&Header {
-            format: FORMAT,
-            version: FORMAT_VERSION,
-            kdf: &self.kdf,
-            cipher: &self.cipher,
-        })?)
+        header_aad(&self.kdf, &self.cipher)
     }
+}
+
+/// The associated data that binds the cipher to the envelope header.
+fn header_aad(kdf: &KdfParams, cipher: &CipherParams) -> CoreResult<Vec<u8>> {
+    Ok(serde_json::to_vec(&Header {
+        format: FORMAT,
+        version: FORMAT_VERSION,
+        kdf,
+        cipher,
+    })?)
 }
 
 pub fn export(db: &Db, passphrase: &SecretString) -> CoreResult<Vec<u8>> {
@@ -98,13 +103,7 @@ pub fn encode_with_iterations(
         algorithm: CIPHER_ALGORITHM.into(),
         nonce: BASE64.encode(&nonce),
     };
-    let header = Header {
-        format: FORMAT,
-        version: FORMAT_VERSION,
-        kdf: &kdf,
-        cipher: &cipher,
-    };
-    let aad = serde_json::to_vec(&header)?;
+    let aad = header_aad(&kdf, &cipher)?;
     let plaintext = Zeroizing::new(serde_json::to_vec(payload)?);
     let sealed = crypto::encrypt(&plaintext, &passphrase, &salt, &nonce, &aad, iterations)?;
     let envelope = Envelope {

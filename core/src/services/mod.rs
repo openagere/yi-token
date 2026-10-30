@@ -19,6 +19,7 @@ pub use crate::backup::import::ImportReport;
 pub use crate::proxy::monitor::MonitorView;
 pub use crate::terminal::TerminalPreview;
 pub use backup::BackupExport;
+pub use proxy::ProxyAction;
 pub use dto::{
     ActiveEngineView, CatalogInfo, LogsView, ModelInput, ModelMapping, ProviderInput, ProviderView,
     ProxyRuntimeView, SettingsView, StandardModelView, TerminalAccessMode, TerminalApplyResult,
@@ -37,7 +38,7 @@ use crate::proxy::monitor::Monitor;
 use crate::proxy::resolve::Routes;
 use crate::proxy::router::{ProxyState, build};
 use crate::proxy::upstream::UpstreamClient;
-use crate::storage::route_source::DbRouteSource;
+use crate::proxy::route_source::DbRouteSource;
 use crate::storage::usage_writer::{UsageSink, UsageWriterHandle, spawn_usage_writer};
 use crate::storage::{Db, settings as settings_repo};
 use crate::trajectory::record::CaptureSlot;

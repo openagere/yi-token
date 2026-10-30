@@ -1,13 +1,14 @@
 //! Chat Completions SSE <-> IR stream events.
 
 use super::inbound::{incomplete_details, is_incomplete, usage_value};
-use super::outbound::{chat_usage, incomplete_finish_reason, now_secs};
+use super::outbound::{chat_usage, incomplete_finish_reason};
 use super::types::{Chunk, parse_usage};
 use super::{ANTHROPIC_EVENT_PREFIX, REASONING_CONTENT};
 use crate::error::CoreResult;
+use crate::protocol::ir::assistant_message;
 use crate::protocol::Usage;
 use crate::protocol::ir::{
-    self, Content, ContentPart, FunctionCall, InputItem, Message, Reasoning, StreamEvent, TextPart,
+    self, Content, ContentPart, FunctionCall, InputItem, Reasoning, StreamEvent,
 };
 use crate::protocol::sse::{self, SseFrame};
 use bytes::Bytes;
@@ -15,23 +16,6 @@ use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 // ------------------------------------------------------- upstream -> IR
-
-fn message_item(text: &str) -> InputItem {
-    InputItem::Message(Message {
-        kind: Some("message".into()),
-        role: "assistant".into(),
-        content: Content::Parts(if text.is_empty() {
-            vec![]
-        } else {
-            vec![ContentPart::OutputText(TextPart {
-                kind: "output_text".into(),
-                text: text.into(),
-                extra: Map::new(),
-            })]
-        }),
-        extra: Map::new(),
-    })
-}
 
 fn reasoning_item(output: u64, text: &str) -> InputItem {
     let mut extra = Map::new();
@@ -132,7 +116,7 @@ impl UpstreamToIr {
             items.push((o, reasoning_item(o, &t)));
         }
         if let Some((o, t)) = self.text.take() {
-            items.push((o, message_item(&t)));
+            items.push((o, assistant_message(&t)));
         }
         items.extend(
             std::mem::take(&mut self.tools)
@@ -264,7 +248,7 @@ impl UpstreamToIr {
                     self.text = Some((o, String::new()));
                     out.push(StreamEvent::OutputItemAdded {
                         output_index: o,
-                        item: message_item(""),
+                        item: assistant_message(""),
                         extra: Map::new(),
                     });
                 }
@@ -400,7 +384,7 @@ impl IrToClient {
             .and_then(|r| r.id.clone())
             .unwrap_or_else(|| "chatcmpl-yi".into());
         self.model = response.and_then(|r| r.model.clone()).unwrap_or_default();
-        self.created = response.and_then(|r| r.created_at).unwrap_or_else(now_secs);
+        self.created = response.and_then(|r| r.created_at).unwrap_or_else(crate::clock::now_secs);
         out.push(self.chunk(json!({"role": "assistant", "content": ""}), None));
     }
 

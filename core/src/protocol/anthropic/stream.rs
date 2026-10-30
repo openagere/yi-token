@@ -3,9 +3,10 @@
 use super::inbound::usage_value;
 use super::{ANTHROPIC_SIGNATURE, EVENT_PREFIX};
 use crate::error::CoreResult;
+use crate::protocol::ir::assistant_message;
 use crate::protocol::Usage;
 use crate::protocol::ir::{
-    self, Content, ContentPart, FunctionCall, InputItem, Message, Reasoning, StreamEvent, TextPart,
+    self, FunctionCall, InputItem, Reasoning, StreamEvent,
 };
 use crate::protocol::sse::{self, SseFrame};
 use bytes::Bytes;
@@ -44,23 +45,6 @@ impl Blk {
             args: String::new(),
         }
     }
-}
-
-fn message_item(text: &str) -> InputItem {
-    InputItem::Message(Message {
-        kind: Some("message".into()),
-        role: "assistant".into(),
-        content: Content::Parts(if text.is_empty() {
-            vec![]
-        } else {
-            vec![ContentPart::OutputText(TextPart {
-                kind: "output_text".into(),
-                text: text.into(),
-                extra: Map::new(),
-            })]
-        }),
-        extra: Map::new(),
-    })
 }
 
 fn unknown_event(name: &str, data: &Value) -> StreamEvent {
@@ -165,7 +149,7 @@ impl UpstreamToIr {
                         self.blocks.insert(index, Blk::new(Kind::Text));
                         out.push(StreamEvent::OutputItemAdded {
                             output_index: index,
-                            item: message_item(""),
+                            item: assistant_message(""),
                             extra: Map::new(),
                         });
                         if let Some(t) = b["text"].as_str().filter(|t| !t.is_empty()) {
@@ -301,7 +285,7 @@ impl UpstreamToIr {
                         out.push(unknown_event("content_block_stop", &data));
                         return Ok(out);
                     }
-                    Kind::Text => message_item(&b.text),
+                    Kind::Text => assistant_message(&b.text),
                     Kind::Thinking => {
                         let signed = !b.signature.is_empty();
                         let mut extra = Map::new();

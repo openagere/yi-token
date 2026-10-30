@@ -9,7 +9,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, MutexGuard};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
@@ -82,7 +81,7 @@ fn start_writer(
             TrajectorySettings::default()
         });
     let reader = TrajectoryDb(tdb.0.clone());
-    let (sink, writer) = spawn_trajectory_writer(tdb, main.clone(), live.clone(), settings);
+    let (sink, writer) = spawn_trajectory_writer(tdb, main.clone(), Arc::new(live.clone()), settings);
     capture.set(Some(Arc::clone(&sink) as Arc<dyn CaptureSink>));
     TrajectoryState::Ready {
         db: reader,
@@ -479,7 +478,7 @@ impl Services {
             );
             previous.shutdown();
             let path = s.paths.trajectory_db.clone();
-            if let Err(e) = move_aside(&path, now_millis()) {
+            if let Err(e) = move_aside(&path, crate::clock::now_ms()) {
                 *state = open_trajectory(&path, &s.db, &s.live, &s.capture);
                 return Err(e);
             }
@@ -699,11 +698,3 @@ fn move_aside(path: &Path, stamp: i64) -> CoreResult<()> {
     Ok(())
 }
 
-/// Wall-clock milliseconds, used to name moved-aside files.
-fn now_millis() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .and_then(|d| i64::try_from(d.as_millis()).ok())
-        .unwrap_or(0)
-}

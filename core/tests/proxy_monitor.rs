@@ -8,7 +8,7 @@ use common::TestEnv;
 use yi_core::AppPaths;
 use yi_core::proxy::ProxyPhase;
 use yi_core::proxy::monitor::{CAPACITY, INTERVAL_MS, Monitor};
-use yi_core::services::Services;
+use yi_core::services::{ProxyAction, Services};
 
 #[test]
 fn monitor_buckets_rotate_after_721() {
@@ -113,7 +113,7 @@ async fn save_settings_port_change_restarts_proxy() {
         .save_settings("127.0.0.1".into(), first, yi_core::domain::LogLevel::Info)
         .await
         .unwrap();
-    services.control_proxy("start").await.unwrap();
+    services.control_proxy(ProxyAction::Start).await.unwrap();
     assert_eq!(
         services.get_proxy_runtime().await.unwrap().address.unwrap(),
         format!("127.0.0.1:{first}")
@@ -159,7 +159,7 @@ async fn app_starts_when_port_busy() {
     );
 
     drop(blocker);
-    services.control_proxy("start").await.unwrap();
+    services.control_proxy(ProxyAction::Start).await.unwrap();
     wait_healthy(port).await;
     services.shutdown();
 }

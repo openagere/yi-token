@@ -23,10 +23,15 @@ struct LiveState {
     seq: u64,
 }
 
+impl crate::storage::trajectory::writer::LiveSessions for LiveRegistry {
+    fn attach_session(&self, step_id: &str, session_id: &str) {
+        self.set_session(step_id, session_id);
+    }
+}
+
 impl LiveRegistry {
     fn lock(&self) -> MutexGuard<'_, LiveState> {
-        // A poisoned lock only means a panic happened elsewhere; the data is still usable.
-        self.inner.lock().unwrap_or_else(|p| p.into_inner())
+        crate::lock::lock_unpoisoned(&self.inner)
     }
 
     pub fn begin(

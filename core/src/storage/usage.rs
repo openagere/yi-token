@@ -393,3 +393,22 @@ pub fn recent_live_requests(conn: &Connection, limit: usize) -> CoreResult<Vec<L
             .collect(),
     )
 }
+
+/// UTC milliseconds of local midnight of `date` (`YYYY-MM-DD`) shifted by
+/// `plus_days`, computed by SQLite so it honours the local time zone (and DST)
+/// exactly like the report's day buckets.
+pub fn local_midnight_ms(conn: &Connection, date: &str, plus_days: i64) -> CoreResult<i64> {
+    let ms: Option<i64> = conn.query_row(
+        "SELECT CAST(strftime('%s', date(?1, ?2), 'utc') AS INTEGER) * 1000",
+        params![date, format!("{plus_days:+} days")],
+        |r| r.get(0),
+    )?;
+    ms.ok_or_else(|| {
+        crate::error::CoreError::Validation(format!("日期格式无效：{date}，应为 YYYY-MM-DD"))
+    })
+}
+
+/// Today's date in the local time zone, `YYYY-MM-DD`.
+pub fn today(conn: &Connection) -> CoreResult<String> {
+    Ok(conn.query_row("SELECT date('now', 'localtime')", [], |r| r.get(0))?)
+}

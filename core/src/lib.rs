@@ -3,9 +3,11 @@
 //! Further module declarations are added by later tasks.
 
 pub mod backup;
+pub mod clock;
 pub mod catalog;
 pub mod domain;
 pub mod error;
+pub mod lock;
 pub mod logging;
 pub mod paths;
 pub mod protocol;

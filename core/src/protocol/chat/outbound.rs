@@ -21,12 +21,6 @@ const FORWARDED_EXTRA: [&str; 8] = [
     "top_logprobs",
 ];
 
-pub(crate) fn now_secs() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs() as i64)
-}
-
 /// Chat `finish_reason` for an incomplete response.
 pub(crate) fn incomplete_finish_reason(resp: &ir::Response) -> &'static str {
     let reason = resp
@@ -460,7 +454,7 @@ pub fn response_to_client(resp: &ir::Response) -> Value {
     json!({
         "id": resp.id.clone().unwrap_or_else(|| "chatcmpl-yi".into()),
         "object": "chat.completion",
-        "created": resp.created_at.unwrap_or_else(now_secs),
+        "created": resp.created_at.unwrap_or_else(crate::clock::now_secs),
         "model": resp.model.clone().unwrap_or_default(),
         "choices": [{"index": 0, "message": message, "finish_reason": finish_reason}],
         "usage": chat_usage(resp.usage()),

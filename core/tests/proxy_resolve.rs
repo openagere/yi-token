@@ -10,7 +10,7 @@ use yi_core::domain::{
 use yi_core::proxy::resolve::{Routes, Scope, resolve};
 use yi_core::proxy::router::{ProxyState, build};
 use yi_core::services::Services;
-use yi_core::storage::route_source::DbRouteSource;
+use yi_core::proxy::route_source::DbRouteSource;
 use yi_core::storage::{Db, providers, terminal};
 
 /// A provider whose native protocol is `native`; every provider accepts every client protocol.

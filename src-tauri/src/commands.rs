@@ -15,7 +15,7 @@ use yi_core::domain::{
 };
 use yi_core::services::{
     ActiveEngineView, CatalogInfo, LogsView, ModelInput, MonitorView, ProviderInput, ProviderView,
-    ProxyRuntimeView, Services, SettingsView, StandardModelView, TerminalApplyResult,
+    ProxyAction, ProxyRuntimeView, Services, SettingsView, StandardModelView, TerminalApplyResult,
     TerminalPreview, TerminalProfileView, TerminalProfilesView, UsageQueryInput, UsageReportView,
 };
 use yi_core::{CoreError, CoreResult};
@@ -69,8 +69,8 @@ async fn get_proxy_monitor_impl(s: &Svc, minutes: Option<u32>) -> CoreResult<Mon
     Ok(s.get_proxy_monitor(minutes))
 }
 
-async fn control_proxy_impl(s: &Svc, action: String) -> CoreResult<()> {
-    s.control_proxy(&action).await
+async fn control_proxy_impl(s: &Svc, action: ProxyAction) -> CoreResult<()> {
+    s.control_proxy(action).await
 }
 
 async fn list_standard_models_impl(s: &Svc) -> CoreResult<Vec<StandardModelView>> {
@@ -328,7 +328,7 @@ pub async fn get_proxy_monitor(
 }
 
 #[tauri::command]
-pub async fn control_proxy(state: State<'_, AppState>, action: String) -> CoreResult<()> {
+pub async fn control_proxy(state: State<'_, AppState>, action: ProxyAction) -> CoreResult<()> {
     control_proxy_impl(&state.0, action).await
 }
 

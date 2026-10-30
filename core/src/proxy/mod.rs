@@ -8,6 +8,7 @@ pub mod monitor;
 pub mod pipeline;
 pub mod request_log;
 pub mod resolve;
+pub mod route_source;
 pub mod router;
 mod server;
 pub mod upstream;

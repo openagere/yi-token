@@ -1,26 +1,10 @@
 use super::{Services, UsageQueryInput, UsageReportView};
 use crate::error::{CoreError, CoreResult};
-use crate::storage::usage::{self, UsageQuery};
+use crate::storage::usage::{self, UsageQuery, local_midnight_ms, today};
 use rusqlite::Connection;
 use std::sync::Arc;
 
 const DEFAULT_DAYS: u32 = 7;
-
-/// UTC milliseconds of local midnight of `date` (`YYYY-MM-DD`) shifted by
-/// `plus_days`, computed by SQLite so it honours the local time zone (and DST)
-/// exactly like the report's day buckets.
-fn local_midnight_ms(conn: &Connection, date: &str, plus_days: i64) -> CoreResult<i64> {
-    let ms: Option<i64> = conn.query_row(
-        "SELECT CAST(strftime('%s', date(?1, ?2), 'utc') AS INTEGER) * 1000",
-        rusqlite::params![date, format!("{plus_days:+} days")],
-        |r| r.get(0),
-    )?;
-    ms.ok_or_else(|| CoreError::Validation(format!("日期格式无效：{date}，应为 YYYY-MM-DD")))
-}
-
-fn today(conn: &Connection) -> CoreResult<String> {
-    Ok(conn.query_row("SELECT date('now', 'localtime')", [], |r| r.get(0))?)
-}
 
 fn window(conn: &Connection, input: &UsageQueryInput) -> CoreResult<(i64, i64)> {
     match (&input.start_date, &input.end_date) {

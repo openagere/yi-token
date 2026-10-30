@@ -11,14 +11,6 @@ use crate::protocol::ir::{
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 
-fn text_part(kind: &str, text: String) -> TextPart {
-    TextPart {
-        kind: kind.into(),
-        text,
-        extra: Map::new(),
-    }
-}
-
 /// `image_url` is either a bare URL string or `{url, detail}`.
 fn image_part(v: &Value) -> Option<ContentPart> {
     let (url, detail) = match v.get("image_url")? {
@@ -45,9 +37,9 @@ fn convert_parts(parts: Vec<Value>, assistant: bool) -> Vec<ContentPart> {
                 let text = p.get("text").and_then(Value::as_str)?.to_owned();
                 (!text.is_empty()).then(|| {
                     if assistant {
-                        ContentPart::OutputText(text_part("output_text", text))
+                        ContentPart::OutputText(TextPart::new("output_text", text))
                     } else {
-                        ContentPart::InputText(text_part("input_text", text))
+                        ContentPart::InputText(TextPart::new("input_text", text))
                     }
                 })
             }

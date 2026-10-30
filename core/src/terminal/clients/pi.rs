@@ -1,6 +1,6 @@
 use super::{
     PROXY_PROVIDER_ID, direct_name, direct_provider, direct_provider_id, direct_startup_model,
-    input_for, is_owned_direct, is_owned_direct_id, protocol_api, provider_models,
+    input_for, is_owned_direct_id, protocol_api, provider_models,
     proxy_model_caps, resolved_models,
 };
 use crate::domain::{
@@ -16,22 +16,11 @@ pub struct Pi;
 
 const MODELS_FILE: &str = "models.json";
 const SETTINGS_FILE: &str = "settings.json";
-const PI_THINKING_LEVELS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
-
 fn config_dir(ctx: &ClientCtx) -> PathBuf {
     let Some(path) = crate::terminal::paths::env_path(ctx, "PI_CODING_AGENT_DIR") else {
         return ctx.home.join(".pi").join("agent");
     };
-    let text = path.to_string_lossy();
-    let Some(rest) = text.strip_prefix('~') else {
-        return path;
-    };
-    let rest = rest.trim_start_matches(['/', '\\']);
-    if rest.is_empty() {
-        ctx.home.clone()
-    } else {
-        ctx.home.join(rest)
-    }
+    crate::terminal::paths::expand_home(ctx, path)
 }
 
 fn models_path(ctx: &ClientCtx) -> PathBuf {
@@ -57,7 +46,7 @@ fn model_entry(
         entry["maxTokens"] = json!(max);
     }
     let supported = caps.efforts_for(client_protocol, upstream);
-    let levels: Vec<&str> = PI_THINKING_LEVELS
+    let levels: Vec<&str> = super::THINKING_LEVELS
         .iter()
         .copied()
         .filter(|level| supported.iter().any(|supported| supported == level))
@@ -69,7 +58,7 @@ fn model_entry(
         if client_protocol == Protocol::Responses {
             map.insert("off".into(), Value::Null);
         }
-        for level in PI_THINKING_LEVELS {
+        for level in super::THINKING_LEVELS {
             map.insert(
                 level.into(),
                 if levels.contains(&level) {
@@ -85,13 +74,7 @@ fn model_entry(
 }
 
 fn remove_owned_direct(doc: &mut Doc) -> CoreResult<()> {
-    doc.retain_in(&["providers"], |id, provider| {
-        let name = provider
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        !is_owned_direct(id, name)
-    })
+    super::remove_owned_direct(doc, &["providers"])
 }
 
 fn set_settings(doc: &mut Doc, provider: &str, model: &str) -> CoreResult<()> {

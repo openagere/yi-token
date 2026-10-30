@@ -430,6 +430,31 @@ impl StreamEvent {
     }
 }
 
+impl TextPart {
+    /// A text part of the given `kind` with no vendor extension fields.
+    pub fn new(kind: &str, text: String) -> Self {
+        Self {
+            kind: kind.into(),
+            text,
+            extra: Map::new(),
+        }
+    }
+}
+
+/// An assistant message with one `output_text` part, or no parts when `text` is empty.
+pub(crate) fn assistant_message(text: &str) -> InputItem {
+    InputItem::Message(Message {
+        kind: Some("message".into()),
+        role: "assistant".into(),
+        content: Content::Parts(if text.is_empty() {
+            vec![]
+        } else {
+            vec![ContentPart::OutputText(TextPart::new("output_text", text.into()))]
+        }),
+        extra: Map::new(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

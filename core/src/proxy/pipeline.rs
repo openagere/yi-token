@@ -18,7 +18,7 @@ use futures::StreamExt;
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::capture::{CaptureTap, now_ms, stop_reason};
+use super::capture::{CaptureTap, stop_reason};
 use super::headers;
 use super::live::LiveRegistry;
 use super::resolve::{Resolved, Scope, resolve};
@@ -157,7 +157,7 @@ impl Drop for RequestGuard {
         let Some(meta) = self.meta.take() else {
             return;
         };
-        let finished_at = now_ms();
+        let finished_at = crate::clock::now_ms();
         let (tap_response, tap_first, tap_error) = match self.tap.take() {
             Some(tap) => tap.take(),
             None => (None, None, None),
@@ -364,7 +364,7 @@ async fn run(
         |m| m.exposed_name.clone(),
     );
     let step_id = Uuid::new_v4().to_string();
-    let requested_at = now_ms();
+    let requested_at = crate::clock::now_ms();
     state.live.begin(
         &step_id,
         client,

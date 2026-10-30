@@ -9,14 +9,6 @@ use crate::protocol::ir::{
 };
 use serde_json::{Map, Value, json};
 
-fn text_part(kind: &str, text: String) -> TextPart {
-    TextPart {
-        kind: kind.into(),
-        text,
-        extra: Map::new(),
-    }
-}
-
 /// `{"type":"base64",...}` / `{"type":"url",...}` image source -> image URL.
 fn image_url(source: &Value) -> Option<String> {
     match source.get("type").and_then(Value::as_str) {
@@ -98,9 +90,9 @@ fn convert_message(role: &str, content: MessageContent, out: &mut Vec<InputItem>
     let assistant = role == "assistant";
     let text_for_role = |t: String| {
         if assistant {
-            ContentPart::OutputText(text_part("output_text", t))
+            ContentPart::OutputText(TextPart::new("output_text", t))
         } else {
-            ContentPart::InputText(text_part("input_text", t))
+            ContentPart::InputText(TextPart::new("input_text", t))
         }
     };
     let blocks = match content {
@@ -255,7 +247,7 @@ fn convert_tool_choice(tc: &Value, extra: &mut Map<String, Value>) -> Option<Val
     }
 }
 
-/// Legacy thinking budget -> effort heuristic.
+/// Maps a `thinking.budget_tokens` value to an effort level by fixed thresholds.
 fn budget_to_effort(budget: u64) -> &'static str {
     match budget {
         0..8192 => "low",

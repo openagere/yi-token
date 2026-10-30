@@ -3,6 +3,8 @@
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
+use serde::Deserialize;
+
 use super::{ProxyRuntimeView, Services, SettingsView};
 use crate::domain::{LiveSnapshot, Settings};
 use crate::error::{CoreError, CoreResult};
@@ -26,6 +28,15 @@ fn settings_view(settings: Settings) -> SettingsView {
         port: settings.port,
         log_level: settings.log_level,
     }
+}
+
+/// What the desktop app asks of the local listener.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProxyAction {
+    Start,
+    Stop,
+    Restart,
 }
 
 impl Services {
@@ -92,30 +103,26 @@ impl Services {
     }
 
     /// Applies a `start` / `stop` / `restart` action to the listener.
-    pub async fn control_proxy(self: &Arc<Self>, action: &str) -> CoreResult<()> {
-        let action = action.trim();
-        if !matches!(action, "start" | "stop" | "restart") {
-            return Err(CoreError::Validation("无效的代理操作".into()));
-        }
+    pub async fn control_proxy(self: &Arc<Self>, action: ProxyAction) -> CoreResult<()> {
         let settings = self.run(|s| s.db.with_conn(settings::get)).await?;
         let addr = listen_addr(&settings)?;
         let proxy = self.proxy.clone();
         match action {
-            "start" => {
+            ProxyAction::Start => {
                 if proxy.status().running {
                     return Ok(());
                 }
                 self.run_on_proxy_rt(async move { proxy.start(addr).await })
                     .await
             }
-            "stop" => {
+            ProxyAction::Stop => {
                 self.run_on_proxy_rt(async move {
                     proxy.stop().await;
                     Ok(())
                 })
                 .await
             }
-            _ => {
+            ProxyAction::Restart => {
                 self.run_on_proxy_rt(async move { proxy.restart(addr).await })
                     .await
             }

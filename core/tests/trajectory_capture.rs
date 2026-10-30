@@ -45,7 +45,7 @@ async fn start_with(limit: Option<usize>, settings: TrajectorySettings) -> Captu
     let traj = TrajectoryDb::open_in_memory().unwrap();
     let traj_db = traj.0.clone();
     let main = env.services.db().clone();
-    let live = env.state.live.clone();
+    let live = Arc::new(env.state.live.clone());
     let (sink, writer) = match limit {
         Some(bytes) => spawn_trajectory_writer_with_limit(traj, main, live, settings, bytes),
         None => spawn_trajectory_writer(traj, main, live, settings),

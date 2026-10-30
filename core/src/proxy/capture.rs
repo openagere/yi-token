@@ -59,7 +59,7 @@ impl CaptureTap {
                 | StreamEvent::FunctionCallArgumentsDelta { .. }
                 | StreamEvent::ReasoningSummaryTextDelta { .. } => {
                     if st.first_token_at.is_none() {
-                        st.first_token_at = Some(now_ms());
+                        st.first_token_at = Some(crate::clock::now_ms());
                     }
                 }
                 StreamEvent::Error { message, .. } => {
@@ -96,17 +96,7 @@ impl CaptureTap {
 }
 
 fn lock(inner: &Mutex<TapState>) -> MutexGuard<'_, TapState> {
-    inner.lock().unwrap_or_else(|p| p.into_inner())
-}
-
-/// Milliseconds since the Unix epoch.
-pub(super) fn now_ms() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .and_then(|d| i64::try_from(d.as_millis()).ok())
-        .unwrap_or(0)
+    crate::lock::lock_unpoisoned(inner)
 }
 
 /// Normalises how a request ended (spec 4.5). The first matching rule wins.
