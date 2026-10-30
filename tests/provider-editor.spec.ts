@@ -8,6 +8,7 @@ test("provider editor styles the capability summary on first open", async ({ pag
   // the models CSS used to load only with the model pages, so the shared summary
   // rendered unstyled (block-level chips, icons stacked above their labels).
   await page.getByRole("button", { name: "OpenAI" }).first().click();
+  await page.locator("#provider-tab-models").click();
   const summary = page.locator(".model-capability-summary").first();
   await expect(summary).toBeVisible();
   await expect.poll(async () => summary.evaluate((el) => getComputedStyle(el).display)).toBe("flex");
@@ -26,6 +27,7 @@ test("non-standard switch sits after the standard model and persists per mapping
   await installBackend(page, "dark");
   await page.goto("/");
   await page.getByRole("button", { name: "OpenAI" }).first().click();
+  await page.locator("#provider-tab-models").click();
   const row = page.locator(".connection-model-row").first();
   const standard = row.locator(".provider-standard-model-select");
   const toggle = row.getByRole("checkbox", { name: "模型 1 非标准兼容" });
@@ -44,6 +46,7 @@ test("non-standard switch sits after the standard model and persists per mapping
   await page.screenshot({ path: testInfo.outputPath("provider-non-standard.png") });
   await page.getByRole("button", { name: "确定" }).first().click();
   await page.getByRole("button", { name: "OpenAI" }).first().click();
+  await page.locator("#provider-tab-models").click();
   await expect(page.getByRole("checkbox", { name: "模型 1 非标准兼容" })).toBeChecked();
   await page.setViewportSize({ width: 1120, height: 760 });
   await expect(page.getByRole("checkbox", { name: "模型 1 非标准兼容" })).toBeVisible();

@@ -98,11 +98,6 @@ test("navigation, search, theme persistence and list controls", async ({ page })
   await page.locator(".connection-filters").getByRole("button", { name: /全部/ }).click();
   await page.getByRole("checkbox", { name: "DeepSeek 启用连接" }).uncheck();
   await expect(page.getByRole("checkbox", { name: "DeepSeek 启用连接" })).not.toBeChecked();
-  await page.getByRole("button", { name: "OpenAI Anthropic 协议转换", exact: true }).click();
-  await expect(page.getByRole("button", { name: "OpenAI Anthropic 协议转换", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
   await page.getByRole("searchbox", { name: "搜索页面" }).fill("模型");
   await expect(page.locator(".primary-nav").getByRole("button")).toHaveCount(2);
   await page.locator(".sidebar-search").getByRole("button", { name: "清空搜索" }).click();
@@ -133,13 +128,15 @@ test("provider and model editors, unsaved changes, dialogs and select portals", 
   await expect(page.locator("h1:visible")).toHaveText("添加 Provider");
   await expectFits(page);
   await page.screenshot({ path: testInfo.outputPath("provider-editor.png") });
+  await page.locator("#provider-tab-models").click();
   await page.getByRole("button", { name: "添加模型", exact: true }).click();
   await page.getByRole("combobox", { name: "标准模型 1", exact: true }).click();
-  const modelOptionDescription = page.locator(".standard-model-select-menu .ui-select-option-copy small");
-  await expect(modelOptionDescription).toHaveText("Context 200,000");
-  await expect(modelOptionDescription).not.toContainText("Effort");
-  await expect(modelOptionDescription).not.toContainText("输出");
+  // The standard model menu lists names only: no context, effort or output details.
+  // A new provider defaults to Anthropic, so only that company's standard models are offered.
+  await expect(page.getByRole("option", { name: "Claude Sonnet", exact: true })).toBeVisible();
+  await expect(page.locator(".standard-model-select-menu .ui-select-option-copy small")).toHaveCount(0);
   await page.keyboard.press("Escape");
+  await page.locator("#provider-tab-connection").click();
   await page.locator('input[name="name"]').fill("New connection");
   await page.locator(".sidebar").getByRole("button", { name: "模型管理", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -305,21 +302,18 @@ test("resize preserves readable typography, compact navigation and native chrome
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`${theme}: client protocol chips share a baseline, icon scale and state layout`, async ({
-    page,
-  }, testInfo) => {
+  test(`${theme}: client protocol chips share a baseline and icon scale`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1120, height: 760 });
     await installBackend(page, theme, false, false, { native: true, fullPage: true });
     await page.goto("/");
     await expect(page.locator(".connection-row")).toHaveCount(6);
-    await expect(page.locator(".connection-protocols .provider-brand-icon")).toHaveCount(18);
+    await expect(page.locator(".connection-protocols .provider-brand-icon")).toHaveCount(6);
     await expect(page.locator(".connection-name .provider-brand-icon")).toHaveCount(6);
     await expect(page.locator(".connection-protocol.native")).toHaveCount(6);
-    await expect(page.locator(".connection-protocol.native .lucide-lock-keyhole")).toHaveCount(6);
     const checkAlignment = async () => {
       const metadata = await page.locator(".connection-name").evaluateAll((names) =>
         names.map((name) => {
-          const alias = name.querySelector(".connection-alias")!.getBoundingClientRect();
+          const alias = name.querySelector("button")!.getBoundingClientRect();
           const models = name.querySelector(".connection-meta")!.getBoundingClientRect();
           return {
             followsAlias: models.x >= alias.right,
@@ -338,13 +332,11 @@ for (const theme of ["light", "dark"] as const) {
             .getBoundingClientRect();
           const label = chip.querySelector(".connection-protocol-copy") as HTMLElement;
           const text = label.getBoundingClientRect();
-          const state = chip.querySelector(".connection-protocol-state")!.getBoundingClientRect();
           return {
             height: chip.getBoundingClientRect().height,
             width: icon.width,
             iconHeight: icon.height,
             delta: icon.y + icon.height / 2 - text.y - text.height / 2,
-            stateDelta: Math.abs(state.y + state.height / 2 - text.y - text.height / 2),
             clipped: label.scrollWidth > label.clientWidth + 1,
           };
         }),
@@ -353,7 +345,6 @@ for (const theme of ["light", "dark"] as const) {
         expect(item.width).toBe(14);
         expect(item.iconHeight).toBe(14);
         expect(Math.abs(item.delta - 1)).toBeLessThanOrEqual(0.5);
-        expect(item.stateDelta).toBeLessThanOrEqual(0.5);
         expect(item.clipped).toBe(false);
       }
       expect(new Set(measurements.map((item) => item.height)).size).toBe(1);
@@ -364,12 +355,6 @@ for (const theme of ["light", "dark"] as const) {
       .locator(".connection-row")
       .first()
       .screenshot({ path: testInfo.outputPath("protocol-row.png") });
-    const conversion = page.getByRole("button", { name: "OpenAI Anthropic 协议转换", exact: true });
-    await expect(conversion).toHaveAttribute("aria-pressed", "false");
-    await conversion.focus();
-    await page.keyboard.press("Space");
-    await expect(conversion).toHaveAttribute("aria-pressed", "true");
-    await expect(conversion.locator(".connection-protocol-state .lucide-check")).toBeVisible();
     await checkAlignment();
     await page.setViewportSize({ width: 390, height: 844 });
     await checkAlignment();
