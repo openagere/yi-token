@@ -26,7 +26,6 @@ const common = {
     sessions: "会话",
     usage: "模型用量",
     terminal: "终端管理",
-    terminalExpand: "展开或收起终端管理",
     settings: "设置",
     phase: {
       starting: "启动中",

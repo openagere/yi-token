@@ -44,20 +44,6 @@ export function modelSimilarity(fetched: string, standard: string): number {
   return 0;
 }
 
-/** 返回最相似的标准模型；没有匹配的返回 undefined。 */
-export function matchStandardModel<T extends { name: string }>(fetched: string, standards: readonly T[]): T | undefined {
-  let best: T | undefined;
-  let bestScore = 0;
-  for (const standard of standards) {
-    const score = modelSimilarity(fetched, standard.name);
-    if (score > bestScore) {
-      best = standard;
-      bestScore = score;
-    }
-  }
-  return best;
-}
-
 /** /models 条目的元数据（与后端 `DiscoveredModel` 对应的子集）。 */
 export interface DiscoveredMeta {
   id: string;

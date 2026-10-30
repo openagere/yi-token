@@ -61,10 +61,6 @@ async fn test_provider_impl(
     }
 }
 
-fn get_proxy_status_impl(s: &Svc) -> bool {
-    s.get_proxy_status()
-}
-
 async fn get_proxy_runtime_impl(s: &Svc) -> CoreResult<ProxyRuntimeView> {
     s.get_proxy_runtime().await
 }
@@ -179,19 +175,6 @@ async fn set_active_engine_impl(
 
 async fn get_active_engines_impl(s: &Svc) -> CoreResult<Vec<ActiveEngineView>> {
     s.get_active_engines().await
-}
-
-async fn list_provider_models_impl(s: &Svc, id: String) -> CoreResult<Vec<String>> {
-    s.list_provider_models(id).await
-}
-
-async fn select_terminal_model_impl(
-    s: &Svc,
-    client: Client,
-    provider_id: String,
-    model: String,
-) -> CoreResult<ActiveEngineView> {
-    s.select_terminal_model(client, provider_id, model).await
 }
 
 async fn discover_provider_models_impl(
@@ -329,11 +312,6 @@ pub async fn save_provider(
 #[tauri::command]
 pub async fn delete_provider(state: State<'_, AppState>, id: String) -> CoreResult<()> {
     delete_provider_impl(&state.0, id).await
-}
-
-#[tauri::command]
-pub fn get_proxy_status(state: State<'_, AppState>) -> bool {
-    get_proxy_status_impl(&state.0)
 }
 
 #[tauri::command]
@@ -479,24 +457,6 @@ pub async fn set_active_engine(
 #[tauri::command]
 pub async fn get_active_engines(state: State<'_, AppState>) -> CoreResult<Vec<ActiveEngineView>> {
     get_active_engines_impl(&state.0).await
-}
-
-#[tauri::command]
-pub async fn list_provider_models(
-    state: State<'_, AppState>,
-    id: String,
-) -> CoreResult<Vec<String>> {
-    list_provider_models_impl(&state.0, id).await
-}
-
-#[tauri::command]
-pub async fn select_terminal_model(
-    state: State<'_, AppState>,
-    client: Client,
-    provider_id: String,
-    model: String,
-) -> CoreResult<ActiveEngineView> {
-    select_terminal_model_impl(&state.0, client, provider_id, model).await
 }
 
 #[tauri::command]

@@ -63,10 +63,6 @@ impl Services {
         }
     }
 
-    pub fn get_proxy_status(&self) -> bool {
-        self.proxy.status().running
-    }
-
     pub async fn get_proxy_runtime(self: &Arc<Self>) -> CoreResult<ProxyRuntimeView> {
         self.run(|s| {
             let settings = s.db.with_conn(settings::get)?;

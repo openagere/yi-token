@@ -486,43 +486,6 @@ export async function installBackend(
                     activeEngines.find((item) => item.client === target.client) ?? null;
                 return;
               }
-              case "list_provider_models":
-                return [
-                  "gpt",
-                  "gpt-mini",
-                  "gpt-large",
-                  ...Array.from({ length: 24 }, (_, index) => `remote-${index + 1}`),
-                ];
-              case "select_terminal_model": {
-                const target = profiles.find((item) => item.client === args.client);
-                const provider = providers.find((item) => item.id === args.providerId);
-                const modelName = typeof args.model === "string" ? args.model : "";
-                let model = provider?.models.find(
-                  (item) => item.name === modelName || item.route_id === modelName,
-                );
-                if (provider && modelName && !model) {
-                  model = {
-                    ...provider.models[0],
-                    id: `fetched-${modelName}`,
-                    provider_id: provider.id,
-                    name: modelName,
-                    route_id: `${modelName}(${provider.short_code})`,
-                  };
-                  provider.models.push(model);
-                }
-                if (target && provider && model) {
-                  const engine = {
-                    client: target.client,
-                    model_id: model.id,
-                    exposed_name: model.route_id,
-                    provider_name: provider.name,
-                  };
-                  activeEngines = [...activeEngines.filter((item) => item.client !== target.client), engine];
-                  target.profile.active_engine = engine;
-                  return engine;
-                }
-                return null;
-              }
               case "discover_provider_models": {
                 const discovered = (id: string, extra: Record<string, unknown> = {}) => ({
                   id,

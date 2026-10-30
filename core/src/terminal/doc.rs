@@ -2,7 +2,7 @@
 //!
 //! TOML is edited through `toml_edit` so comments and key order survive. JSON,
 //! JSONC and YAML are edited as values; comments in those formats are not
-//! preserved (the same behavior as yi-llm).
+//! preserved.
 
 use crate::error::{CoreError, CoreResult};
 use serde_json::{Map, Value, json};

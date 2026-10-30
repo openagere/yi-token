@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn capabilities_validate_matches_yi_llm() {
+    fn capabilities_validate_rules() {
         let r = Protocol::Responses;
         let mut v = caps();
         assert!(v.validate(r).is_ok());

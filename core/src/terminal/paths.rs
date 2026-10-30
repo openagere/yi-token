@@ -19,7 +19,3 @@ pub fn env_path(ctx: &ClientCtx, name: &str) -> Option<PathBuf> {
 pub fn config_home(ctx: &ClientCtx) -> PathBuf {
     env_path(ctx, "XDG_CONFIG_HOME").unwrap_or_else(|| ctx.home.join(".config"))
 }
-
-pub fn home(ctx: &ClientCtx) -> &std::path::Path {
-    &ctx.home
-}

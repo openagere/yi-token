@@ -32,29 +32,6 @@ pub fn models_endpoint(protocol: Protocol) -> &'static str {
     }
 }
 
-/// Reads model ids from an OpenAI-style `{data:[{id}]}` or `{models:[...]}` payload.
-pub fn parse_model_ids(body: &Value) -> Vec<String> {
-    let list = body
-        .get("data")
-        .or_else(|| body.get("models"))
-        .and_then(Value::as_array);
-    let Some(list) = list else {
-        return Vec::new();
-    };
-    let mut ids = Vec::new();
-    for item in list {
-        let id = item
-            .as_str()
-            .or_else(|| item.get("id").and_then(Value::as_str))
-            .unwrap_or("")
-            .trim();
-        if !id.is_empty() && !ids.iter().any(|existing: &String| existing == id) {
-            ids.push(id.to_owned());
-        }
-    }
-    ids
-}
-
 #[derive(Clone)]
 pub struct UpstreamClient {
     http: reqwest::Client,
@@ -215,19 +192,5 @@ mod tests {
         assert_eq!(endpoint(Protocol::Responses), "/responses");
         assert_eq!(models_endpoint(Protocol::Anthropic), "/v1/models");
         assert_eq!(models_endpoint(Protocol::OpenaiChat), "/models");
-    }
-
-    #[test]
-    fn parse_model_ids_accepts_common_shapes() {
-        let body = json!({"data": [{"id": "gpt-4o"}, {"id": "gpt-4o"}, "claude-sonnet"]});
-        assert_eq!(
-            parse_model_ids(&body),
-            vec!["gpt-4o".to_string(), "claude-sonnet".to_string()]
-        );
-        let body = json!({"models": [{"id": "m1"}, "m2"]});
-        assert_eq!(
-            parse_model_ids(&body),
-            vec!["m1".to_string(), "m2".to_string()]
-        );
     }
 }

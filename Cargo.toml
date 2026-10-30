@@ -24,13 +24,11 @@ serde_norway = "0.9"
 json5 = "0.4"
 toml_edit = "0.25"
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
 axum = "0.8"
 tower = "0.5"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "json", "rustls-tls", "http2"] }
-eventsource-stream = "0.2"
 bytes = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rusqlite_migration = "2"
@@ -47,7 +45,6 @@ base64 = "0.22"
 zstd = "0.13"
 rand = "0.8"
 zeroize = "1"
-thiserror = "2"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -56,8 +53,6 @@ rfd = { version = "0.16", default-features = false, features = ["xdg-portal", "w
 wiremock = "0.6"
 insta = "1"
 tempfile = "3"
-serial_test = "4"
-pretty_assertions = "1"
 
 [profile.release]
 codegen-units = 1

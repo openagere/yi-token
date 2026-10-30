@@ -2,7 +2,6 @@ import { invoke } from "@/shared/api";
 import type {
   BlobView,
   Client,
-  LiveSnapshot,
   SessionChanges,
   SessionDetail,
   SessionListInput,
@@ -27,7 +26,6 @@ declare module "@/shared/api/tauri" {
     get_trajectory_status: { args: void; result: TrajectoryStatus };
     save_trajectory_settings: { args: { settings: TrajectorySettings }; result: void };
     rebuild_trajectory_db: { args: void; result: void };
-    get_live_requests: { args: { sinceSeq: number }; result: LiveSnapshot };
   }
 }
 
@@ -43,5 +41,4 @@ export const sessionsApi = {
   status: () => invoke("get_trajectory_status"),
   saveSettings: (settings: TrajectorySettings) => invoke("save_trajectory_settings", { settings }),
   rebuild: () => invoke("rebuild_trajectory_db"),
-  live: (sinceSeq: number) => invoke("get_live_requests", { sinceSeq }),
 };

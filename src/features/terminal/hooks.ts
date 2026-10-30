@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { providerKeys } from "@/features/providers";
 import { describeError } from "@/shared/api";
 import { terminalApi } from "./api";
 import type { TerminalClient, TerminalDirectProfile, TerminalProfile, TerminalStatus } from "./types";
@@ -47,50 +46,10 @@ export function useSetActiveEngine() {
 }
 
 /** 把终端的实际模型切到某个已保存的 Provider 模型。立即生效，不改终端配置文件。 */
-export function useSelectTerminalModel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      client,
-      providerId,
-      model,
-    }: {
-      client: TerminalClient;
-      providerId: string;
-      model: string;
-    }) => terminalApi.selectTerminalModel(client, providerId, model),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: terminalKeys.profiles });
-      void queryClient.invalidateQueries({ queryKey: terminalKeys.activeEngines });
-      void queryClient.invalidateQueries({ queryKey: providerKeys.all });
-    },
-  });
-}
-
 /**
  * 按草稿生成配置预览。草稿变化后先等待 250ms 再请求；等待与请求期间 `pending` 为 true，
  * 且不会返回旧草稿对应的结果。
  */
-export function useTerminalPreview(profile: TerminalProfile, enabled: boolean) {
-  const profileKey = JSON.stringify(profile);
-  const settledKey = useDebouncedValue(profileKey, PREVIEW_DEBOUNCE_MS);
-  const settled = settledKey === profileKey;
-  const active = enabled && settled;
-  const query = useQuery({
-    queryKey: terminalKeys.preview(settledKey),
-    queryFn: () => terminalApi.preview(JSON.parse(settledKey) as TerminalProfile),
-    enabled: active,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnWindowFocus: false,
-  });
-  return {
-    preview: active ? query.data : undefined,
-    error: active && query.error ? describeError(query.error) : "",
-    pending: enabled && (!settled || query.isFetching),
-  };
-}
-
 export function useTerminalDirectPreview(profile: TerminalDirectProfile, enabled: boolean) {
   const profileKey = JSON.stringify(profile);
   const settledKey = useDebouncedValue(profileKey, PREVIEW_DEBOUNCE_MS);

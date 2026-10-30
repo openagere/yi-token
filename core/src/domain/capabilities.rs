@@ -59,16 +59,6 @@ fn has_duplicates<T: std::hash::Hash + Eq>(values: &[T]) -> bool {
 }
 
 impl Capabilities {
-    /// Conservative capabilities advertised for `Auto` before an engine is
-    /// selected. Only text is guaranteed, and no limits are invented.
-    pub fn default_for(_protocol: Protocol) -> Self {
-        Self {
-            input_modalities: Some(vec![Modality::Text]),
-            output_modalities: Some(vec![Modality::Text]),
-            ..Self::default()
-        }
-    }
-
     pub fn validate(&self, protocol: Protocol) -> CoreResult<()> {
         let invalid = |m: String| Err(CoreError::Validation(m));
         for (name, values) in [

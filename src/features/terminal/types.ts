@@ -1,4 +1,4 @@
-import type { ActiveEngineView, Client, DirectProfile, ModelSource, RouteMode } from "@/generated";
+import type { ActiveEngineView, Client, DirectProfile, RouteMode } from "@/generated";
 import type { ProviderType } from "@/shared/lib";
 
 export type TerminalRouteMode = RouteMode;
@@ -10,7 +10,6 @@ export interface TerminalSelection {
   model: string;
 }
 export type TerminalDirectProfile = DirectProfile;
-export type TerminalModelSource = ModelSource;
 export interface TerminalProfile {
   client: TerminalClient;
   models: TerminalSelection[];

@@ -16,10 +16,6 @@ export function formatClock(timestamp: number, language: string): string {
   return new Date(timestamp).toLocaleTimeString(language, { hour12: false });
 }
 
-export function formatDateTime(timestamp: number, language: string): string {
-  return new Date(timestamp).toLocaleString(language, { hour12: false });
-}
-
 /** `now` 由调用方传入（如最近一次轮询时间），保持渲染纯净。 */
 export function formatUptime(startedAt: number | null, now: number, t: Translate): string {
   if (!startedAt) return "--";

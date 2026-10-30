@@ -68,44 +68,4 @@ impl Services {
         })
         .await
     }
-
-    /// Lists model ids advertised by the provider's own models API.
-    pub async fn list_provider_models(self: &Arc<Self>, id: String) -> CoreResult<Vec<String>> {
-        let provider = self
-            .run(move |s| {
-                s.db.with_conn(|conn| providers::get(conn, &id))?
-                    .ok_or_else(|| CoreError::NotFound("服务商不存在".into()))
-            })
-            .await?;
-        if !provider.enabled {
-            return Err(CoreError::Validation("服务商未启用".into()));
-        }
-        self.http.list_models(&provider).await
-    }
-
-    /// Points `client` at `model` on `provider_id`, creating the local model row when needed.
-    /// Terminal files are not touched. Later proxy requests record this real model.
-    pub async fn select_terminal_model(
-        self: &Arc<Self>,
-        client: Client,
-        provider_id: String,
-        model_name: String,
-    ) -> CoreResult<ActiveEngineView> {
-        self.run(move |s| {
-            let view = s.db.with_conn(|conn| {
-                let provider = providers::get(conn, &provider_id)?
-                    .ok_or_else(|| CoreError::NotFound("所选引擎的服务商不存在".into()))?;
-                if !provider.enabled {
-                    return Err(CoreError::Validation("所选引擎的服务商未启用".into()));
-                }
-                let model = models::ensure(conn, &provider, &model_name)?;
-                engines::set(conn, client, Some(&model.id))?;
-                let providers = providers::list(conn)?;
-                Ok(engine_view(client, &model, &providers))
-            })?;
-            s.routes_changed();
-            Ok(view)
-        })
-        .await
-    }
 }

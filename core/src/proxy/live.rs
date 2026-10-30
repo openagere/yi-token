@@ -134,14 +134,6 @@ impl LiveRegistry {
             seq: st.seq,
         }
     }
-
-    /// Drops every entry. The sequence counter keeps counting, so a client
-    /// holding an old cursor never sees a sequence number reused.
-    pub fn clear(&self) {
-        let mut st = self.lock();
-        st.in_flight.clear();
-        st.completed.clear();
-    }
 }
 
 #[cfg(test)]

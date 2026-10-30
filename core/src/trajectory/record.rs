@@ -23,13 +23,6 @@ pub enum StopReason {
     Unknown,
 }
 
-/// How much of a step is stored.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CaptureLevel {
-    Full,
-    MetadataOnly,
-}
-
 /// Client-supplied keys, before any prefix-chain matching.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClientKeys {

@@ -28,7 +28,6 @@ const common: DeepString<typeof zh> = {
     sessions: "Sessions",
     usage: "Usage",
     terminal: "Terminal management",
-    terminalExpand: "Expand or collapse terminal management",
     settings: "Settings",
     phase: {
       starting: "Starting",

@@ -19,10 +19,6 @@ declare module "@/shared/api/tauri" {
     disconnect_terminal: { args: { client: TerminalClient }; result: TerminalApplyResult };
     set_active_engine: { args: { client: TerminalClient; modelId: string | null }; result: void };
     get_active_engines: { args: void; result: TerminalActiveEngine[] };
-    select_terminal_model: {
-      args: { client: TerminalClient; providerId: string; model: string };
-      result: TerminalActiveEngine;
-    };
   }
 }
 
@@ -36,6 +32,4 @@ export const terminalApi = {
   activeEngines: () => invoke("get_active_engines"),
   setActiveEngine: (client: TerminalClient, modelId: string | null) =>
     invoke("set_active_engine", { client, modelId }),
-  selectTerminalModel: (client: TerminalClient, providerId: string, model: string) =>
-    invoke("select_terminal_model", { client, providerId, model }),
 };

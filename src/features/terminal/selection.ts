@@ -1,4 +1,3 @@
-import { supportsTerminal } from "@/features/models";
 import type { ProviderType, ProviderView } from "@/features/providers";
 import type {
   TerminalActiveEngine,
@@ -71,13 +70,6 @@ export const EMPTY_PROFILES: Record<TerminalClient, TerminalProfile> = {
   "deepseek-harness": emptyProfile("deepseek-harness", "openai_chat"),
 };
 
-export const selectionKey = (selection: TerminalSelection) => `${selection.provider_id}\0${selection.model}`;
-
-export const groupKey = (client: TerminalClient, providerId: string) => `${client}:${providerId}`;
-
-export const providerSelections = (provider: ProviderView): TerminalSelection[] =>
-  provider.models.map((model) => ({ provider_id: provider.id, model: model.route_id }));
-
 /** 保留已启用、协议可用且模型能被该终端使用的 Provider。 */
 const DIRECT_PROTOCOLS: Record<TerminalClient, readonly ProviderType[]> = {
   codex: ["responses"],
@@ -114,36 +106,6 @@ export function emptyDirectProfile(client: TerminalClient, providerId = ""): Ter
   };
 }
 
-export function compatibleProviders(
-  providers: readonly ProviderView[],
-  protocol: ProviderType,
-): ProviderView[] {
-  return providers
-    .filter((provider) => provider.enabled)
-    .map((provider) => ({
-      ...provider,
-      models: provider.models.filter((model) =>
-        supportsTerminal(model.capabilities, protocol, model.protocol ?? provider.provider_type),
-      ),
-    }))
-    .filter((provider) => provider.models.length);
-}
-
-export function filterProviders(providers: readonly ProviderView[], query: string): ProviderView[] {
-  return providers
-    .map((provider) => ({
-      ...provider,
-      models: provider.models.filter((model) =>
-        `${provider.name} ${model.route_id}`.toLowerCase().includes(query),
-      ),
-    }))
-    .filter((provider) => provider.models.length);
-}
-
-export function availableSelectionKeys(providers: readonly ProviderView[]): Set<string> {
-  return new Set(providers.flatMap((provider) => providerSelections(provider).map(selectionKey)));
-}
-
 /** 生成新草稿；默认模型不在集合中时回落到第一个模型，无已选模型时回落到 Auto。 */
 export function buildProfile(
   client: TerminalClient,
@@ -164,19 +126,4 @@ export function buildProfile(
     route_mode: routeMode,
     active_engine: activeEngine,
   };
-}
-
-/** 固定尚未记录的 Provider 分组展开状态，避免选择变化时分组自行展开或收起。 */
-export function pinExpansion(
-  current: Record<string, boolean>,
-  client: TerminalClient,
-  providers: readonly ProviderView[],
-  profile: TerminalProfile,
-): Record<string, boolean> {
-  const next = { ...current };
-  for (const provider of providers) {
-    const id = groupKey(client, provider.id);
-    if (!(id in next)) next[id] = profile.models.some((model) => model.provider_id === provider.id);
-  }
-  return next;
 }
