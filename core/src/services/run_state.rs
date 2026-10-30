@@ -51,10 +51,7 @@ pub fn spawn_monitor_saver(db: Db, monitor: Monitor) -> MonitorSaver {
             let mut saved = String::new();
             loop {
                 // Anything but a timeout means the owner dropped its sender: save once more and stop.
-                let last = match rx.recv_timeout(SAVE_INTERVAL) {
-                    Err(RecvTimeoutError::Timeout) => false,
-                    _ => true,
-                };
+                let last = !matches!(rx.recv_timeout(SAVE_INTERVAL), Err(RecvTimeoutError::Timeout));
                 save_if_changed(&db, &monitor, &mut saved);
                 if last {
                     break;

@@ -147,7 +147,7 @@ async fn claude_auto_mode_safeguards_pass_through_an_anthropic_provider() {
         .respond_with(ResponseTemplate::new(200).set_body_json(template.clone()))
         .mount(&env.mock)
         .await;
-    let mut upstream = provider("pax", "an", Protocol::Anthropic, &env.mock.uri());
+    let upstream = provider("pax", "an", Protocol::Anthropic, &env.mock.uri());
     env.install(upstream, model("max", "claude-up"));
     let exposed = yi_core::domain::exposed_name("name-pax", "claude-up");
     let route = env.route(Protocol::Anthropic, "pax", &exposed);
@@ -1130,7 +1130,7 @@ async fn model_protocol_override_selects_its_upstream_endpoint() {
         .respond_with(ResponseTemplate::new(200).set_body_json(upstream_response(Protocol::Anthropic)))
         .mount(&env.mock)
         .await;
-    let mut upstream = provider("mix", "mx", Protocol::Responses, &env.mock.uri());
+    let upstream = provider("mix", "mx", Protocol::Responses, &env.mock.uri());
     let mut overridden = model("mm", "claude-up");
     overridden.protocol = Some(Protocol::Anthropic);
     env.install(upstream, overridden);
