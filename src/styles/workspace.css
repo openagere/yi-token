@@ -106,7 +106,6 @@ html[data-platform="macos"] .workspace-toolbar { padding-left: 78px; }
 .connection-table.fit-fill > .connection-table-heading, .standard-model-table.fit-fill > .standard-model-head { flex: none; }
 .connection-rows, .standard-model-rows { flex: 1 1 0; min-height: 0; overflow: hidden; }
 .proxy-page-host > .proxy-page { flex: 1; }
-.global-error { width: calc(100% - 2 * var(--page-gutter)); margin: 20px auto 0; }
 .sidebar-collapsed { --sidebar-width: 66px; }
 .sidebar-collapsed .sidebar { padding-right: 10px; padding-left: 10px; }
 .sidebar-collapsed .brand { justify-content: center; padding: 0; }
@@ -157,28 +156,17 @@ h1 { font-weight: 500; }
 :is(.protocol-option, .protocol-chip, .modality-option, .effort-state-option, .effort-levels label).selected { border-color: var(--accent-border); color: var(--text-primary); background: var(--surface-subtle); box-shadow: none; }
 :is(.connection-editor-footer, .editor-footer) { background: var(--surface); backdrop-filter: none; box-shadow: none; }
 :is(.proxy-workspace-tabs, .terminal-client-tabs, .analytics-tabs) { gap: 24px; }
-.proxy-workspace-tabs > button[aria-selected="true"]::after, .analytics-tabs > button[aria-selected="true"]::after { background: var(--text-primary); }
-.analytics-tabs > button[aria-selected="true"] { color: var(--text-primary); font-weight: 500; }
 :is(.log-output, .proxy-log-output, .terminal-preview-code) { border-radius: 8px; color: var(--code-text); background: var(--code-bg); }
 [data-theme="dark"] .provider-brand-icon.monochrome img { filter: invert(1); }
 .proxy-state-symbol { border-color: transparent; background: var(--surface-subtle); }
 .proxy-runtime-facts { gap: 20px; padding: 10px 0; }
-.proxy-workspace-tabs { margin-top: 12px; }
-.analytics-total-metric > strong { color: var(--text-primary); font-weight: 500; }
-.analytics-token-metrics dd { color: var(--text-primary); font-weight: 500; }
-.provider-empty { border: 0; padding-top: 48px; }
-.provider-empty h2 { font-size: 18px; font-weight: 500; }
-.empty-symbol { border: 0; color: var(--text-muted); background: transparent; }
 
 /* Shared dialog chrome: title first, no leading icon, same surface in every feature. */
 .app-dialog { position: fixed; inset: 0; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); margin: auto; padding: 0; overflow: auto; border: 1px solid var(--dialog-border); border-radius: 12px; color: var(--text-primary); background: var(--dialog-bg); box-shadow: var(--shadow-lg); }
 .app-dialog::backdrop { background: var(--backdrop); }
 .app-dialog-body { padding: 24px; }
-.app-dialog-body > h2, .app-dialog-header h2 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 550; letter-spacing: -0.015em; line-height: 1.35; overflow-wrap: anywhere; }
-.app-dialog-header h2 { margin: 0; }
+.app-dialog-body > h2 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 550; letter-spacing: -0.015em; line-height: 1.35; overflow-wrap: anywhere; }
 .app-dialog-body > p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
-.app-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.app-dialog-header .icon-button { width: 28px; height: 28px; min-height: 28px; }
 .app-dialog-body p.app-dialog-error { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; padding: 9px 11px; border: 1px solid var(--danger-border); border-radius: 9px; color: var(--danger); background: var(--danger-soft); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .app-dialog-error > svg { flex: none; margin-top: 1px; }
 .app-dialog-tone { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: start; gap: 14px; }

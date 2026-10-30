@@ -1,7 +1,7 @@
-import type { Company } from "@/generated";
+import type { Company, Protocol } from "@/generated";
 
-/** 上游 / 客户端协议标识。 */
-export type ProviderType = "anthropic" | "openai_chat" | "responses";
+/** 上游 / 客户端协议标识，与后端的 `Protocol` 同一来源。 */
+export type ProviderType = Protocol;
 
 /** 标准模型的公司：Chat 与 Responses 共用 OpenAI 的标准模型，Anthropic Messages 使用 Anthropic 的。 */
 export type { Company };
@@ -10,14 +10,13 @@ interface ProtocolDefinition {
   id: ProviderType;
   name: string;
   shortName: string;
-  description: string;
   brand: "openai" | "anthropic";
 }
 
 export const PROTOCOLS = [
-  { id: "responses", name: "Responses API", shortName: "Responses", description: "Responses · reasoning 参数直通", brand: "openai" },
-  { id: "openai_chat", name: "OpenAI Chat Completions", shortName: "Chat", description: "Chat Completions · reasoning_effort", brand: "openai" },
-  { id: "anthropic", name: "Anthropic Messages", shortName: "Anthropic", description: "Messages API · thinking budget", brand: "anthropic" },
+  { id: "responses", name: "Responses API", shortName: "Responses", brand: "openai" },
+  { id: "openai_chat", name: "OpenAI Chat Completions", shortName: "Chat", brand: "openai" },
+  { id: "anthropic", name: "Anthropic Messages", shortName: "Anthropic", brand: "anthropic" },
 ] as const satisfies readonly ProtocolDefinition[];
 
 export const PROTOCOLS_BY_ID: Record<ProviderType, ProtocolDefinition> = {
