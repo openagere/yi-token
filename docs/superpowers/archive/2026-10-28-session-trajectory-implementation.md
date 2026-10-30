@@ -1,3 +1,5 @@
+> 历史实施计划（已完成，仅作记录）。复选框保留原始状态，不代表未完成；当前行为以 `docs/spec-coverage.md` 与代码为准。
+
 # 观测体系重构（运行 / 会话 / 用量）实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -10,7 +12,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-28-session-trajectory-design.md`（执行者必须同时阅读，尤其是第 3、4、5、8.3.1 节）。前置 spec：`docs/superpowers/specs/2026-10-25-yi-token-design.md`。
 
-> **关于本计划的写法：** 沿用前一份计划 `docs/superpowers/plans/2026-10-25-yi-token-implementation.md` 的约定：不附完整实现代码。每个任务给出文件、接口签名、SQL、行为要求、测试用例（名称与断言要点）和验证命令。行为细节以 spec 为准。会话页的交互细节以 deepseek-harness 源码为准，路径见每个任务的"参考"。
+> **关于本计划的写法：** 沿用前一份计划 `docs/superpowers/archive/2026-10-25-yi-token-implementation.md` 的约定：不附完整实现代码。每个任务给出文件、接口签名、SQL、行为要求、测试用例（名称与断言要点）和验证命令。行为细节以 spec 为准。会话页的交互细节以 deepseek-harness 源码为准，路径见每个任务的"参考"。
 
 ## 如何阅读 deepseek-harness 参考代码
 

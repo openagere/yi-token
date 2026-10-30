@@ -1,7 +1,7 @@
 # 观测体系重构：运行 / 会话 / 用量
 
 - 日期：2026-10-28
-- 状态：第 2 版草稿，待用户审阅（尚未进入实施计划）
+- 状态：已实施（v0.2.0）。测试对照见 `docs/spec-coverage.md`。
 - 前置文档：`docs/superpowers/specs/2026-10-25-yi-token-design.md`。本文件只写增量；未提及的条款以前置文档为准
 - 参考：`D:\Github\deepseek-harness` 的 `packages/client/ui-trajectory`（回合 / 步骤账本、时间线总览、记录检查器）
 

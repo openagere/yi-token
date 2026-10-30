@@ -2,7 +2,7 @@
 
 本文档把 `docs/superpowers/specs/2026-10-25-yi-token-design.md` 的每个章节映射到
 实现计划的任务与验证位置，便于审阅时逐项核对。任务编号对应
-`docs/superpowers/plans/2026-10-25-yi-token-implementation.md`。验证位置写的是
+`docs/superpowers/archive/2026-10-25-yi-token-implementation.md`。验证位置写的是
 仓库中实际存在的测试文件与测试函数；`*.rs` 内联单元测试标注所在模块。
 
 ## 章节映射
@@ -15,7 +15,7 @@
 | §3.2 | 依赖规则（core 不依赖 tauri、proxy 走 RouteSource、services 门面） | 1、2、7、8、16 | `core/Cargo.toml`、`core/src/proxy/resolve.rs`、`src-tauri/src/commands.rs` |
 | §3.3 | rusqlite + r2d2、WAL、外键、`unsafe_code = "forbid"` | 2、4 | `Cargo.toml`、`core/src/storage/mod.rs` |
 | §3.4 | 数据目录、数据库、日志、模型目录变量 | 2、5、7 | `core/src/paths.rs`、`core/tests/logging_level.rs`、`core/tests/catalog.rs` |
-| §4.1 | `user_version` 与迁移同事务 | 4 | `core/tests/storage_repos.rs`：`migration_sets_user_version_1`、`migration_is_atomic` |
+| §4.1 | `user_version` 与迁移同事务 | 4 | `core/tests/storage_repos.rs`：`baseline_schema_is_applied`、`migration_is_atomic` |
 | §4.2 | 各表结构与约束 | 4 | `core/src/storage/migrations.rs`；`core/tests/storage_repos.rs` |
 | §4.3 | JSON 列原则 | 4 | schema 与 `core/src/domain/` |
 | §4.4 | 前端 ID 由 number 改为 string | 7、9 | `ts-rs` 生成类型 `src/generated/`；`tests/mock-backend.ts` |
@@ -29,14 +29,14 @@
 | §5.7 | 监控采样、日志滚动与尾部读取、运行时调级 | 18 | `core/tests/proxy_monitor.rs`；`core/tests/logging_level.rs` |
 | §6.1 | 五个客户端、协议与配置文件 | 20 | `core/tests/terminal_clients.rs`；`core/tests/snapshots/` |
 | §6.2 | proxy / direct 两种模式 | 19、20、21、23 | `core/tests/terminal_clients.rs`、`terminal_service.rs` 快照与回滚 |
-| §6.3 | 所有权标识与只改 yi-token 条目 | 20、21 | `core/tests/terminal_clients.rs` 中“用户手写内容保留”“yi-llm 条目保留”快照 |
+| §6.3 | 所有权标识与只改 yi-token 条目 | 20、21 | `core/tests/terminal_clients.rs` 中`proxy_preserves_user_content`、“yi-llm 条目保留”快照 |
 | §6.4 | Doc 抽象、原子提交、备份回滚、预览脱敏 | 19 | `core/tests/terminal_commit.rs`；`core/src/terminal/commit.rs`、`doc.rs`（内联） |
 | §7.1 | Auto 定位、候选、终端独立、配置不改写 | 22、23 | `core/tests/proxy_auto.rs`；`tests/terminal-auto.spec.ts` |
 | §7.2 | Auto 请求流程、409、用量字段 | 22 | `core/tests/proxy_auto.rs`（`auto_without_engine_is_409`）；`core/tests/proxy_resolve.rs` |
 | §7.3 | Codex 模型元数据与切换提示 | 23 | `core/tests/terminal_clients.rs` 快照（`codex_auto_metadata_*`）；`tests/terminal-auto.spec.ts` |
 | §8.1 | `.yitoken` 信封、PBKDF2、AES-GCM、AAD、口令校验 | 24 | `core/tests/backup.rs`：`wrong_passphrase_fails`、`tampered_ciphertext_fails`、`tampered_header_fails`、`short_passphrase_rejected` |
 | §8.2 | 备份载荷字段 | 24 | `core/tests/backup.rs` 往返用例 |
-| §8.3 | 全量校验后单事务合并、冲突回滚、跳过无效终端引用、不改写文件 | 24 | `core/tests/backup.rs`：`short_code_conflict_rolls_back` |
+| §8.3 | 全量校验后单事务合并、冲突回滚、跳过无效终端引用、不改写文件 | 24 | `core/tests/backup.rs`：`provider_name_conflict_rolls_back` |
 | §9.1 | 23 个原有命令、2 个 Auto 命令、错误结构 | 8、18、21–24 | `src-tauri/src/lib.rs`；`core/tests/services_basic.rs`（如 `save_provider_duplicate_short_code_is_conflict`） |
 | §9.2 | `ts-rs` 类型生成、仅改数据接入层、Auto 复用现有样式 | 9、23 | `npm run typecheck`；视觉基线 |
 | §10.1 B1 | SSE 多字节 UTF-8 跨包切分 | 10、17 | `core/src/protocol/sse.rs`（`sse_decoder_handles_multibyte_split`）；`proxy_pipeline.rs`（`stream_chinese_split_across_chunks`） |
@@ -68,7 +68,7 @@
 ## 会话轨迹规格（2026-10-28）
 
 规格原文 `docs/superpowers/specs/2026-10-28-session-trajectory-design.md`，实施计划
-`docs/superpowers/plans/2026-10-28-session-trajectory-implementation.md`。
+`docs/superpowers/archive/2026-10-28-session-trajectory-implementation.md`。
 
 | 规格章节 | 内容 | 验证 |
 | --- | --- | --- |
@@ -85,7 +85,7 @@
 | §8.4 | 用量页 | `tests/usage.spec.ts`；`core/tests/usage_report.rs` |
 | §8.5 | 设置页轨迹设置 | `tests/settings.spec.ts` |
 | §9 | 测试策略与视觉基线 | `tests/zz-visual.spec.ts`（`sessions-*`、`usage-*`、`proxy-*`）；`core/tests/proxy_pipeline.rs`（`capture_overhead_is_small`，`--ignored`） |
-| 附录 A | 客户端会话标识抓包 | 待用户用真实客户端完成，见 `task-21-report.md` |
+| 附录 A | 客户端会话标识抓包 | 待用户用真实客户端完成（原任务报告未归档） |
 
 ## 验收命令
 

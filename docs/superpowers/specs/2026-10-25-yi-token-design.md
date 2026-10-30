@@ -1,7 +1,7 @@
 # yi-token 设计文档
 
 - 日期：2026-10-25
-- 状态：待用户审阅（第 2 版，已对照 yi-llm v0.1.8 源码核实）
+- 状态：已实施（v0.2.0）。测试对照见 `docs/spec-coverage.md`。
 - 参考实现：`D:\Github\yi-llm`（v0.1.8，`main` 分支）；另参考其 `refactor/backend-rust` 分支的缺陷修复与测试用例
 
 ## 1. 目标与范围

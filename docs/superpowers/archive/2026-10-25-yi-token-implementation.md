@@ -1,3 +1,5 @@
+> 历史实施计划（已完成，仅作记录）。复选框保留原始状态，不代表未完成；当前行为以 `docs/spec-coverage.md` 与代码为准。
+
 # yi-token 实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
