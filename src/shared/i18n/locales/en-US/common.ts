@@ -19,7 +19,6 @@ const common: DeepString<typeof zh> = {
     clearSearch: "Clear search",
     noResults: "No matching pages",
     toggleSidebar: "Toggle sidebar",
-    toggleTheme: "Toggle light / dark appearance",
     workspace: "Workspace",
     providers: "Providers",
     models: "Models",

@@ -104,7 +104,8 @@ test("navigation, search, theme persistence and list controls", async ({ page })
   await page.getByRole("button", { name: "展开或收起侧栏" }).click();
   await expect(page.locator(".app-shell")).toHaveClass(/sidebar-collapsed/);
   await page.getByRole("button", { name: "展开或收起侧栏" }).click();
-  await page.getByRole("button", { name: "切换浅色 / 深色外观" }).click();
+  await page.locator(".sidebar").getByRole("button", { name: "设置", exact: true }).click();
+  await page.getByRole("button", { name: /^深色/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(
     await page.evaluate(() => JSON.parse(localStorage.getItem("yi-token:settings")!).settings.theme),

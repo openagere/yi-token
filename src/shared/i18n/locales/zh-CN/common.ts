@@ -17,7 +17,6 @@ const common = {
     clearSearch: "清空搜索",
     noResults: "没有匹配的页面",
     toggleSidebar: "展开或收起侧栏",
-    toggleTheme: "切换浅色 / 深色外观",
     workspace: "工作区",
     providers: "连接",
     models: "模型管理",

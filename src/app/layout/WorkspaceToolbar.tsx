@@ -1,16 +1,14 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { Copy, Minus, Moon, PanelLeft, Square, Sun, X } from "lucide-react";
+import { Copy, Minus, PanelLeft, Square, X } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n } from "@/shared/i18n";
 import { detectPlatform } from "@/shared/lib";
 import { useNavigationStore } from "@/shared/navigation";
 import { notify } from "@/shared/notify";
-import { useSettings } from "@/shared/settings";
 
 export function WorkspaceToolbar() {
   const { t } = useI18n();
-  const { update } = useSettings();
   const disabled = useNavigationStore((state) => state.busy);
   const collapsed = useNavigationStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useNavigationStore((state) => state.toggleSidebar);
@@ -24,6 +22,18 @@ export function WorkspaceToolbar() {
     document.title = title;
     if (native) void getCurrentWindow().setTitle(title).catch(error => console.warn("Unable to synchronize window title", error));
   }, [native, title]);
+
+  // 原生红绿灯关闭不经过自绘按钮，这里拦截系统关闭请求，沿用未保存修改的确认流程。
+  useEffect(() => {
+    if (!systemTitlebar) return;
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    void getCurrentWindow().onCloseRequested(event => {
+      event.preventDefault();
+      guarded(() => { void getCurrentWindow().destroy().catch(error => notify(`${t("window.failed")}${String(error)}`, "error")); });
+    }).then(stop => { if (active) unlisten = stop; else stop(); }).catch(() => {});
+    return () => { active = false; unlisten?.(); };
+  }, [systemTitlebar, guarded, t]);
 
   useEffect(() => {
     if (!native || systemTitlebar) return;
@@ -58,7 +68,6 @@ export function WorkspaceToolbar() {
     </div>
     <div className="titlebar-caption" data-titlebar-drag-region />
     <div className="titlebar-actions" data-window-interactive>
-      <button type="button" className="icon-button theme-toggle" title={t("nav.toggleTheme")} aria-label={t("nav.toggleTheme")} onClick={() => update("theme", document.documentElement.dataset.theme === "dark" ? "light" : "dark")}><Moon className="theme-icon-dark" size={15} /><Sun className="theme-icon-light" size={15} /></button>
       {native && !systemTitlebar && <div className="window-controls">
         <button type="button" className="window-control" title={t("window.minimize")} aria-label={t("window.minimize")} onClick={() => void control("minimize")}><Minus size={14} strokeWidth={1.4} /></button>
         <button type="button" className="window-control" title={t(maximized ? "window.restore" : "window.maximize")} aria-label={t(maximized ? "window.restore" : "window.maximize")} onClick={() => void control("maximize")}>{maximized ? <Copy size={12} strokeWidth={1.4} /> : <Square size={12} strokeWidth={1.4} />}</button>
