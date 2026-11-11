@@ -15,7 +15,7 @@ import { useI18n } from "@/shared/i18n";
 import { useNavigation, useNavigationStore, type SettingsSection } from "@/shared/navigation";
 import { useSettings } from "@/shared/settings";
 import { FONT_STACKS } from "@/shared/theme";
-import { PageHeader, PageTabs, tabId, tabPanelId, type PageTab } from "@/shared/ui";
+import { AppLogo, PageHeader, PageTabs, tabId, tabPanelId, type PageTab } from "@/shared/ui";
 import { ListenSettings } from "./ListenSettings";
 import { TrajectorySettings } from "./TrajectorySettings";
 
@@ -28,7 +28,7 @@ interface OptionCardProps {
   variant?: "light" | "dark" | "system";
 }
 
-/** 设置页通用选项卡片：主题、字体、语言共用同一交互模式。 */
+/** 设置页通用选项卡片：主题、字体、语言共用同一交互模式；预览在上，标题与选中标记同一行。 */
 function OptionCard({ selected, onSelect, title, description, preview, variant }: OptionCardProps) {
   return (
     <button
@@ -37,15 +37,45 @@ function OptionCard({ selected, onSelect, title, description, preview, variant }
       aria-pressed={selected}
       onClick={onSelect}
     >
-      <span className="preference-option-head">{title}</span>
-      <span className="preference-option-desc">{description}</span>
       {preview && <span className="preference-option-preview">{preview}</span>}
-      {selected && (
+      <span className="preference-option-head">
+        <span className="preference-option-title">{title}</span>
         <span className="preference-check" aria-hidden="true">
-          <Check size={12} strokeWidth={3} />
+          {selected && <Check size={11} strokeWidth={3} />}
         </span>
-      )}
+      </span>
+      <span className="preference-option-desc">{description}</span>
     </button>
+  );
+}
+
+/** 主题卡片里的迷你窗口示意；跟随系统时左浅右深各占一半。 */
+function ThemeSwatch({ variant }: { variant: "light" | "dark" | "system" }) {
+  const windowMock = (tone: "light" | "dark") => (
+    <span className={`theme-swatch-window ${tone}`}>
+      <span className="theme-swatch-side">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="theme-swatch-main">
+        <i />
+        <i />
+        <i />
+      </span>
+    </span>
+  );
+  return (
+    <span className={`theme-swatch theme-swatch-${variant}`} aria-hidden="true">
+      {variant === "system" ? (
+        <>
+          {windowMock("light")}
+          {windowMock("dark")}
+        </>
+      ) : (
+        windowMock(variant)
+      )}
+    </span>
   );
 }
 
@@ -138,11 +168,12 @@ export function SettingsPage() {
                     onSelect={() => update("theme", id)}
                     title={
                       <>
-                        <Icon size={16} strokeWidth={1.9} />
+                        <Icon size={15} strokeWidth={1.9} />
                         {label}
                       </>
                     }
                     description={desc}
+                    preview={<ThemeSwatch variant={id} />}
                   />
                 ))}
               </div>
@@ -163,13 +194,16 @@ export function SettingsPage() {
                     onSelect={() => update("font", id)}
                     title={
                       <>
-                        <Type size={16} strokeWidth={1.9} />
+                        <Type size={15} strokeWidth={1.9} />
                         {label}
                       </>
                     }
                     description={desc}
                     preview={
-                      <span style={{ fontFamily: FONT_STACKS[id] }}>{t("settings.font.preview")}</span>
+                      <span className="font-sample" style={{ fontFamily: FONT_STACKS[id] }}>
+                        <b>Aa</b>
+                        <span>{t("settings.font.preview")}</span>
+                      </span>
                     }
                   />
                 ))}
@@ -191,7 +225,7 @@ export function SettingsPage() {
                     onSelect={() => update("language", id)}
                     title={
                       <>
-                        <Languages size={16} strokeWidth={1.9} />
+                        <Languages size={15} strokeWidth={1.9} />
                         {label}
                       </>
                     }
@@ -207,9 +241,13 @@ export function SettingsPage() {
                   <h2>{t("settings.about.heading")}</h2>
                 </div>
               </div>
-              <p>
-                {t("settings.about.version")} <code>v{__APP_VERSION__}</code>
-              </p>
+              <div className="settings-about">
+                <AppLogo alt="Yi Token" wordmark />
+                <span className="settings-version">
+                  {t("settings.about.version")}
+                  <code>v{__APP_VERSION__}</code>
+                </span>
+              </div>
             </section>
           </div>
         </div>

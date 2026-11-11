@@ -31,7 +31,7 @@ const settings: DeepString<typeof zh> = {
       serifDesc: "Georgia and other serif typefaces",
       mono: "Monospace",
       monoDesc: "Code-style monospace typeface",
-      preview: "Font preview Aa Sample 0123",
+      preview: "Sample text 0123",
     },
     language: {
       heading: "Language",

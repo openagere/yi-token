@@ -2,41 +2,81 @@
 .settings-tab-host { padding-top: 14px; }
 .settings-panel { gap: 12px; padding-bottom: 4px; overflow-y: auto; }
 .settings-page .settings-section { display: grid; flex: none; gap: 0; width: 100%; max-width: 1000px; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-.settings-page .settings-section > .editor-section { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: start; gap: 24px; margin: 0; padding: 18px 20px; border: 0; border-top: 1px solid var(--border); }
+.settings-page .settings-section > .editor-section { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 24px; margin: 0; padding: 20px 22px; border: 0; border-top: 1px solid var(--border); }
 .settings-page .settings-section > .editor-section:first-child { border-top: 0; }
-.settings-page .section-heading { margin: 0; }
+.settings-page .section-heading { margin: 0; padding-top: 2px; }
+.settings-page .settings-section > .editor-section:has(.settings-about) { align-items: center; }
+.settings-page .settings-section > .editor-section:has(.settings-about) .section-heading { padding-top: 0; }
 .settings-page .section-heading h2 { margin: 0 0 4px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
 .settings-page .section-heading p { max-width: none; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
 
-.preference-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 8px; width: 100%; max-width: 660px; }
-.preference-options:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 436px; }
-.preference-option { position: relative; display: grid; align-content: start; gap: 4px; min-height: 64px; padding: 10px 34px 10px 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); background: var(--surface); text-align: left; transition: border-color .12s, background .12s; }
+.preference-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; width: 100%; max-width: 680px; }
+.preference-options:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 450px; }
+.preference-option { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); background: var(--surface); text-align: left; transition: border-color .12s, background .12s, box-shadow .12s; }
 .preference-option:hover { border-color: var(--border-strong); background: var(--surface-subtle); }
-.preference-option.selected { border-color: var(--accent); background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--accent); }
-.preference-option-head { display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 13px; font-weight: 550; }
+.preference-option.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.preference-option-preview { display: block; margin: 0 0 6px; }
+.preference-option-head { display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.preference-option-title { display: flex; flex: 1; align-items: center; gap: 7px; min-width: 0; }
 .preference-option-head svg { flex: none; color: var(--text-secondary); }
-.preference-option-desc { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
-.preference-option-preview { margin-top: 2px; overflow: hidden; color: var(--text-secondary); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.preference-check { position: absolute; top: 10px; right: 10px; display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: var(--surface); background: var(--accent); }
+.preference-option-desc { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+/* An empty ring when idle, a filled check when chosen, so every card reads as one choice in a set. */
+.preference-check { display: grid; flex: none; width: 18px; height: 18px; place-items: center; border: 1.5px solid var(--border-strong); border-radius: 50%; color: var(--surface); }
+.preference-option.selected .preference-check { border-color: var(--accent); background: var(--accent); }
 .preference-option:active { transform: translateY(1px); }
 @media (prefers-reduced-motion: reduce) { .preference-option:active { transform: none; } }
+
+/* Font samples: a large glyph plus a sample line, both in the font the card selects. */
+.font-sample { display: flex; align-items: baseline; gap: 10px; height: 52px; padding: 8px 12px; overflow: hidden; border-radius: 8px; color: var(--text-primary); background: var(--surface-subtle); white-space: nowrap; }
+.font-sample b { font-size: 26px; font-weight: 500; line-height: 34px; }
+.font-sample span { overflow: hidden; color: var(--text-secondary); font-size: 13px; text-overflow: ellipsis; }
+.preference-option:is(.selected, :hover) .font-sample { background: var(--surface-hover); }
+
+/* Theme swatches: a miniature window drawn in the colors of the theme it selects. */
+.theme-swatch { position: relative; display: block; height: 52px; }
+.theme-swatch-window { position: absolute; inset: 0; display: flex; gap: 6px; padding: 6px; overflow: hidden; border: 1px solid; border-radius: 8px; }
+.theme-swatch-window i { display: block; height: 4px; border-radius: 2px; }
+.theme-swatch-side { display: flex; flex: none; flex-direction: column; gap: 4px; width: 26%; padding: 5px 4px; border-radius: 5px; }
+.theme-swatch-main { display: flex; flex: 1; flex-direction: column; gap: 5px; padding: 5px 2px; }
+.theme-swatch-main i:first-child { width: 45%; height: 6px; }
+.theme-swatch-main i:nth-child(2) { width: 85%; }
+.theme-swatch-main i:nth-child(3) { width: 65%; }
+.theme-swatch-window.light { border-color: var(--theme-light-border); background: var(--theme-light-bg); }
+.theme-swatch-window.light .theme-swatch-side { background: var(--theme-light-hover-bg); }
+.theme-swatch-window.light i { background: var(--theme-light-border); }
+.theme-swatch-window.light .theme-swatch-main i:first-child { background: var(--theme-light-icon); }
+.theme-swatch-window.dark { border-color: var(--theme-dark-border); background: var(--theme-light-ink); }
+.theme-swatch-window.dark .theme-swatch-side { background: var(--theme-dark-hover-bg); }
+.theme-swatch-window.dark i { background: var(--theme-dark-border); }
+.theme-swatch-window.dark .theme-swatch-main i:first-child { background: var(--theme-dark-muted); }
+.theme-swatch-system .theme-swatch-window.dark { clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%); }
 
 /* Theme choices preview the theme they select, regardless of the current app theme. */
 .preference-option-light { border-color: var(--theme-light-border); color: var(--theme-light-ink); background: var(--theme-light-bg); }
 .preference-option-light .preference-option-head { color: var(--theme-light-ink); }
 .preference-option-light .preference-option-head svg { color: var(--theme-light-icon); }
 .preference-option-light .preference-option-desc { color: var(--theme-light-muted); }
-.preference-option-light .preference-check { color: var(--theme-light-bg); background: var(--theme-light-ink); }
+.preference-option-light .preference-check { border-color: var(--theme-light-hover-border); color: var(--theme-light-bg); }
+.preference-option-light.selected .preference-check { border-color: var(--theme-light-ink); background: var(--theme-light-ink); }
 .preference-option-light:hover { border-color: var(--theme-light-hover-border); background: var(--theme-light-hover-bg); }
 .preference-option-light.selected { border-color: var(--theme-light-selected-border); background: var(--theme-light-bg); box-shadow: inset 0 0 0 1px var(--theme-light-selected-border); }
 .preference-option-dark { border-color: var(--theme-dark-border); color: var(--theme-light-bg); background: var(--theme-light-ink); }
 .preference-option-dark .preference-option-head { color: var(--theme-light-bg); }
 .preference-option-dark .preference-option-head svg { color: var(--theme-dark-icon); }
 .preference-option-dark .preference-option-desc { color: var(--theme-dark-muted); }
-.preference-option-dark .preference-check { color: var(--theme-light-ink); background: var(--theme-light-bg); }
+.preference-option-dark .preference-check { border-color: var(--theme-dark-hover-border); color: var(--theme-light-ink); }
+.preference-option-dark.selected .preference-check { border-color: var(--theme-light-bg); background: var(--theme-light-bg); }
 .preference-option-dark:hover { border-color: var(--theme-dark-hover-border); background: var(--theme-dark-hover-bg); }
 .preference-option-dark.selected { border-color: var(--theme-dark-selected-border); background: var(--theme-light-ink); box-shadow: inset 0 0 0 1px var(--theme-dark-selected-border); }
-.preference-option-system { background: var(--surface-subtle); }
+/* Declared after the theme variants so the check mark keeps the badge color instead of the head icon color. */
+.preference-option .preference-option-head .preference-check svg { color: inherit; }
+
+/* About: the product lockup with its version. */
+.settings-about { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.settings-about .app-logo-mark { width: 24px; height: 24px; }
+.settings-about .app-logo-wordmark { height: 20px; }
+.settings-version { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); background: var(--surface-subtle); font-size: 12px; }
+.settings-version code { color: var(--text-primary); font-size: 12px; }
 
 /* Listen and trajectory rows: stacked controls in the right-hand column. */
 .settings-group-body { display: grid; gap: 12px; min-width: 0; max-width: 660px; }

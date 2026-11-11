@@ -82,8 +82,15 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
     ({ item }) => (client === "all" || clientKey(item) === client) && (!errorsOnly || isError(item)),
   );
   const count = (value: number) => value.toLocaleString(language);
-  const chipCount = (requests: number, errors: number) =>
+  const chipTitle = (requests: number, errors: number) =>
     t("proxy.live.chipCount", { requests: count(requests), errors: count(errors) });
+  // The chip shows the request count; errors get a red mark only when there are any, the full text stays in the tooltip.
+  const chipCount = (requests: number, errors: number) => (
+    <>
+      <small>{count(requests)}</small>
+      {errors > 0 && <em>{count(errors)}</em>}
+    </>
+  );
   const message = query.isError
     ? t("proxy.live.unavailable")
     : !live
@@ -95,13 +102,16 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
   return (
     <section className="run-section" aria-label={t("proxy.live.title")}>
       <div className="run-section-head">
-        <span className="run-live-summary">
-          {t("proxy.live.summary", { inFlight: live?.inFlight.length ?? 0, completed: live?.completed.length ?? 0 })}
-        </span>
         <div className="run-chips" role="group" aria-label={t("proxy.live.clientFilter")}>
-          <button type="button" className="run-chip" aria-pressed={client === "all"} onClick={() => setClient("all")}>
+          <button
+            type="button"
+            className="run-chip"
+            aria-pressed={client === "all"}
+            title={monitorStale ? undefined : chipTitle(totals.requests, totals.errors)}
+            onClick={() => setClient("all")}
+          >
             {t("proxy.live.all")}
-            <small>{monitorStale ? "--" : chipCount(totals.requests, totals.errors)}</small>
+            {monitorStale ? <small>--</small> : chipCount(totals.requests, totals.errors)}
           </button>
           {groups.map((entry) => {
             const brand = CLIENT_META[entry.client]?.brand;
@@ -111,15 +121,19 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
                 key={entry.client}
                 className="run-chip"
                 aria-pressed={client === entry.client}
+                title={chipTitle(entry.requests, entry.errors)}
                 onClick={() => setClient(entry.client)}
               >
                 {brand ? <ProviderIcon brand={brand} size={13} /> : <Plug size={13} />}
                 {clientName(entry.client, t)}
-                <small>{chipCount(entry.requests, entry.errors)}</small>
+                {chipCount(entry.requests, entry.errors)}
               </button>
             );
           })}
         </div>
+        <span className="run-live-summary">
+          {t("proxy.live.summary", { inFlight: live?.inFlight.length ?? 0, completed: live?.completed.length ?? 0 })}
+        </span>
         <button
           type="button"
           className="run-errors-toggle"
@@ -132,15 +146,25 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
       </div>
       <div className="run-live-scroll">
         <table className="run-live-table">
+          <colgroup>
+            <col className="run-col-time" />
+            <col className="run-col-client" />
+            <col />
+            <col className="run-col-stage" />
+            <col className="run-col-num" />
+            <col className="run-col-num" />
+            <col className="run-col-tokens" />
+            <col className="run-col-session" />
+          </colgroup>
           <thead>
             <tr>
               <th>{t("proxy.live.time")}</th>
               <th>{t("proxy.live.client")}</th>
               <th>{t("proxy.live.model")}</th>
               <th>{t("proxy.live.stage")}</th>
-              <th>{t("proxy.live.ttft")}</th>
-              <th>{t("proxy.live.duration")}</th>
-              <th>{t("proxy.live.tokens")}</th>
+              <th className="num">{t("proxy.live.ttft")}</th>
+              <th className="num">{t("proxy.live.duration")}</th>
+              <th className="num">{t("proxy.live.tokens")}</th>
               <th>{t("proxy.live.session")}</th>
             </tr>
           </thead>
@@ -153,26 +177,29 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
               const classes = [inFlight ? "in-flight" : "", isError(item) ? "error" : ""].filter(Boolean).join(" ");
               return (
                 <tr key={item.step_id} data-step-id={item.step_id} className={classes}>
-                  <td>{formatClock(item.started_at, language)}</td>
+                  <td className="run-time">{formatClock(item.started_at, language)}</td>
                   <td>
                     <span className="run-client">
                       {brand ? <ProviderIcon brand={brand} size={14} /> : <Plug size={14} />}
-                      {clientName(key, t)}
+                      <span>{clientName(key, t)}</span>
                     </span>
                   </td>
-                  <td className="run-model">
-                    {item.model}
+                  <td className="run-model" title={`${item.model}
+${item.provider_name}`}>
+                    <span>{item.model}</span>
                     <small>{item.provider_name}</small>
                   </td>
                   <td>
                     <Stage item={item} now={now} />
                   </td>
-                  <td>
+                  <td className="num">
                     {item.first_token_at !== null ? formatLatency(item.first_token_at - item.started_at) : "--"}
                   </td>
-                  <td>{formatLatency(end - item.started_at)}</td>
-                  <td>
-                    {compactNumber(item.input_tokens, language)} / {compactNumber(item.output_tokens, language)}
+                  <td className="num">{formatLatency(end - item.started_at)}</td>
+                  <td className="num run-tokens">
+                    {compactNumber(item.input_tokens, language)}
+                    <span>/</span>
+                    {compactNumber(item.output_tokens, language)}
                   </td>
                   <td>
                     <button

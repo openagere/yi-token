@@ -28,7 +28,7 @@ const settings = {
       serifDesc: "Georgia 等衬线字体",
       mono: "等宽",
       monoDesc: "代码风格等宽字体",
-      preview: "Aa 中文 0123",
+      preview: "中文字体 0123",
     },
     language: {
       heading: "语言",
