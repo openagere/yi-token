@@ -288,8 +288,9 @@ fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
         } else {
             Some(fallback)
         };
-        let ir = to_ir(inbound, raw)?;
+        let mut ir = to_ir(inbound, raw)?;
         prepare::validate_for_translation(&ir, upstream)?;
+        prepare::clamp_output_ir(&mut ir, &capabilities);
         let ctx = OutboundCtx {
             upstream_model: r.upstream_model.clone(),
             capabilities,

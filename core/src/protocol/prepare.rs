@@ -26,6 +26,9 @@ pub fn passthrough(body: &mut Value, ctx: &PrepareCtx) -> CoreResult<()> {
     if ctx.upstream == Protocol::OpenaiChat {
         developer_to_system(obj);
     }
+    if let Some(limit) = ctx.capabilities.max_output_tokens.map(u64::from) {
+        clamp_output_fields(obj, limit);
+    }
     if ctx.non_standard {
         let report = compatibility::adapt(body, ctx.upstream);
         if let Some(reason) = report.unsatisfiable {
@@ -37,6 +40,28 @@ pub fn passthrough(body: &mut Value, ctx: &PrepareCtx) -> CoreResult<()> {
     }
     thinking::apply_raw(ctx.upstream, body, ctx.thinking, &ctx.capabilities);
     Ok(())
+}
+
+/// Lower every output-limit field of a raw body that exceeds the model's configured limit.
+/// Fields of other protocols are not present in a same-protocol body, so checking all three is safe.
+fn clamp_output_fields(obj: &mut serde_json::Map<String, Value>, limit: u64) {
+    for key in ["max_tokens", "max_completion_tokens", "max_output_tokens"] {
+        if let Some(value) = obj.get_mut(key)
+            && value.as_u64().is_some_and(|n| n > limit)
+        {
+            *value = Value::from(limit);
+        }
+    }
+}
+
+/// Lower a translated request's output limit to the model's configured limit.
+pub fn clamp_output_ir(req: &mut ir::Request, capabilities: &Capabilities) {
+    let Some(limit) = capabilities.max_output_tokens.map(u64::from) else {
+        return;
+    };
+    if req.max_output_tokens.is_some_and(|n| n > limit) {
+        req.max_output_tokens = Some(limit);
+    }
 }
 
 /// Codex sends its instructions as a `developer` message, which most
@@ -191,6 +216,46 @@ mod tests {
         let mut body = json!({"model": "a", "input": [{"role": "developer", "content": "r"}]});
         passthrough(&mut body, &ctx(Protocol::Responses, false)).unwrap();
         assert_eq!(body["input"][0]["role"], "developer");
+    }
+
+    #[test]
+    fn passthrough_clamps_output_limit_to_configured_maximum() {
+        let mut limited = ctx(Protocol::OpenaiChat, false);
+        limited.capabilities.max_output_tokens = Some(131_072);
+        let mut body = json!({"model": "a", "messages": [], "max_completion_tokens": 1_048_576});
+        passthrough(&mut body, &limited).unwrap();
+        assert_eq!(body["max_completion_tokens"], 131_072);
+
+        let mut body = json!({"model": "a", "max_tokens": 200_000});
+        passthrough(&mut body, &limited).unwrap();
+        assert_eq!(body["max_tokens"], 131_072);
+
+        // within the limit, and no configured limit: left untouched
+        let mut body = json!({"model": "a", "max_tokens": 4096});
+        passthrough(&mut body, &limited).unwrap();
+        assert_eq!(body["max_tokens"], 4096);
+        let mut body = json!({"model": "a", "max_completion_tokens": 1_048_576});
+        passthrough(&mut body, &ctx(Protocol::OpenaiChat, false)).unwrap();
+        assert_eq!(body["max_completion_tokens"], 1_048_576);
+    }
+
+    #[test]
+    fn translated_request_clamps_output_limit() {
+        let caps = Capabilities {
+            max_output_tokens: Some(131_072),
+            ..Capabilities::default()
+        };
+        let mut req = ir_from(json!({"model": "m", "input": "hi", "max_output_tokens": 1_048_576}));
+        clamp_output_ir(&mut req, &caps);
+        assert_eq!(req.max_output_tokens, Some(131_072));
+
+        let mut req = ir_from(json!({"model": "m", "input": "hi", "max_output_tokens": 77}));
+        clamp_output_ir(&mut req, &caps);
+        assert_eq!(req.max_output_tokens, Some(77));
+
+        let mut req = ir_from(json!({"model": "m", "input": "hi", "max_output_tokens": 1_048_576}));
+        clamp_output_ir(&mut req, &Capabilities::default());
+        assert_eq!(req.max_output_tokens, Some(1_048_576));
     }
 
     #[test]
