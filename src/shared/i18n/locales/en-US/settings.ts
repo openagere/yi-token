@@ -76,6 +76,10 @@ const settings: DeepString<typeof zh> = {
       rebuiltToast: "Trajectory store rebuilt",
       loading: "Loading trajectory settings",
     },
+    about: {
+      heading: "About",
+      version: "Version",
+    },
   },
 };
 

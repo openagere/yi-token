@@ -200,6 +200,17 @@ export function SettingsPage() {
                 ))}
               </div>
             </section>
+
+            <section className="editor-section" aria-label={t("settings.about.heading")}>
+              <div className="section-heading">
+                <div>
+                  <h2>{t("settings.about.heading")}</h2>
+                </div>
+              </div>
+              <p>
+                {t("settings.about.version")} <code>v{__APP_VERSION__}</code>
+              </p>
+            </section>
           </div>
         </div>
         <div {...panel("listen")}>

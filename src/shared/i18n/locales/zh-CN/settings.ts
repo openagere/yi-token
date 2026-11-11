@@ -73,6 +73,10 @@ const settings = {
       rebuiltToast: "轨迹库已重建",
       loading: "正在读取轨迹设置",
     },
+    about: {
+      heading: "关于",
+      version: "版本",
+    },
   },
 } as const;
 
