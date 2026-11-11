@@ -171,6 +171,37 @@ impl Services {
         .await
     }
 
+    /// Rewrites a connected proxy config so its context follows the newly selected engine.
+    /// Does nothing unless the client was applied before and is currently in proxy mode.
+    pub(crate) fn reapply_proxy_engine(&self, client: Client) -> CoreResult<()> {
+        let snap = self.terminal_snapshot()?;
+        let Some(profile) = snap.proxy_profiles.get(&client).cloned() else {
+            return Ok(());
+        };
+        if !snap.applied_engines.contains_key(&client) {
+            return Ok(());
+        }
+        let status = self.terminal_status_from(&snap, client)?;
+        if status.active_mode != TerminalAccessMode::Proxy {
+            return Ok(());
+        }
+        let (ctx, _) = self.terminal_context(client)?;
+        validate_proxy(&profile, &ctx)?;
+        let plan = build_plan(spec_for(client), TerminalMode::Proxy(&profile), &ctx)?;
+        commit::apply(&plan, || {
+            self.db.with_conn(|conn| {
+                terminal::save_proxy_applied_engine(
+                    conn,
+                    client,
+                    ctx.active_engine.as_ref().map(|model| model.id.as_str()),
+                )
+            })?;
+            self.routes_changed();
+            Ok(())
+        })?;
+        Ok(())
+    }
+
     fn terminal_snapshot(&self) -> CoreResult<TerminalSnapshot> {
         self.db.with_conn(|conn| {
             let settings = settings::get(conn)?;

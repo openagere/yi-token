@@ -292,7 +292,7 @@ async fn usage_records_client_and_route_mode() {
 }
 
 #[tokio::test]
-async fn set_active_engine_does_not_touch_terminal_files() {
+async fn set_active_engine_keeps_connected_terminal_and_rewrites_it() {
     let env = TestEnv::start().await;
     let applied = env
         .services
@@ -300,19 +300,22 @@ async fn set_active_engine_does_not_touch_terminal_files() {
         .await
         .unwrap();
     let path = std::path::PathBuf::from(&applied.config_path);
-    let before = std::fs::read(&path).unwrap();
-    let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
 
     env.services
         .set_active_engine(Client::Codex, Some("mr".into()))
         .await
         .unwrap();
 
-    assert_eq!(std::fs::read(&path).unwrap(), before);
-    assert_eq!(
-        std::fs::metadata(&path).unwrap().modified().unwrap(),
-        modified
-    );
+    let status = env
+        .services
+        .get_terminal_profiles()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|item| item.client == Client::Codex)
+        .unwrap();
+    assert!(status.active, "switching the engine must not disconnect");
+    assert!(path.exists());
     let active = env.services.get_active_engines().await.unwrap();
     assert!(
         active

@@ -24,7 +24,7 @@ fn engine_view(
 
 impl Services {
     /// Selects (`Some`) or clears (`None`) the Auto engine of `client`.
-    /// Terminal files are intentionally not touched.
+    /// A connected proxy config is rewritten so its context follows the new engine.
     pub async fn set_active_engine(
         self: &Arc<Self>,
         client: Client,
@@ -44,7 +44,7 @@ impl Services {
                 engines::set(conn, client, model_id.as_deref())
             })?;
             s.routes_changed();
-            Ok(())
+            s.reapply_proxy_engine(client)
         })
         .await
     }

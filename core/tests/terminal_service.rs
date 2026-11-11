@@ -261,7 +261,6 @@ async fn switching_proxy_engine_keeps_the_terminal_connected() {
         .save_provider(provider.provider.clone(), models)
         .await
         .unwrap();
-    let path = codex_config(&dir);
     let catalog = dir.path().join(".codex").join("yi-token-models.json");
     let engine = |index: usize| provider.models[index].id.clone();
     svc.set_active_engine(Client::Codex, Some(engine(0)))
@@ -286,8 +285,7 @@ async fn switching_proxy_engine_keeps_the_terminal_connected() {
     };
     assert!(status(svc.clone()).await.active);
 
-    // Switching the engine only changes routing. The context written at connect stays.
-    let before = fs::read_to_string(&path).unwrap();
+    // Switching the engine keeps the connection and rewrites the context for the new engine.
     let written = fs::read_to_string(&catalog).unwrap();
     assert!(written.contains("128000"), "{written}");
     assert!(!written.contains("1000000"), "{written}");
@@ -297,8 +295,9 @@ async fn switching_proxy_engine_keeps_the_terminal_connected() {
     let after = status(svc.clone()).await;
     assert!(after.active, "switching the engine must not disconnect");
     assert_eq!(after.active_mode, TerminalAccessMode::Proxy);
-    assert_eq!(fs::read_to_string(&path).unwrap(), before);
-    assert_eq!(fs::read_to_string(&catalog).unwrap(), written);
+    let rewritten = fs::read_to_string(&catalog).unwrap();
+    assert!(rewritten.contains("1000000"), "{rewritten}");
+    assert!(!rewritten.contains("128000"), "{rewritten}");
 }
 
 #[tokio::test]
