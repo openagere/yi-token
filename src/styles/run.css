@@ -94,7 +94,8 @@
 .run-traffic-count { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .run-traffic-count em { padding: 0 6px; border-radius: 999px; color: var(--danger); background: var(--danger-soft); font-size: 10px; font-style: normal; }
 .run-traffic-share { grid-column: 1 / -1; height: 4px; overflow: hidden; border-radius: 999px; background: var(--surface-subtle); }
-.run-traffic-share > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--accent); }
+/* Same green as the request bars in the chart beside it. */
+.run-traffic-share > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--success); }
 .run-traffic-empty { margin: auto 0; color: var(--text-muted); font-size: 12px; text-align: center; }
 
 /* Logs: the console fills the panel instead of using a fixed height. */

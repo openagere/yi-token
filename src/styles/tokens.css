@@ -38,6 +38,9 @@
   --accent-soft: #f0f0f0;
   --accent-soft-strong: #e5e5e5;
   --accent-border: #cdced0;
+  --selection-border: #9a9ca3;
+  --selection-ring: #e9e9eb;
+  --selection-mark: #55575d;
   --icon-bg-neutral: #f2f2f2;
   --icon-bg-accent: #f2f2f2;
   --icon-bg-success: #edf7f1;
@@ -152,6 +155,9 @@
   --accent-soft: #2b2b2b;
   --accent-soft-strong: #343434;
   --accent-border: #4e4e4e;
+  --selection-border: #85878d;
+  --selection-ring: #2f3034;
+  --selection-mark: #c9cacd;
   --icon-bg-neutral: #2b2b2b;
   --icon-bg-accent: #2b2b2b;
   --icon-bg-success: #203129;
