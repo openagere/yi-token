@@ -165,7 +165,7 @@
 :root:not(#control-system) .connection-filters > button span { font-size: 12px; }
 
 /* Compact chips and toggles inside panels: 28px, same border and radius as the controls. */
-:root:not(#control-system) :is(.run-chip, .run-errors-toggle, .thread-chip, .trajectory-toolbar-button) {
+:root:not(#control-system) :is(.run-errors-toggle, .thread-chip, .trajectory-toolbar-button) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -179,8 +179,8 @@
   font-weight: 500;
   white-space: nowrap;
 }
-:root:not(#control-system) :is(.run-chip, .run-errors-toggle, .thread-chip, .trajectory-toolbar-button):hover:not(:disabled) { border-color: var(--control-line-hover); color: var(--text-primary); background: var(--control-bg); }
-:root:not(#control-system) :is(.run-chip, .thread-chip, .trajectory-toolbar-button):is([aria-pressed="true"], [aria-checked="true"]) {
+:root:not(#control-system) :is(.run-errors-toggle, .thread-chip, .trajectory-toolbar-button):hover:not(:disabled) { border-color: var(--control-line-hover); color: var(--text-primary); background: var(--control-bg); }
+:root:not(#control-system) :is(.thread-chip, .trajectory-toolbar-button):is([aria-pressed="true"], [aria-checked="true"]) {
   border-color: var(--control-line-hover);
   color: var(--text-primary);
   background: var(--surface-selected);

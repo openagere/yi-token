@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CircleAlert, LoaderCircle, Plug } from "lucide-react";
 import { useI18n } from "@/shared/i18n";
 import { compactNumber } from "@/features/usage";
@@ -47,6 +47,44 @@ function Stage({ item, now }: { item: LiveRequest; now: number }) {
   return <span className="run-phase done">{item.status ?? "--"}</span>;
 }
 
+/**
+ * 横向滚动的筛选条：竖向滚轮转为横向滚动，并报告两侧是否还有被遮住的内容，用于边缘渐隐。
+ * 滚轮监听需要非 passive 才能阻止页面滚动，所以直接挂在元素上而不是用 React 的 onWheel。
+ */
+function useHorizontalScroll(ref: RefObject<HTMLElement | null>, itemCount: number) {
+  const [edges, setEdges] = useState({ start: false, end: false });
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const update = () => {
+      const max = element.scrollWidth - element.clientWidth;
+      const start = element.scrollLeft > 1;
+      const end = element.scrollLeft < max - 1;
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    const onWheel = (event: WheelEvent) => {
+      if (element.scrollWidth <= element.clientWidth) return;
+      const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      if (!delta) return;
+      event.preventDefault();
+      element.scrollLeft += delta;
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    element.addEventListener("scroll", update, { passive: true });
+    element.addEventListener("wheel", onWheel, { passive: false });
+    update();
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", update);
+      element.removeEventListener("wheel", onWheel);
+    };
+    // Re-observe when chips are added or removed; size changes of existing chips are caught by the observer.
+  }, [ref, itemCount]);
+  return edges;
+}
+
 interface Props {
   active: boolean;
   monitor: ProxyMonitorSnapshot | undefined;
@@ -64,6 +102,12 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
   // 每次轮询（约 1 秒）都会刷新该时间，计时器据此前进，渲染保持纯净。
   const now = query.dataUpdatedAt;
   const groups = useMemo(() => group(monitor?.routes ?? []), [monitor]);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const edges = useHorizontalScroll(chipsRef, groups.length);
+  const pick = (value: string, target: HTMLElement) => {
+    setClient(value);
+    target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  };
   const totals = groups.reduce(
     (sum, item) => ({ requests: sum.requests + item.requests, errors: sum.errors + item.errors }),
     { requests: 0, errors: 0 },
@@ -102,37 +146,42 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
   return (
     <section className="run-section" aria-label={t("proxy.live.title")}>
       <div className="run-section-head">
-        <div className="run-chips" role="group" aria-label={t("proxy.live.clientFilter")}>
-          <button
-            type="button"
-            className="run-chip"
-            aria-pressed={client === "all"}
-            title={monitorStale ? undefined : chipTitle(totals.requests, totals.errors)}
-            onClick={() => setClient("all")}
-          >
-            {t("proxy.live.all")}
-            {monitorStale ? <small>--</small> : chipCount(totals.requests, totals.errors)}
-          </button>
-          {groups.map((entry) => {
-            const brand = CLIENT_META[entry.client]?.brand;
-            return (
-              <button
-                type="button"
-                key={entry.client}
-                className="run-chip"
-                aria-pressed={client === entry.client}
-                title={chipTitle(entry.requests, entry.errors)}
-                onClick={() => setClient(entry.client)}
-              >
-                {brand ? <ProviderIcon brand={brand} size={13} /> : <Plug size={13} />}
-                {clientName(entry.client, t)}
-                {chipCount(entry.requests, entry.errors)}
-              </button>
-            );
-          })}
+        <div className={`run-chips-frame${edges.start ? " fade-start" : ""}${edges.end ? " fade-end" : ""}`}>
+          <div ref={chipsRef} className="run-chips" role="group" aria-label={t("proxy.live.clientFilter")}>
+            <button
+              type="button"
+              className="run-chip"
+              aria-pressed={client === "all"}
+              title={monitorStale ? undefined : chipTitle(totals.requests, totals.errors)}
+              onClick={(event) => pick("all", event.currentTarget)}
+            >
+              {t("proxy.live.all")}
+              {monitorStale ? <small>--</small> : chipCount(totals.requests, totals.errors)}
+            </button>
+            {groups.map((entry) => {
+              const brand = CLIENT_META[entry.client]?.brand;
+              return (
+                <button
+                  type="button"
+                  key={entry.client}
+                  className="run-chip"
+                  aria-pressed={client === entry.client}
+                  title={chipTitle(entry.requests, entry.errors)}
+                  onClick={(event) => pick(entry.client, event.currentTarget)}
+                >
+                  {brand ? <ProviderIcon brand={brand} size={13} /> : <Plug size={13} />}
+                  {clientName(entry.client, t)}
+                  {chipCount(entry.requests, entry.errors)}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <span className="run-live-summary">
-          {t("proxy.live.summary", { inFlight: live?.inFlight.length ?? 0, completed: live?.completed.length ?? 0 })}
+          {t("proxy.live.summary", {
+            inFlight: live?.inFlight.length ?? 0,
+            completed: live?.completed.length ?? 0,
+          })}
         </span>
         <button
           type="button"
@@ -174,7 +223,9 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
               const brand = CLIENT_META[key]?.brand;
               const end = item.finished_at ?? now;
               const session = item.session_id;
-              const classes = [inFlight ? "in-flight" : "", isError(item) ? "error" : ""].filter(Boolean).join(" ");
+              const classes = [inFlight ? "in-flight" : "", isError(item) ? "error" : ""]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <tr key={item.step_id} data-step-id={item.step_id} className={classes}>
                   <td className="run-time">{formatClock(item.started_at, language)}</td>
@@ -184,8 +235,11 @@ export function LiveRequests({ active, monitor, monitorStale }: Props) {
                       <span>{clientName(key, t)}</span>
                     </span>
                   </td>
-                  <td className="run-model" title={`${item.model}
-${item.provider_name}`}>
+                  <td
+                    className="run-model"
+                    title={`${item.model}
+${item.provider_name}`}
+                  >
                     <span>{item.model}</span>
                     <small>{item.provider_name}</small>
                   </td>
@@ -193,7 +247,9 @@ ${item.provider_name}`}>
                     <Stage item={item} now={now} />
                   </td>
                   <td className="num">
-                    {item.first_token_at !== null ? formatLatency(item.first_token_at - item.started_at) : "--"}
+                    {item.first_token_at !== null
+                      ? formatLatency(item.first_token_at - item.started_at)
+                      : "--"}
                   </td>
                   <td className="num">{formatLatency(end - item.started_at)}</td>
                   <td className="num run-tokens">

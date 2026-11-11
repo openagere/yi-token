@@ -94,3 +94,20 @@ test("start failure offers settings link", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "代理监听" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#settings-listen")).toBeVisible();
 });
+
+test("client chips scroll sideways with the wheel and fade at the clipped edge", async ({ page }) => {
+  await openRunPage(page);
+  const frame = page.locator(".run-chips-frame");
+  const chips = page.locator(".run-chips");
+  // The fixture has only a few clients, so the track is narrowed to force overflow.
+  await frame.evaluate((element) => {
+    if (element instanceof HTMLElement) element.style.maxWidth = "200px";
+  });
+  await expect(frame).toHaveClass(/fade-end/);
+  await expect(frame).not.toHaveClass(/fade-start/);
+  await chips.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => chips.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(frame).toHaveClass(/fade-start/);
+  await expect(frame).not.toHaveClass(/fade-end/);
+});
