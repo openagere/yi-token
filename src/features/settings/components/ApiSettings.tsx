@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Check, Copy, Layers, ListChecks, LoaderCircle } from "lucide-react";
+import { Copy, Link2, ListChecks, LoaderCircle, Route, type LucideIcon } from "lucide-react";
 import type { GlobalApiSettings, ProviderView } from "@/generated";
 import { describeError } from "@/shared/api";
 import { useI18n } from "@/shared/i18n";
@@ -14,27 +14,34 @@ const DEFAULT_LISTEN = { host: "127.0.0.1", port: 11435 };
 /** 本地代理不校验 Key；工具要求必填时示例里用这个占位值。 */
 const PLACEHOLDER_KEY = "yi-token";
 
-/** 一个可调用的模型：所属服务商、对外名、上游名与实际上游协议。 */
+type ApiSection = "endpoints" | "models" | "fallback";
+
+/** 一个可调用的模型：对外名、上游名与实际上游协议。 */
 interface ExposedModel {
   id: string;
   exposedName: string;
   upstream: string;
   protocol: ProviderView["provider_type"];
-  provider: ProviderView;
 }
 
-function exposedModels(providers: ProviderView[]): ExposedModel[] {
+/** 已启用服务商及其模型，按服务商分组展示。 */
+interface ProviderGroup {
+  provider: ProviderView;
+  models: ExposedModel[];
+}
+
+function providerGroups(providers: ProviderView[]): ProviderGroup[] {
   return providers
-    .filter((provider) => provider.enabled)
-    .flatMap((provider) =>
-      provider.models.map((model) => ({
+    .filter((provider) => provider.enabled && provider.models.length > 0)
+    .map((provider) => ({
+      provider,
+      models: provider.models.map((model) => ({
         id: model.id,
         exposedName: model.route_id,
         upstream: model.name,
         protocol: model.protocol ?? provider.provider_type,
-        provider,
       })),
-    );
+    }));
 }
 
 function sameSettings(a: GlobalApiSettings, b: GlobalApiSettings) {
@@ -46,7 +53,10 @@ function sameSettings(a: GlobalApiSettings, b: GlobalApiSettings) {
   );
 }
 
-/** 设置页"通用 API"分区：全局入口的接入地址、开放模型与默认服务商转发；后两者共用一个保存按钮。 */
+/**
+ * 设置页"通用 API"分区：左侧切换接入地址、开放模型、转发规则，右侧一次只显示一块。
+ * 开放模型与转发规则共用一份草稿，切换子分区不会丢失未保存的修改。
+ */
 export function ApiSettings() {
   const { t } = useI18n();
   const { navigate } = useNavigation();
@@ -55,32 +65,46 @@ export function ApiSettings() {
   const providers = useProviders();
   const query = useApiSettings();
   const save = useSaveApiSettings();
+  const [section, setSection] = useState<ApiSection>("endpoints");
   const [draft, setDraft] = useState<GlobalApiSettings | null>(null);
 
   const saved = query.data ?? null;
   const settings = draft ?? saved;
   const dirty = draft !== null && saved !== null && !sameSettings(draft, saved);
+  const sectionDirty: Record<ApiSection, boolean> = {
+    endpoints: false,
+    models:
+      draft !== null &&
+      saved !== null &&
+      !sameSettings({ ...draft, default_fallback: saved.default_fallback }, saved),
+    fallback: draft !== null && saved !== null && draft.default_fallback !== saved.default_fallback,
+  };
   const busy = save.isPending;
 
-  const all = exposedModels(providers.data ?? []);
+  const groups = providerGroups(providers.data ?? []);
+  const all = groups.flatMap((group) => group.models);
   const disabledProviders = (providers.data ?? []).filter(
     (provider) => !provider.enabled && provider.models.length > 0,
   );
   const defaultProvider =
     (providers.data ?? []).find((provider) => provider.enabled && provider.is_default) ?? null;
   const isOpen = (model: ExposedModel) => !settings?.restrict_models || settings.model_ids.includes(model.id);
-  const open = all.filter(isOpen);
+  const openCount = all.filter(isOpen).length;
 
   const origin = proxyOrigin(listen.host, listen.port);
   const base = proxyBaseUrl(listen.host, listen.port);
-  const endpoints = [
-    { id: "openai_chat", label: PROTOCOLS_BY_ID.openai_chat.name, base, url: `${base}/chat/completions` },
-    { id: "responses", label: PROTOCOLS_BY_ID.responses.name, base, url: `${base}/responses` },
-    // Anthropic SDKs append `/v1/messages` themselves, so their base URL is the bare origin.
-    { id: "anthropic", label: PROTOCOLS_BY_ID.anthropic.name, base: origin, url: `${origin}/v1/messages` },
-    { id: "models", label: t("settings.api.models"), base, url: `${base}/models` },
+  const paths = [
+    {
+      id: "openai_chat",
+      label: PROTOCOLS_BY_ID.openai_chat.name,
+      method: "POST",
+      path: "/v1/chat/completions",
+    },
+    { id: "responses", label: PROTOCOLS_BY_ID.responses.name, method: "POST", path: "/v1/responses" },
+    { id: "anthropic", label: PROTOCOLS_BY_ID.anthropic.name, method: "POST", path: "/v1/messages" },
+    { id: "models", label: t("settings.api.modelList"), method: "GET", path: "/v1/models" },
   ];
-  const exampleModel = open[0]?.exposedName ?? t("settings.api.exampleNoModel");
+  const exampleModel = all.find(isOpen)?.exposedName ?? t("settings.api.exampleNoModel");
   const example = [
     `curl ${base}/chat/completions \\`,
     `  -H "Content-Type: application/json" \\`,
@@ -138,18 +162,6 @@ export function ApiSettings() {
     </button>
   );
 
-  const row = (title: string, description: string, content: ReactNode, id?: string) => (
-    <section id={id} className="editor-section" aria-label={title}>
-      <div className="section-heading">
-        <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
-        </div>
-      </div>
-      <div className="settings-group-body">{content}</div>
-    </section>
-  );
-
   const loadError = query.isError
     ? describeError(query.error)
     : providers.isError
@@ -167,173 +179,202 @@ export function ApiSettings() {
           : t("settings.api.loading"));
   const running = runtime.data?.phase === "running";
 
-  return (
-    <section
-      id="settings-api"
-      className="settings-section api-settings"
-      aria-label={t("settings.api.heading")}
-    >
-      {row(
-        t("settings.api.endpointsHeading"),
-        t("settings.api.endpointsDescription"),
-        <>
-          {runtime.data && !running && (
-            <div className="api-notice" role="status">
-              <span>{t("settings.api.notRunning")}</span>
-              <button type="button" className="text-button" onClick={() => navigate("proxy")}>
-                {t("settings.api.openRun")}
-              </button>
-            </div>
-          )}
-          <div className="api-endpoints" role="table" aria-label={t("settings.api.endpointsHeading")}>
-            <div className="api-endpoint-row api-endpoint-head" role="row">
-              <span role="columnheader">{t("settings.api.protocolColumn")}</span>
-              <span role="columnheader">{t("settings.api.baseUrl")}</span>
-              <span role="columnheader">{t("settings.api.endpoint")}</span>
-            </div>
-            {endpoints.map((item) => (
-              <div className="api-endpoint-row" role="row" key={item.id}>
-                <span role="cell" className="api-endpoint-label">
-                  {item.label}
-                </span>
-                <span role="cell" className="api-endpoint-value">
-                  <code>{item.base}</code>
-                  {copyButton(item.base)}
-                </span>
-                <span role="cell" className="api-endpoint-value">
-                  <code>{item.url}</code>
-                  {copyButton(item.url)}
-                </span>
-              </div>
-            ))}
-            <div className="api-endpoint-row" role="row">
-              <span role="cell" className="api-endpoint-label">
-                {t("settings.api.apiKey")}
-              </span>
-              <span role="cell" className="api-endpoint-value api-endpoint-wide">
-                <span>{t("settings.api.apiKeyValue")}</span>
-              </span>
-            </div>
-          </div>
-          <p className="settings-note">{t("settings.api.apiKeyNote")}</p>
-          <p className="settings-note">{t("settings.api.modelNote")}</p>
-          <div className="api-example">
-            <div className="api-example-head">
-              <span>{t("settings.api.example")}</span>
-              {copyButton(example, t("settings.api.example"))}
-            </div>
-            <pre>{example}</pre>
-          </div>
-        </>,
-        "settings-api-endpoints",
-      )}
+  const nav: { id: ApiSection; icon: LucideIcon; label: string; hint: string }[] = [
+    {
+      id: "endpoints",
+      icon: Link2,
+      label: t("settings.api.endpointsHeading"),
+      hint: base.replace(/^https?:\/\//, ""),
+    },
+    {
+      id: "models",
+      icon: ListChecks,
+      label: t("settings.api.modelsHeading"),
+      hint: settings ? t("settings.api.count", { count: openCount, total: all.length }) : "",
+    },
+    {
+      id: "fallback",
+      icon: Route,
+      label: t("settings.api.fallbackHeading"),
+      hint: settings ? (settings.default_fallback ? t("settings.api.on") : t("settings.api.off")) : "",
+    },
+  ];
 
-      {row(
-        t("settings.api.modelsHeading"),
-        t("settings.api.modelsDescription"),
-        settings === null ? (
-          <p className="settings-note" role={loadError ? "alert" : undefined}>
-            {loadError || t("settings.api.loading")}
+  const heading = (title: string, description: string) => (
+    <header className="api-pane-head">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </header>
+  );
+
+  const loading = (
+    <p className="settings-note" role={loadError ? "alert" : undefined}>
+      {loadError || t("settings.api.loading")}
+    </p>
+  );
+
+  const saveBar = (
+    <div className="api-save-bar">
+      <span className={`form-message ${save.isSuccess ? "success" : ""}`} role="status">
+        {status}
+      </span>
+      <button type="button" className="secondary-button" disabled={busy || !dirty} onClick={submit}>
+        {busy && <LoaderCircle size={15} className="spinning" />}
+        {busy ? t("common.saving") : t("settings.api.save")}
+      </button>
+    </div>
+  );
+
+  let pane: ReactNode;
+  if (section === "endpoints") {
+    pane = (
+      <>
+        {heading(t("settings.api.endpointsHeading"), t("settings.api.endpointsDescription"))}
+        {runtime.data && !running && (
+          <p className="api-inline-notice" role="status">
+            {t("settings.api.notRunning")}
+            <button type="button" className="text-button" onClick={() => navigate("proxy")}>
+              {t("settings.api.openRun")}
+            </button>
           </p>
+        )}
+        <dl className="api-fields">
+          <div>
+            <dt>{t("settings.api.baseUrl")}</dt>
+            <dd>
+              <code className="api-base-url">{base}</code>
+              {copyButton(base)}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("settings.api.apiKey")}</dt>
+            <dd>
+              <span>{t("settings.api.apiKeyValue")}</span>
+            </dd>
+          </div>
+        </dl>
+        <p className="settings-note">{t("settings.api.apiKeyNote")}</p>
+
+        <div className="api-block">
+          <h3>{t("settings.api.protocols")}</h3>
+          <ul className="api-paths">
+            {paths.map((item) => (
+              <li key={item.id}>
+                <span className="api-path-label">{item.label}</span>
+                <code>
+                  <span className="api-method">{item.method}</span>
+                  {item.path}
+                </code>
+                {copyButton(`${origin}${item.path}`)}
+              </li>
+            ))}
+          </ul>
+          <p className="settings-note">
+            {t("settings.api.anthropicNote", { origin })}
+            <br />
+            {t("settings.api.modelNote")}
+          </p>
+        </div>
+
+        <details className="api-example">
+          <summary>{t("settings.api.example")}</summary>
+          <div className="api-example-body">
+            <pre>{example}</pre>
+            {copyButton(example, t("settings.api.example"))}
+          </div>
+        </details>
+      </>
+    );
+  } else if (section === "models") {
+    pane = (
+      <>
+        {heading(t("settings.api.modelsHeading"), t("settings.api.modelsDescription"))}
+        {settings === null ? (
+          loading
         ) : (
           <>
-            <div className="preference-options" role="group" aria-label={t("settings.api.modelsHeading")}>
-              {[
-                {
-                  restrict: false,
-                  icon: Layers,
-                  label: t("settings.api.scopeAll"),
-                  desc: t("settings.api.scopeAllDesc"),
-                },
-                {
-                  restrict: true,
-                  icon: ListChecks,
-                  label: t("settings.api.scopeSelected"),
-                  desc: t("settings.api.scopeSelectedDesc"),
-                },
-              ].map(({ restrict, icon: Icon, label, desc }) => {
-                const selected = settings.restrict_models === restrict;
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    className={`preference-option ${selected ? "selected" : ""}`}
-                    aria-pressed={selected}
-                    disabled={busy}
-                    onClick={() => setRestricted(restrict)}
-                  >
-                    <span className="preference-option-head">
-                      <span className="preference-option-title">
-                        <Icon size={15} strokeWidth={1.9} />
-                        {label}
-                      </span>
-                      <span className="preference-check" aria-hidden="true">
-                        {selected && <Check size={11} strokeWidth={3} />}
-                      </span>
-                    </span>
-                    <span className="preference-option-desc">{desc}</span>
-                  </button>
-                );
-              })}
+            <div className="api-model-toolbar">
+              <div className="segmented-control" role="group" aria-label={t("settings.api.modelsHeading")}>
+                <button
+                  type="button"
+                  aria-pressed={!settings.restrict_models}
+                  disabled={busy}
+                  onClick={() => setRestricted(false)}
+                >
+                  {t("settings.api.scopeAll")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={settings.restrict_models}
+                  disabled={busy}
+                  onClick={() => setRestricted(true)}
+                >
+                  {t("settings.api.scopeSelected")}
+                </button>
+              </div>
+              <span className="api-model-count">
+                {settings.restrict_models && all.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => update({ model_ids: all.map((model) => model.id) })}
+                    >
+                      {t("settings.api.selectAll")}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => update({ model_ids: [] })}
+                    >
+                      {t("settings.api.selectNone")}
+                    </button>
+                  </>
+                )}
+                {t("settings.api.count", { count: openCount, total: all.length })}
+              </span>
             </div>
             {all.length === 0 ? (
               <p className="settings-note">{t("settings.api.empty")}</p>
             ) : (
-              <>
-                <div className="api-model-toolbar">
-                  <span>{t("settings.api.count", { count: open.length, total: all.length })}</span>
-                  {settings.restrict_models && (
-                    <span className="api-model-bulk">
-                      <button
-                        type="button"
-                        className="text-button"
-                        disabled={busy}
-                        onClick={() => update({ model_ids: all.map((model) => model.id) })}
-                      >
-                        {t("settings.api.selectAll")}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-button"
-                        disabled={busy}
-                        onClick={() => update({ model_ids: [] })}
-                      >
-                        {t("settings.api.selectNone")}
-                      </button>
-                    </span>
-                  )}
-                </div>
-                <ul className="api-model-list" aria-label={t("settings.api.modelsHeading")}>
-                  {all.map((model) => {
-                    const checked = isOpen(model);
-                    return (
-                      <li key={model.id} className={`api-model ${checked ? "" : "off"}`}>
-                        {settings.restrict_models && (
-                          <input
-                            type="checkbox"
-                            aria-label={model.exposedName}
-                            checked={checked}
-                            disabled={busy}
-                            onChange={(event) => toggleModel(model.id, event.target.checked)}
-                          />
-                        )}
-                        <ProviderIcon provider={model.provider} size={16} />
-                        <span className="api-model-name">
-                          <code title={t("settings.api.exposedName")}>{model.exposedName}</code>
-                          <small>
-                            {t("settings.api.upstream")} {model.upstream} ·{" "}
-                            {PROTOCOLS_BY_ID[model.protocol].shortName}
-                          </small>
-                        </span>
-                        {copyButton(model.exposedName)}
-                      </li>
-                    );
-                  })}
-                </ul>
-                {settings.restrict_models && open.length === 0 && (
-                  <p className="trajectory-field-error">{t("settings.api.noneSelected")}</p>
-                )}
-              </>
+              <ul className="api-model-groups" aria-label={t("settings.api.modelsHeading")}>
+                {groups.map(({ provider, models }) => (
+                  <li key={provider.id} className="api-model-group">
+                    <div className="api-model-group-head">
+                      <ProviderIcon provider={provider} size={16} />
+                      <span>{provider.name}</span>
+                    </div>
+                    <ul>
+                      {models.map((model) => {
+                        const checked = isOpen(model);
+                        return (
+                          <li key={model.id} className={`api-model ${checked ? "" : "off"}`}>
+                            {settings.restrict_models && (
+                              <input
+                                type="checkbox"
+                                aria-label={model.exposedName}
+                                checked={checked}
+                                disabled={busy}
+                                onChange={(event) => toggleModel(model.id, event.target.checked)}
+                              />
+                            )}
+                            <code>{model.exposedName}</code>
+                            <span className="api-model-meta">
+                              {model.upstream} · {PROTOCOLS_BY_ID[model.protocol].shortName}
+                            </span>
+                            {copyButton(model.exposedName)}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {settings.restrict_models && all.length > 0 && openCount === 0 && (
+              <p className="trajectory-field-error">{t("settings.api.noneSelected")}</p>
             )}
             {disabledProviders.length > 0 && (
               <p className="settings-note">
@@ -342,17 +383,20 @@ export function ApiSettings() {
                 })}
               </p>
             )}
+            {saveBar}
           </>
-        ),
-        "settings-api-models",
-      )}
-
-      {row(
-        t("settings.api.fallbackHeading"),
-        t("settings.api.fallbackDescription"),
-        <>
-          {settings && (
-            <div className="trajectory-switch-list">
+        )}
+      </>
+    );
+  } else {
+    pane = (
+      <>
+        {heading(t("settings.api.fallbackHeading"), t("settings.api.fallbackDescription"))}
+        {settings === null ? (
+          loading
+        ) : (
+          <>
+            <div className="api-fallback">
               <button
                 type="button"
                 role="switch"
@@ -364,25 +408,48 @@ export function ApiSettings() {
                 <span className="trajectory-switch-track" aria-hidden="true" />
                 <span className="trajectory-switch-label">{t("settings.api.fallback")}</span>
               </button>
+              <p className="settings-note">
+                {defaultProvider
+                  ? t("settings.api.fallbackTarget", { name: defaultProvider.name })
+                  : t("settings.api.fallbackNone")}
+              </p>
             </div>
-          )}
-          <p className="settings-note">
-            {defaultProvider
-              ? t("settings.api.fallbackTarget", { name: defaultProvider.name })
-              : t("settings.api.fallbackNone")}
-          </p>
-          <div className="settings-actions">
-            <span className={`form-message ${save.isSuccess ? "success" : ""}`} role="status">
-              {status}
+            {saveBar}
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <section
+      id="settings-api"
+      className="settings-section api-settings"
+      aria-label={t("settings.api.heading")}
+    >
+      <nav className="api-nav" aria-label={t("settings.api.nav")}>
+        {nav.map(({ id, icon: Icon, label, hint }) => (
+          <button
+            key={id}
+            type="button"
+            className={`api-nav-item ${section === id ? "selected" : ""}`}
+            aria-current={section === id ? "page" : undefined}
+            onClick={() => setSection(id)}
+          >
+            <Icon size={15} strokeWidth={1.9} />
+            <span className="api-nav-text">
+              <span className="api-nav-label">
+                {label}
+                {sectionDirty[id] && <i className="api-nav-dirty" aria-label={t("settings.api.dirty")} />}
+              </span>
+              {hint && <small>{hint}</small>}
             </span>
-            <button type="button" className="secondary-button" disabled={busy || !dirty} onClick={submit}>
-              {busy && <LoaderCircle size={15} className="spinning" />}
-              {busy ? t("common.saving") : t("settings.api.save")}
-            </button>
-          </div>
-        </>,
-        "settings-api-fallback",
-      )}
+          </button>
+        ))}
+      </nav>
+      <div className="api-pane" id={`settings-api-${section}`}>
+        {pane}
+      </div>
     </section>
   );
 }

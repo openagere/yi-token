@@ -22,37 +22,48 @@ test("listen settings moved to settings page", async ({ page }) => {
   await expect(listen.getByRole("status")).toContainText("所有修改已保存");
 });
 
-test("general api shows endpoints and saves exposed models", async ({ page }) => {
+test("general api switches sections and saves exposed models", async ({ page }) => {
   await installBackend(page, "light");
   await openSettings(page, "通用 API");
   const api = page.locator("#settings-api");
-  await expect(api).toBeVisible();
-  await expect(api).toContainText("http://127.0.0.1:11435/v1/chat/completions");
-  await expect(api).toContainText("http://127.0.0.1:11435/v1/messages");
-  await expect(api).toContainText("http://127.0.0.1:11435/v1/models");
-  // Disabled providers are not listed; the default provider is named for the fallback.
-  const list = api.getByRole("list", { name: "开放模型" });
-  await expect(list.getByRole("listitem")).toHaveCount(3);
-  await expect(list).not.toContainText("work/gpt");
-  await expect(api).toContainText("已开放 3 / 3");
-  await expect(api).toContainText("当前默认服务商：OpenAI");
+  const nav = api.getByRole("navigation", { name: "通用 API 子分区" });
+  const section = (name: RegExp) => nav.getByRole("button", { name });
+
+  // Endpoints: one base URL, protocol paths and a folded example.
+  await expect(api.locator(".api-base-url")).toHaveText("http://127.0.0.1:11435/v1");
+  await expect(api).toContainText("/v1/chat/completions");
+  await expect(api).toContainText("/v1/messages");
+  await expect(api.locator("pre")).toBeHidden();
+  await api.getByText("调用示例", { exact: true }).click();
   await expect(api.locator("pre")).toContainText('"model":"oa/gpt"');
 
-  await api.getByRole("button", { name: /仅选中的模型/ }).click();
+  // Models: disabled providers are not listed.
+  await section(/开放模型/).click();
+  await expect(nav).toContainText("已开放 3 / 3");
+  const list = api.getByRole("list", { name: "开放模型" });
+  await expect(list).not.toContainText("work/gpt");
+  await expect(list.getByRole("checkbox")).toHaveCount(0);
+  await api.getByRole("button", { name: "仅选中的模型", exact: true }).click();
   // The selection starts from every model, so nothing is hidden until unchecked.
-  await expect(api).toContainText("已开放 3 / 3");
+  await expect(list.getByRole("checkbox")).toHaveCount(3);
   await list.getByRole("checkbox", { name: "oa/gpt" }).uncheck();
-  await expect(api).toContainText("已开放 2 / 3");
-  await expect(api.locator("pre")).toContainText('"model":"ac/claude"');
+  await expect(nav).toContainText("已开放 2 / 3");
+  await expect(api.getByRole("status")).toContainText("有未保存的修改");
+
+  // Fallback: shares the draft with the models pane.
+  await section(/转发规则/).click();
+  await expect(api).toContainText("当前默认服务商：OpenAI");
   await api.getByRole("switch", { name: "转发未知模型名" }).click();
-  await expect(api.getByRole("status").last()).toContainText("有未保存的修改");
+  await expect(nav).toContainText("已关闭");
   await api.getByRole("button", { name: "保存设置", exact: true }).click();
-  await expect(api.getByRole("status").last()).toContainText("所有修改已保存");
+  await expect(api.getByRole("status")).toContainText("所有修改已保存");
 
   await page.getByRole("tab", { name: "代理监听", exact: true }).click();
   await page.getByRole("tab", { name: "通用 API", exact: true }).click();
+  await section(/开放模型/).click();
   await expect(list.getByRole("checkbox", { name: "oa/gpt" })).not.toBeChecked();
   await expect(list.getByRole("checkbox", { name: "ac/claude" })).toBeChecked();
+  await section(/转发规则/).click();
   await expect(api.getByRole("switch", { name: "转发未知模型名" })).toHaveAttribute("aria-checked", "false");
 });
 
