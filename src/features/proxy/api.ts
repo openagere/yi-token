@@ -1,5 +1,5 @@
 import { invoke } from "@/shared/api";
-import type { LiveSnapshot, LogsView } from "@/generated";
+import type { GlobalApiSettings, LiveSnapshot, LogsView } from "@/generated";
 import type { LogLevelSetting, ProxyAction, ProxyMonitorSnapshot, ProxyRuntime, ServerSettings } from "./types";
 
 declare module "@/shared/api/tauri" {
@@ -11,6 +11,8 @@ declare module "@/shared/api/tauri" {
     control_proxy: { args: { action: ProxyAction }; result: void };
     get_logs: { args: void; result: LogsView };
     get_live_requests: { args: { sinceSeq: number }; result: LiveSnapshot };
+    get_api_settings: { args: void; result: GlobalApiSettings };
+    save_api_settings: { args: { settings: GlobalApiSettings }; result: void };
   }
 }
 
@@ -24,4 +26,7 @@ export const proxyApi = {
   logs: async () => (await invoke("get_logs")).lines.join("\n"),
   /** 实时请求：返回在途请求和 `seq` 大于 `sinceSeq` 的已完成请求。 */
   live: (sinceSeq: number) => invoke("get_live_requests", { sinceSeq }),
+  /** 通用 API（全局路由 `/v1/...`）的开放模型与默认服务商转发设置。 */
+  apiSettings: () => invoke("get_api_settings"),
+  saveApiSettings: (settings: GlobalApiSettings) => invoke("save_api_settings", { settings }),
 };

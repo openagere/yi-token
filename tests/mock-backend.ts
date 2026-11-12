@@ -237,6 +237,7 @@ export async function installBackend(
       type MockEngine = { client: string; model_id: string; exposed_name: string; provider_name: string };
       let activeEngines: MockEngine[] = [];
       let settings = { host: "127.0.0.1", port: 11435, log_level: "info" };
+      let apiSettings = { restrict_models: false, model_ids: [] as string[], default_fallback: true };
       const now = Date.now();
       const day = new Date().toLocaleDateString("en-CA");
       const usageModels = models.slice(0, 3).map((model, index) => ({
@@ -445,6 +446,16 @@ export async function installBackend(
               case "save_settings":
                 settings = { host: args.host, port: args.port, log_level: args.logLevel };
                 return;
+              case "get_api_settings":
+                return structuredClone(apiSettings);
+              case "save_api_settings": {
+                const known = new Set(providers.flatMap((provider) => provider.models.map((model) => model.id)));
+                apiSettings = {
+                  ...args.settings,
+                  model_ids: [...new Set<string>(args.settings.model_ids)].filter((id) => known.has(id)),
+                };
+                return;
+              }
               case "get_usage":
                 return structuredClone({
                   ...usage,

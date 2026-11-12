@@ -5,13 +5,14 @@ use axum::http::{Request, StatusCode, header};
 use tower::ServiceExt;
 use yi_core::CoreError;
 use yi_core::domain::{
-    Capabilities, Client, Model, ProfileModel, Protocol, Provider, ProxyProfile, RouteMode,
+    Capabilities, Client, GlobalApiSettings, Model, ProfileModel, Protocol, Provider, ProxyProfile,
+    RouteMode,
 };
 use yi_core::proxy::resolve::{Routes, Scope, resolve};
 use yi_core::proxy::router::{ProxyState, build};
 use yi_core::services::Services;
 use yi_core::proxy::route_source::DbRouteSource;
-use yi_core::storage::{Db, providers, terminal};
+use yi_core::storage::{Db, providers, settings, terminal};
 
 /// A provider whose native protocol is `native`; every provider accepts every client protocol.
 fn provider(id: &str, _code: &str, native: Protocol) -> Provider {
@@ -114,6 +115,56 @@ fn global_falls_back_to_default_provider() {
     let r = resolve(&snap, Scope::Global, Protocol::Anthropic, "name-p1/gpt-5").unwrap();
     assert_eq!(r.provider.id, "p1");
     assert_eq!(r.upstream_model, "gpt-5");
+}
+
+#[test]
+fn global_restricted_models_only_resolve_when_selected() {
+    let db = Db::open_in_memory().unwrap();
+    let mut p = provider("p1", "oa", Protocol::OpenaiChat);
+    p.is_default = true;
+    save(&db, &p, &[model("m1", "gpt-5"), model("m2", "gpt-6")]);
+    let api = GlobalApiSettings {
+        restrict_models: true,
+        model_ids: vec!["m1".into()],
+        default_fallback: true,
+    };
+    db.with_conn(|c| settings::save_api(c, &api)).unwrap();
+    let snap = routes(&db).load();
+    let r = resolve(&snap, Scope::Global, Protocol::OpenaiChat, "name-p1/gpt-5").unwrap();
+    assert_eq!(r.model.unwrap().id, "m1");
+    // A hidden exposed name is refused rather than sent to the default provider.
+    let err = resolve(&snap, Scope::Global, Protocol::OpenaiChat, "name-p1/gpt-6").unwrap_err();
+    assert!(matches!(err, CoreError::NotFound(_)));
+    // Terminal routes ignore the global exposure rules.
+    db.with_conn(|c| {
+        terminal::save_proxy(
+            c,
+            &fixed_profile(Client::Codex, Protocol::Responses, "p1", "name-p1/gpt-6"),
+        )
+    })
+    .unwrap();
+    let snap = routes(&db).load();
+    let scope = Scope::Client(Client::Codex);
+    let r = resolve(&snap, scope, Protocol::Responses, "name-p1/gpt-6").unwrap();
+    assert_eq!(r.model.unwrap().id, "m2");
+}
+
+#[test]
+fn global_default_fallback_can_be_turned_off() {
+    let db = Db::open_in_memory().unwrap();
+    let mut p = provider("p1", "oa", Protocol::OpenaiChat);
+    p.is_default = true;
+    save(&db, &p, &[model("m1", "gpt-5")]);
+    let api = GlobalApiSettings {
+        default_fallback: false,
+        ..GlobalApiSettings::default()
+    };
+    db.with_conn(|c| settings::save_api(c, &api)).unwrap();
+    let snap = routes(&db).load();
+    let err = resolve(&snap, Scope::Global, Protocol::OpenaiChat, "whatever").unwrap_err();
+    assert!(matches!(err, CoreError::NotFound(_)));
+    let r = resolve(&snap, Scope::Global, Protocol::OpenaiChat, "name-p1/gpt-5").unwrap();
+    assert_eq!(r.provider.id, "p1");
 }
 
 #[test]
@@ -416,6 +467,45 @@ async fn health_and_models_listing() {
             .iter()
             .any(|e| e["id"] == "name-p1/gpt-5" && e["owned_by"] == "name-p1")
     );
+}
+
+#[tokio::test]
+async fn global_models_listing_follows_api_settings() {
+    let (router, s, _d) = app();
+    s.db()
+        .with_tx(|tx| {
+            providers::upsert(
+                tx,
+                &provider("p1", "oa", Protocol::Responses),
+                &[model("m1", "gpt-5"), model("m2", "gpt-6")],
+            )
+        })
+        .unwrap();
+    s.save_api_settings(GlobalApiSettings {
+        restrict_models: true,
+        model_ids: vec!["m2".into(), "gone".into(), "m2".into()],
+        default_fallback: true,
+    })
+    .await
+    .unwrap();
+    // Unknown and duplicate ids are dropped on save.
+    let saved = s.get_api_settings().await.unwrap();
+    assert_eq!(saved.model_ids, vec!["m2".to_string()]);
+    let resp = router
+        .oneshot(Request::get("/v1/models").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    let ids: Vec<_> = v["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(ids, vec!["name-p1/gpt-6".to_string()]);
 }
 
 #[tokio::test]

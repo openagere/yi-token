@@ -40,7 +40,7 @@ export interface SessionTarget {
 }
 
 /** 设置页的分区；从其他页面跳来时可直接打开对应分区。 */
-export type SettingsSection = "general" | "listen" | "trajectory";
+export type SettingsSection = "general" | "listen" | "api" | "trajectory";
 
 const isCompact = isCompactWindow;
 

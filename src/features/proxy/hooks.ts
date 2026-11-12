@@ -3,13 +3,14 @@ import { describeError } from "@/shared/api";
 import { translate } from "@/shared/i18n";
 import { notify } from "@/shared/notify";
 import { proxyApi } from "./api";
-import type { LiveSnapshot } from "@/generated";
+import type { GlobalApiSettings, LiveSnapshot } from "@/generated";
 import type { LiveState, ProxyAction, ProxyPhase, ServerSettings } from "./types";
 
 export const proxyKeys = {
   all: ["proxy"] as const,
   runtime: ["proxy", "runtime"] as const,
   settings: ["proxy", "settings"] as const,
+  api: ["proxy", "api"] as const,
   monitor: (minutes: number) => ["proxy", "monitor", minutes] as const,
   logs: ["proxy", "logs"] as const,
   control: ["proxy", "control"] as const,
@@ -101,6 +102,19 @@ export function useSaveProxySettings() {
       client.setQueryData(proxyKeys.settings, settings);
       return client.invalidateQueries({ queryKey: proxyKeys.runtime });
     },
+  });
+}
+
+export function useApiSettings() {
+  return useQuery({ queryKey: proxyKeys.api, queryFn: proxyApi.apiSettings });
+}
+
+/** 后端会丢弃已不存在的模型 id，因此保存后重新读取。 */
+export function useSaveApiSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: GlobalApiSettings) => proxyApi.saveApiSettings(settings),
+    onSuccess: () => client.invalidateQueries({ queryKey: proxyKeys.api }),
   });
 }
 

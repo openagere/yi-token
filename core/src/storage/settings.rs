@@ -1,7 +1,7 @@
 //! The single settings row.
 
 use super::{enum_str, parse_enum, parse_json};
-use crate::domain::{Client, Settings, TrajectorySettings};
+use crate::domain::{Client, GlobalApiSettings, Settings, TrajectorySettings};
 use crate::error::{CoreError, CoreResult};
 use rusqlite::{Connection, params};
 
@@ -84,6 +84,31 @@ pub fn save_trajectory(conn: &Connection, settings: &TrajectorySettings) -> Core
             settings.retention_days,
             max_bytes,
             settings.notice_seen,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn get_api(conn: &Connection) -> CoreResult<GlobalApiSettings> {
+    let (restrict, ids, fallback): (i64, String, i64) = conn.query_row(
+        "SELECT api_restrict_models, api_model_ids, api_default_fallback FROM settings WHERE id = 1",
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )?;
+    Ok(GlobalApiSettings {
+        restrict_models: restrict != 0,
+        model_ids: parse_json::<Vec<String>>(&ids, "通用 API 设置")?,
+        default_fallback: fallback != 0,
+    })
+}
+
+pub fn save_api(conn: &Connection, settings: &GlobalApiSettings) -> CoreResult<()> {
+    conn.execute(
+        "UPDATE settings SET api_restrict_models = ?1, api_model_ids = ?2, api_default_fallback = ?3          WHERE id = 1",
+        params![
+            settings.restrict_models,
+            serde_json::to_string(&settings.model_ids)?,
+            settings.default_fallback,
         ],
     )?;
     Ok(())

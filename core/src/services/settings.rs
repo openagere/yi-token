@@ -1,8 +1,9 @@
 use super::{Services, SettingsView};
-use crate::domain::{LogLevel, Settings};
+use crate::domain::{GlobalApiSettings, LogLevel, Settings};
 use crate::error::{CoreError, CoreResult};
 use crate::logging;
-use crate::storage::settings;
+use crate::storage::{models, settings};
+use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::Arc;
 
@@ -53,5 +54,29 @@ impl Services {
             tracing::warn!("proxy restart on settings change failed: {e}");
         }
         Ok(())
+    }
+
+    pub async fn get_api_settings(self: &Arc<Self>) -> CoreResult<GlobalApiSettings> {
+        self.run(|s| s.db.with_conn(settings::get_api)).await
+    }
+
+    /// Saves the global route settings and applies them to new requests at once.
+    /// Duplicate ids and ids of models that no longer exist are dropped.
+    pub async fn save_api_settings(self: &Arc<Self>, api: GlobalApiSettings) -> CoreResult<()> {
+        self.run(move |s| {
+            s.db.with_conn(|c| {
+                let known: HashSet<String> = models::list(c)?.into_iter().map(|m| m.id).collect();
+                let mut seen = HashSet::new();
+                let model_ids = api
+                    .model_ids
+                    .into_iter()
+                    .filter(|id| known.contains(id) && seen.insert(id.clone()))
+                    .collect();
+                settings::save_api(c, &GlobalApiSettings { model_ids, ..api })
+            })?;
+            s.routes_changed();
+            Ok(())
+        })
+        .await
     }
 }

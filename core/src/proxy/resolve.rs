@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 
-use crate::domain::{AUTO_MODEL, Client, Model, Protocol, Provider, ProxyProfile, RouteMode};
+use crate::domain::{
+    AUTO_MODEL, Client, GlobalApiSettings, Model, Protocol, Provider, ProxyProfile, RouteMode,
+};
 use crate::error::{CoreError, CoreResult};
 
 /// An enabled provider with its models indexed by upstream model name.
@@ -28,6 +30,8 @@ pub struct RouteSnapshot {
     pub engines: HashMap<Client, Option<String>>,
     /// Models of enabled providers, by model id.
     pub models: HashMap<String, Model>,
+    /// Exposure rules of the global route.
+    pub api: GlobalApiSettings,
 }
 
 pub trait RouteSource: Send + Sync {
@@ -94,6 +98,9 @@ fn resolve_global(snap: &RouteSnapshot, name: &str) -> CoreResult<Resolved> {
         && let Some(route) = snap.providers.get(pid)
         && let Some(model) = snap.models.get(mid)
     {
+        if !snap.api.exposes(mid) {
+            return Err(CoreError::NotFound(format!("通用 API 未开放模型 {name}")));
+        }
         return Ok(Resolved {
             provider: route.provider.clone(),
             upstream_model: model.upstream_model.clone(),
@@ -104,6 +111,7 @@ fn resolve_global(snap: &RouteSnapshot, name: &str) -> CoreResult<Resolved> {
     let default = snap
         .default_provider
         .as_ref()
+        .filter(|_| snap.api.default_fallback)
         .and_then(|id| snap.providers.get(id));
     match default {
         Some(route) => Ok(Resolved {
@@ -112,8 +120,11 @@ fn resolve_global(snap: &RouteSnapshot, name: &str) -> CoreResult<Resolved> {
             upstream_model: name.to_owned(),
             route_mode: None,
         }),
-        None => Err(CoreError::NotFound(format!(
+        None if snap.api.default_fallback => Err(CoreError::NotFound(format!(
             "未找到模型 {name}，且没有默认服务商"
+        ))),
+        None => Err(CoreError::NotFound(format!(
+            "未找到模型 {name}，通用 API 未开启默认服务商转发"
         ))),
     }
 }

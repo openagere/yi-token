@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::error::CoreResult;
 use crate::proxy::resolve::{ProviderRoute, RouteSnapshot, RouteSource};
-use crate::storage::{Db, engines, models, providers, terminal};
+use crate::storage::{Db, engines, models, providers, settings, terminal};
 
 pub struct DbRouteSource {
     pub db: Db,
@@ -43,6 +43,7 @@ impl RouteSource for DbRouteSource {
                 snap.proxy_profiles.insert(profile.client, profile);
             }
             snap.engines = engines::list(c)?.into_iter().collect();
+            snap.api = settings::get_api(c)?;
             Ok(snap)
         })
     }

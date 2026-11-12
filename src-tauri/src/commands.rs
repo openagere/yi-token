@@ -9,8 +9,8 @@ use std::sync::Arc;
 use tauri::State;
 use yi_core::backup::{FILE_EXTENSION, FILE_FORMAT_NAME};
 use yi_core::domain::{
-    BlobView, Client, DirectProfile, LiveSnapshot, LogLevel, SessionChanges, SessionDetail,
-    SessionListInput, SessionPage, StepContext, TrajectoryInput, TrajectoryPage,
+    BlobView, Client, DirectProfile, GlobalApiSettings, LiveSnapshot, LogLevel, SessionChanges,
+    SessionDetail, SessionListInput, SessionPage, StepContext, TrajectoryInput, TrajectoryPage,
     TrajectorySettings, TrajectoryStatus, UsageGroupBy,
 };
 use yi_core::services::{
@@ -224,6 +224,14 @@ async fn save_trajectory_settings_impl(s: &Svc, settings: TrajectorySettings) ->
     s.save_trajectory_settings(settings).await
 }
 
+async fn get_api_settings_impl(s: &Svc) -> CoreResult<GlobalApiSettings> {
+    s.get_api_settings().await
+}
+
+async fn save_api_settings_impl(s: &Svc, settings: GlobalApiSettings) -> CoreResult<()> {
+    s.save_api_settings(settings).await
+}
+
 async fn rebuild_trajectory_db_impl(s: &Svc) -> CoreResult<()> {
     s.rebuild_trajectory_db().await
 }
@@ -397,7 +405,10 @@ pub async fn get_usage(
     client: Option<Client>,
     group_by: Option<UsageGroupBy>,
 ) -> CoreResult<UsageReportView> {
-    get_usage_impl(&state.0, days, model, start_date, end_date, client, group_by).await
+    get_usage_impl(
+        &state.0, days, model, start_date, end_date, client, group_by,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -533,6 +544,19 @@ pub async fn save_trajectory_settings(
 }
 
 #[tauri::command]
+pub async fn get_api_settings(state: State<'_, AppState>) -> CoreResult<GlobalApiSettings> {
+    get_api_settings_impl(&state.0).await
+}
+
+#[tauri::command]
+pub async fn save_api_settings(
+    state: State<'_, AppState>,
+    settings: GlobalApiSettings,
+) -> CoreResult<()> {
+    save_api_settings_impl(&state.0, settings).await
+}
+
+#[tauri::command]
 pub async fn rebuild_trajectory_db(state: State<'_, AppState>) -> CoreResult<()> {
     rebuild_trajectory_db_impl(&state.0).await
 }
@@ -570,7 +594,11 @@ mod tests {
 
         assert!(!get_settings_impl(&s).await.unwrap().host.is_empty());
         assert!(get_logs_impl(&s).await.is_ok());
-        assert!(get_usage_impl(&s, Some(7), None, None, None, None, None).await.is_ok());
+        assert!(
+            get_usage_impl(&s, Some(7), None, None, None, None, None)
+                .await
+                .is_ok()
+        );
         assert!(!list_standard_models_impl(&s).await.unwrap().is_empty());
         assert!(get_model_catalog_info_impl(&s).await.is_ok());
     }

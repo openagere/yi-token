@@ -31,6 +31,8 @@ pub fn run() {
             commands::delete_standard_model,
             commands::get_settings,
             commands::save_settings,
+            commands::get_api_settings,
+            commands::save_api_settings,
             commands::get_logs,
             commands::get_usage,
             commands::get_terminal_profiles,

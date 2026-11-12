@@ -56,3 +56,33 @@ impl Default for TrajectorySettings {
         }
     }
 }
+
+/// Settings of the global route (`/v1/...`, recorded as `api`) that other tools
+/// connect to (stored on the settings row).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/generated/")]
+pub struct GlobalApiSettings {
+    /// Only the models in `model_ids` are exposed; otherwise every model of an enabled provider is.
+    pub restrict_models: bool,
+    /// Exposed model ids, used when `restrict_models` is set.
+    pub model_ids: Vec<String>,
+    /// A name that matches no exposed model is forwarded to the default provider as is.
+    pub default_fallback: bool,
+}
+
+impl Default for GlobalApiSettings {
+    fn default() -> Self {
+        Self {
+            restrict_models: false,
+            model_ids: Vec::new(),
+            default_fallback: true,
+        }
+    }
+}
+
+impl GlobalApiSettings {
+    /// Whether the model with this id is exposed on the global route.
+    pub fn exposes(&self, model_id: &str) -> bool {
+        !self.restrict_models || self.model_ids.iter().any(|id| id == model_id)
+    }
+}

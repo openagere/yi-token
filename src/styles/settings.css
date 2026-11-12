@@ -112,9 +112,37 @@
 .trajectory-store-error .settings-note { color: var(--text-secondary); }
 .trajectory-store-error .secondary-button { justify-self: start; margin-top: 4px; }
 
+/* General API: endpoint table, curl example and the exposed model list. */
+.api-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-subtle); color: var(--text-secondary); font-size: 12px; }
+.api-endpoints { display: grid; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 12px; }
+.api-endpoint-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1.3fr); align-items: center; gap: 12px; min-height: 36px; padding: 0 6px 0 12px; border-top: 1px solid var(--border); }
+.api-endpoint-row:first-child { border-top: 0; }
+.api-endpoint-head { min-height: 30px; color: var(--text-muted); background: var(--surface-subtle); font-weight: 550; }
+.api-endpoint-label { color: var(--text-secondary); font-weight: 550; }
+.api-endpoint-value { display: flex; align-items: center; gap: 2px; min-width: 0; color: var(--text-primary); }
+.api-endpoint-value code { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-endpoint-wide { grid-column: 2 / -1; }
+.api-copy.icon-button { width: 26px; height: 26px; min-height: 26px; }
+.api-example { display: grid; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.api-example-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 0 6px 0 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); background: var(--surface-subtle); font-size: 12px; font-weight: 550; }
+.api-example pre { margin: 0; padding: 10px 12px; overflow-x: auto; color: var(--text-primary); font-size: 12px; line-height: 1.6; }
+.api-model-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.api-model-bulk { display: inline-flex; gap: 10px; }
+.api-model-list { display: grid; max-height: 320px; margin: 0; padding: 0; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; list-style: none; }
+.api-model { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 6px 4px 12px; border-top: 1px solid var(--border); }
+.api-model:first-child { border-top: 0; }
+.api-model.off .api-model-name { opacity: .55; }
+.api-model input[type="checkbox"] { flex: none; margin: 0; }
+.api-model-name { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.api-model-name code { overflow: hidden; color: var(--text-primary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.api-model-name small { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
 @media (max-width: 860px) {
   .settings-page .settings-section > .editor-section { grid-template-columns: 1fr; gap: 12px; }
 }
 @media (max-width: 560px) {
   .preference-options, .preference-options:has(> :nth-child(2):last-child), .settings-page .settings-grid { grid-template-columns: 1fr; }
+  .api-endpoint-row { grid-template-columns: 1fr; gap: 2px; padding: 6px 6px 6px 12px; }
+  .api-endpoint-head { display: none; }
+  .api-endpoint-wide { grid-column: auto; }
 }

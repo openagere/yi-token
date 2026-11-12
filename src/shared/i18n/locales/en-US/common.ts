@@ -48,7 +48,7 @@ const common: DeepString<typeof zh> = {
     proxy: "Manage the local proxy, connections, requests, and logs.",
     usage: "Review model calls, token usage, and request records.",
     terminal: "Manage proxy and direct Provider access for command-line clients.",
-    settings: "Manage appearance, the proxy listener, and session trajectory.",
+    settings: "Manage appearance, the proxy listener, the general API, and session trajectory.",
   },
   common: {
     back: "Back",

@@ -108,8 +108,15 @@ CREATE TABLE run_monitor (
 );
 ";
 
+/// Settings of the global route (`/v1/...`) other tools connect to.
+const GLOBAL_API_SQL: &str = "
+ALTER TABLE settings ADD COLUMN api_restrict_models INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE settings ADD COLUMN api_model_ids TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE settings ADD COLUMN api_default_fallback INTEGER NOT NULL DEFAULT 1;
+";
+
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(BASELINE_SQL)])
+    Migrations::new(vec![M::up(BASELINE_SQL), M::up(GLOBAL_API_SQL)])
 }
 
 pub fn run(conn: &mut Connection) -> CoreResult<()> {

@@ -1,9 +1,9 @@
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 use yi_core::domain::{
-    Capabilities, Client, Company, DirectProfile, LivePhase, LogLevel, Model, ModelSource,
-    ProfileModel, Protocol, Provider, ProxyProfile, RouteMode, Settings, StandardModel,
-    TrajectorySettings, UsageEvent,
+    Capabilities, Client, Company, DirectProfile, GlobalApiSettings, LivePhase, LogLevel, Model,
+    ModelSource, ProfileModel, Protocol, Provider, ProxyProfile, RouteMode, Settings,
+    StandardModel, TrajectorySettings, UsageEvent,
 };
 use yi_core::storage::usage::UsageQuery;
 use yi_core::storage::{Db, engines, models, providers, settings, standard_models};
@@ -62,12 +62,12 @@ fn count(db: &Db, table: &str) -> i64 {
         .unwrap()
 }
 
-/// The baseline schema is applied and the connection settings are in force.
+/// The baseline schema and later migrations are applied and the connection settings are in force.
 #[test]
 fn baseline_schema_is_applied() {
     let db = Db::open_in_memory().unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 1);
+        assert_eq!(user_version(c), 2);
         let fk: i64 = c.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
         assert_eq!(fk, 1);
         for index in ["idx_usage_requested_at", "idx_usage_client"] {
@@ -117,7 +117,7 @@ fn file_database_uses_wal_and_foreign_keys() {
     drop(db);
     let db = Db::open(&dir.path().join("nested").join("t.db")).unwrap();
     db.with_conn(|c| {
-        assert_eq!(user_version(c), 1);
+        assert_eq!(user_version(c), 2);
         Ok(())
     })
     .unwrap();
@@ -591,6 +591,25 @@ fn event(at: i64, client: Option<Client>, model: &str, input: u32, output: u32) 
         duration_ms: None,
         status: None,
     }
+}
+
+#[test]
+fn api_settings_default_and_round_trip() {
+    let db = Db::open_in_memory().unwrap();
+    db.with_conn(|c| {
+        assert_eq!(settings::get_api(c)?, GlobalApiSettings::default());
+        let s = GlobalApiSettings {
+            restrict_models: true,
+            model_ids: vec!["a".into(), "b".into()],
+            default_fallback: false,
+        };
+        settings::save_api(c, &s)?;
+        assert_eq!(settings::get_api(c)?, s);
+        // The listen settings on the same row are left alone.
+        assert_eq!(settings::get(c)?, Settings::default());
+        Ok(())
+    })
+    .unwrap();
 }
 
 #[test]

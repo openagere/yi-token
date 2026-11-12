@@ -138,6 +138,7 @@ async fn global_models(State(s): State<ProxyState>) -> Response {
     let mut entries: Vec<(&String, &str)> = snap
         .by_exposed
         .iter()
+        .filter(|(_, (_, mid))| snap.api.exposes(mid))
         .filter_map(|(name, (pid, _))| {
             snap.providers
                 .get(pid)

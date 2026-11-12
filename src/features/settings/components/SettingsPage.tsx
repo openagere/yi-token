@@ -6,6 +6,7 @@ import {
   Monitor,
   Moon,
   Network,
+  Plug,
   SlidersHorizontal,
   Sun,
   Type,
@@ -16,6 +17,7 @@ import { useNavigation, useNavigationStore, type SettingsSection } from "@/share
 import { useSettings } from "@/shared/settings";
 import { FONT_STACKS } from "@/shared/theme";
 import { AppLogo, PageHeader, PageTabs, tabId, tabPanelId, type PageTab } from "@/shared/ui";
+import { ApiSettings } from "./ApiSettings";
 import { ListenSettings } from "./ListenSettings";
 import { TrajectorySettings } from "./TrajectorySettings";
 
@@ -81,7 +83,7 @@ function ThemeSwatch({ variant }: { variant: "light" | "dark" | "system" }) {
 
 const TAB_PREFIX = "settings";
 
-/** 设置页：通用（外观、字体、语言）、代理监听、会话轨迹三个分区按标签切换，每个分区一屏内显示。 */
+/** 设置页：通用（外观、字体、语言）、代理监听、通用 API、会话轨迹四个分区按标签切换。 */
 export function SettingsPage() {
   const { t } = useI18n();
   const { back, close } = useNavigation();
@@ -102,6 +104,7 @@ export function SettingsPage() {
   const tabs: PageTab<SettingsSection>[] = [
     { id: "general", label: t("settings.tabs.general"), icon: SlidersHorizontal },
     { id: "listen", label: t("settings.tabs.listen"), icon: Network },
+    { id: "api", label: t("settings.tabs.api"), icon: Plug },
     { id: "trajectory", label: t("settings.tabs.trajectory"), icon: History },
   ];
   const panel = (id: SettingsSection) => ({
@@ -255,6 +258,9 @@ export function SettingsPage() {
           <div className="settings-section">
             <ListenSettings />
           </div>
+        </div>
+        <div {...panel("api")}>
+          <ApiSettings />
         </div>
         <div {...panel("trajectory")}>
           <TrajectorySettings />

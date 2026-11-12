@@ -29,7 +29,7 @@ pub use session::{
     ThreadKindView, ThreadView, TrajectoryInput, TrajectoryPage, TrajectoryRecord,
     TrajectoryStatus, TrajectoryStep, TrajectoryTurn,
 };
-pub use settings::{LogLevel, Settings, TrajectorySettings};
+pub use settings::{GlobalApiSettings, LogLevel, Settings, TrajectorySettings};
 pub use standard_model::StandardModel;
 pub use terminal::{AUTO_MODEL, DirectProfile, ModelSource, ProfileModel, ProxyProfile, RouteMode};
 pub use thinking::Thinking;
