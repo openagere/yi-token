@@ -1397,7 +1397,7 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "glob"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
@@ -5823,7 +5823,7 @@ dependencies = [
 
 [[package]]
 name = "yi-core"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "aes-gcm",
  "arc-swap",
@@ -5863,7 +5863,7 @@ dependencies = [
 
 [[package]]
 name = "yi-token"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "rfd",
  "serde",
