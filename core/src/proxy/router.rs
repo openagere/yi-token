@@ -21,6 +21,7 @@ use super::resolve::{Routes, Scope, resolve};
 use super::upstream::UpstreamClient;
 use crate::domain::{AUTO_MODEL, Client, Protocol, RouteMode};
 use crate::error::CoreError;
+use crate::protocol::reasoning_origin::ReasoningOrigins;
 use crate::storage::usage_writer::UsageSink;
 use crate::trajectory::record::CaptureSlot;
 
@@ -35,6 +36,8 @@ pub struct ProxyState {
     pub capture: CaptureSlot,
     /// Requests in flight and recently completed, for the live view.
     pub live: LiveRegistry,
+    /// Which Responses provider issued each reasoning item it returned.
+    pub reasoning_origins: Arc<ReasoningOrigins>,
 }
 
 impl ProxyState {
@@ -59,6 +62,7 @@ impl ProxyState {
             monitor,
             capture: CaptureSlot::default(),
             live: LiveRegistry::default(),
+            reasoning_origins: Arc::new(ReasoningOrigins::new()),
         }
     }
 

@@ -28,6 +28,7 @@ use crate::domain::{Client, LivePhase, Protocol, RouteMode, Thinking, UsageEvent
 use crate::error::{CoreError, CoreResult};
 use crate::protocol::ir;
 use crate::protocol::prepare::{self, PrepareCtx};
+use crate::protocol::reasoning_origin::ReasoningOrigins;
 use crate::protocol::sse::Decoder;
 use crate::protocol::{
     OutboundCtx, Usage, build_upstream, choose_upstream, stream_translator_with_usage,
@@ -249,7 +250,12 @@ struct Plan {
 }
 
 /// Builds the upstream request body. `raw` is the client's body as sent.
-fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
+fn prepare(
+    raw: Value,
+    inbound: Protocol,
+    r: &Resolved,
+    origins: &ReasoningOrigins,
+) -> CoreResult<Plan> {
     let provider = &r.provider;
     let native = r
         .model
@@ -268,7 +274,7 @@ fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
             .pointer("/stream_options/include_usage")
             .and_then(Value::as_bool)
             == Some(true);
-    let body = if passthrough {
+    let mut body = if passthrough {
         let mut raw = raw;
         let ctx = PrepareCtx {
             inbound,
@@ -280,7 +286,7 @@ fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
             non_standard: r.model.as_ref().is_some_and(|m| m.non_standard),
         };
         prepare::passthrough(&mut raw, &ctx)?;
-        serde_json::to_vec(&raw)?
+        raw
     } else {
         // A client that chose its own reasoning effort keeps it.
         let thinking = if thinking_rules::has_reasoning(inbound, &raw) {
@@ -296,12 +302,16 @@ fn prepare(raw: Value, inbound: Protocol, r: &Resolved) -> CoreResult<Plan> {
             capabilities,
             thinking,
         };
-        serde_json::to_vec(&build_upstream(&ir, upstream, &ctx)?)?
+        build_upstream(&ir, upstream, &ctx)?
     };
+    if upstream == Protocol::Responses {
+        // Reasoning state is only valid for the provider that issued it.
+        origins.strip_foreign(&provider.id, &mut body);
+    }
     Ok(Plan {
         upstream,
         passthrough,
-        body: Bytes::from(body),
+        body: Bytes::from(serde_json::to_vec(&body)?),
         include_usage,
     })
 }
@@ -357,7 +367,8 @@ async fn run(
     let resolved = resolve(&state.routes.load(), scope, inbound, &model)?;
     let plan = {
         let r = resolved.clone();
-        offload(len, move || prepare(raw, inbound, &r)).await?
+        let origins = state.reasoning_origins.clone();
+        offload(len, move || prepare(raw, inbound, &r, &origins)).await?
     };
 
     let usage_model = resolved.model.as_ref().map_or_else(
@@ -436,6 +447,10 @@ async fn run(
             stream_translator_with_usage(inbound, plan.upstream, plan.include_usage);
         translator.set_tap(tap.tap());
         guard.tap = Some(tap);
+        // Responses upstreams issue the reasoning state that later requests replay.
+        let record_origins = plan.upstream == Protocol::Responses;
+        let origins = state.reasoning_origins.clone();
+        let provider_id = resolved.provider.id.clone();
         let events = async_stream::stream! {
             // Owning `resp` here is what cancels the upstream request: when the
             // client goes away the body is dropped, and with it this generator.
@@ -452,6 +467,9 @@ async fn run(
                     }
                 };
                 for frame in decoder.push(&bytes) {
+                    if record_origins {
+                        origins.record_frame(&provider_id, &frame.data);
+                    }
                     match translator.on_frame(frame) {
                         Ok(out) => {
                             for b in out {
@@ -499,8 +517,15 @@ async fn run(
     };
     let raw_for_capture = guard.capture.is_some().then(|| bytes.clone());
     let (upstream_protocol, passthrough) = (plan.upstream, plan.passthrough);
+    let origins = state.reasoning_origins.clone();
+    let provider_id = resolved.provider.id.clone();
     let (out, usage, parsed) = match offload(bytes.len(), move || {
         let parsed = serde_json::from_slice::<Value>(&bytes);
+        if upstream_protocol == Protocol::Responses
+            && let Ok(body) = &parsed
+        {
+            origins.record(&provider_id, body);
+        }
         if passthrough {
             // Usage is best effort; the bytes go back exactly as received.
             let (usage, parsed) = parsed

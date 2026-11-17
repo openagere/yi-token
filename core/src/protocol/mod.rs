@@ -11,6 +11,7 @@ pub mod chat;
 pub mod compatibility;
 pub mod ir;
 pub mod prepare;
+pub mod reasoning_origin;
 pub mod responses;
 pub mod sse;
 pub mod thinking;
